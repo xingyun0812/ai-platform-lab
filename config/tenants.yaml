@@ -1,0 +1,18 @@
+# 三假租户（与《AI中台学习执行手册》一致）。Bearer 与 X-Tenant-Id 须同时匹配同一租户。
+# 生产环境请改用密钥管理系统；本地可把 token 改成自己的随机串。
+tenants:
+  demo-a:
+    bearer_token: "sk-tenant-demo-a-change-me"
+    daily_request_quota: 1000
+    allowed_models:
+      - "gpt-4o-mini"
+  demo-b:
+    bearer_token: "sk-tenant-demo-b-change-me"
+    daily_request_quota: 200
+    allowed_models:
+      - "gpt-4o-mini"
+  admin:
+    bearer_token: "sk-tenant-admin-change-me"
+    daily_request_quota: -1
+    # 空列表表示不限制模型（中台开发自用）
+    allowed_models: []
