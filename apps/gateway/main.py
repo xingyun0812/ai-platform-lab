@@ -7,11 +7,12 @@ from typing import Annotated, Any
 from fastapi import FastAPI, Header, HTTPException, Request, Response
 from fastapi.responses import JSONResponse
 
+from apps.gateway.http_utils import json_error, resolve_tenant
 from apps.gateway.llm_proxy import forward_chat_completions
 from apps.gateway.quota import DailyQuotaTracker
+from apps.gateway.rag.routes import router as rag_router
 from apps.gateway.settings import get_settings
 from apps.gateway.tenants import TenantRecord, load_tenants
-from packages.contracts.errors import ErrorBody, ErrorDetail
 from packages.contracts.schemas import ChatCompletionRequest
 from packages.observability.context import get_trace_id
 from packages.observability.middleware import TraceIdMiddleware
@@ -29,58 +30,11 @@ def get_tenants() -> dict[str, TenantRecord]:
     return _tenants_cache
 
 
-def json_error(
-    status_code: int,
-    code: str,
-    message: str,
-    detail: dict[str, Any] | None = None,
-) -> JSONResponse:
-    tid = get_trace_id()
-    body = ErrorBody(
-        error=ErrorDetail(
-            code=code,
-            message=message,
-            trace_id=tid,
-            detail=detail,
-        )
-    )
-    return JSONResponse(status_code=status_code, content=body.model_dump())
-
-
-def parse_bearer(authorization: str | None) -> str | None:
-    if not authorization:
-        return None
-    parts = authorization.split()
-    if len(parts) == 2 and parts[0].lower() == "bearer":
-        return parts[1].strip()
-    return None
-
-
-def resolve_tenant(
-    x_tenant_id: str | None,
-    authorization: str | None,
-    tenants: dict[str, TenantRecord],
-) -> TenantRecord:
-    if not x_tenant_id:
-        raise HTTPException(status_code=401, detail="missing X-Tenant-Id")
-    token = parse_bearer(authorization)
-    if not token:
-        raise HTTPException(status_code=401, detail="missing Authorization Bearer")
-
-    tenant = tenants.get(x_tenant_id.strip())
-    if not tenant:
-        raise HTTPException(status_code=401, detail="unknown tenant")
-
-    if token != tenant.bearer_token:
-        raise HTTPException(status_code=401, detail="invalid bearer token")
-
-    return tenant
-
-
 def create_app() -> FastAPI:
     settings = get_settings()
     app = FastAPI(title=settings.app_name, version=settings.app_version)
     app.add_middleware(TraceIdMiddleware)
+    app.include_router(rag_router)
 
     @app.middleware("http")
     async def access_log(request: Request, call_next):

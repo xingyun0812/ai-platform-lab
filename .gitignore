@@ -10,3 +10,4 @@ __pycache__/
 .idea/
 *.log
 config/tenants.local.yaml
+data/rag/uploads/

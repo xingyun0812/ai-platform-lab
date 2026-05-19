@@ -1,0 +1,3 @@
+# RAG 管道默认参数（可被环境变量覆盖，见 settings）
+chunk_size: 512
+chunk_overlap: 64

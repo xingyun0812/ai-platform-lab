@@ -1,6 +1,8 @@
 from functools import lru_cache
 from pathlib import Path
+from typing import Any
 
+import yaml
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -33,7 +35,43 @@ class Settings(BaseSettings):
     upstream_timeout_seconds: float = Field(default=60.0, validation_alias="UPSTREAM_TIMEOUT_SECONDS")
     upstream_max_retries: int = Field(default=2, validation_alias="UPSTREAM_MAX_RETRIES")
 
+    # RAG（第 2 周）
+    qdrant_url: str = Field(default="http://127.0.0.1:6333", validation_alias="QDRANT_URL")
+    qdrant_collection: str = Field(
+        default="ai_platform_lab",
+        validation_alias="QDRANT_COLLECTION",
+    )
+    embedding_model: str = Field(
+        default="text-embedding-3-small",
+        validation_alias="EMBEDDING_MODEL",
+    )
+    embedding_dimensions: int = Field(default=1536, validation_alias="EMBEDDING_DIMENSIONS")
+    rag_data_root: Path = Field(
+        default=REPO_ROOT / "data" / "rag",
+        validation_alias="RAG_DATA_ROOT",
+    )
+    rag_config_path: Path = Field(
+        default=REPO_ROOT / "config" / "rag.yaml",
+        validation_alias="RAG_CONFIG_PATH",
+    )
+    chunk_size: int = Field(default=512, validation_alias="CHUNK_SIZE")
+    chunk_overlap: int = Field(default=64, validation_alias="CHUNK_OVERLAP")
+    embedding_batch_size: int = Field(default=32, validation_alias="EMBEDDING_BATCH_SIZE")
+
+
+def _load_rag_yaml_defaults(path: Path) -> dict[str, Any]:
+    if not path.is_file():
+        return {}
+    data = yaml.safe_load(path.read_text(encoding="utf-8"))
+    return data if isinstance(data, dict) else {}
+
 
 @lru_cache
 def get_settings() -> Settings:
-    return Settings()
+    rag_defaults = _load_rag_yaml_defaults(REPO_ROOT / "config" / "rag.yaml")
+    overrides: dict[str, Any] = {}
+    if isinstance(rag_defaults.get("chunk_size"), int):
+        overrides["chunk_size"] = rag_defaults["chunk_size"]
+    if isinstance(rag_defaults.get("chunk_overlap"), int):
+        overrides["chunk_overlap"] = rag_defaults["chunk_overlap"]
+    return Settings(**overrides)

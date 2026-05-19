@@ -1,6 +1,6 @@
 # ai-platform-lab
 
-最小 **AI 中台** 实验仓库（与 Obsidian《AI中台学习执行手册》配套）。当前完成 **第 1 周骨架**：多租户 LLM Gateway（鉴权、配额、非流式转发、trace_id）。
+最小 **AI 中台** 实验仓库（与 [《AI中台学习执行手册》](docs/AI中台学习执行手册.md) 配套）。当前完成 **第 1 周 Gateway** + **第 2 周 RAG 数据管道**（异步索引、kb 版本、Qdrant、对内检索）。
 
 ## 环境
 
@@ -54,17 +54,40 @@ curl -s http://127.0.0.1:8000/v1/chat/completions \
 
 未配置 `LLM_API_KEY` 时，返回 **503** 且 `error.code=UPSTREAM_NOT_CONFIGURED`。
 
+## RAG 管道（第 2 周）
+
+1. 启动向量库：`docker compose --profile vectors up -d`
+2. `.env` 中已配置 `LLM_API_KEY`（embedding 与对话共用上游）
+3. 提交索引、查任务、检索见 [docs/week2-rag-pipeline.md](docs/week2-rag-pipeline.md)
+
+示例（admin 租户）：
+
+```bash
+curl -s http://127.0.0.1:8000/internal/index \
+  -H "Content-Type: application/json" \
+  -H "X-Tenant-Id: admin" \
+  -H "Authorization: Bearer sk-tenant-admin-change-me" \
+  -d '{"kb_id":"lab-demo","version":1,"source_uri":"samples/hello.txt"}'
+```
+
 ## 目录说明
 
 | 路径 | 说明 |
 |------|------|
 | `apps/gateway` | FastAPI 网关 |
-| `apps/worker` | 异步任务占位（第 2 周） |
-| `packages/contracts` | 请求/错误体模型 |
+| `apps/worker` | Worker 说明入口（索引任务当前在 gateway 后台执行） |
+| `packages/rag` | chunk / embedding / Qdrant |
+| `packages/contracts` | 请求/错误体/RAG 模型 |
+| `data/rag` | 待索引样例文本 |
+| `config/rag.yaml` | chunk 默认参数 |
 | `packages/observability` | `trace_id` 中间件 |
 | `config/tenants.yaml` | 三假租户 |
 | `eval/` | 评测集（占位） |
+| `docs/gateway-build-and-code-guide.md` | Gateway 构建思路与代码导读（回顾 / 讲解用） |
+| `docs/week2-rag-pipeline.md` | 第 2 周 RAG 数据流、API、演示命令 |
+| `docs/rag-build-and-code-guide.md` | 第 2 周 RAG 构建思路与代码导读（回顾 / 讲解用） |
+| `docs/AI中台学习执行手册.md` | 全 8 周学习路线（与 Obsidian 笔记同步副本） |
 
 ## 后续周次
 
-按《AI中台学习执行手册》扩展 RAG 管道、Agent 运行时、观测与评测等模块。
+按 [《AI中台学习执行手册》](docs/AI中台学习执行手册.md) 扩展 RAG 服务化、Agent 运行时、观测与评测等模块。
