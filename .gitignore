@@ -11,3 +11,4 @@ __pycache__/
 *.log
 config/tenants.local.yaml
 data/rag/uploads/
+eval/runs/*.json

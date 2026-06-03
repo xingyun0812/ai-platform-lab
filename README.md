@@ -1,6 +1,6 @@
 # ai-platform-lab
 
-最小 **AI 中台** 实验仓库（与 [《AI中台学习执行手册》](docs/AI中台学习执行手册.md) 配套）。当前完成 **第 1～3 周**（Gateway / RAG 管道 / RAG 问答）+ **第 4 周 Agent 运行时**（工具注册、租户授权、`/v1/agent/run`、会话记忆）。
+最小 **AI 中台** 实验仓库（与 [《AI中台学习执行手册》](docs/AI中台学习执行手册.md) 配套）。当前完成 **第 1～4 周** + **第 5 周观测与评测**（OpenTelemetry、Prometheus `/metrics`、`eval/run.py` 回归对比）。
 
 ## 环境
 
@@ -98,6 +98,24 @@ curl -s http://127.0.0.1:8000/v1/agent/run \
 
 工具授权矩阵与演示见 [docs/week4-agent-runtime.md](docs/week4-agent-runtime.md)。
 
+## 观测与评测（第 5 周）
+
+```bash
+# Prometheus 指标
+curl -s http://127.0.0.1:8000/metrics
+
+# 跑 baseline 评测（需网关 + 索引 + LLM_API_KEY）
+python eval/run.py run
+
+# 对比两次报告
+python eval/run.py compare eval/runs/run_a.json eval/runs/run_b.json
+
+# 50 并发压测
+python eval/load_smoke.py --concurrency 50
+```
+
+详见 [docs/week5-observability-eval.md](docs/week5-observability-eval.md)。
+
 ## 文档与代码导读
 
 | 周次 | 接口 / 演示 | 构建思路与代码导读 |
@@ -107,6 +125,7 @@ curl -s http://127.0.0.1:8000/v1/agent/run \
 | 第 2 周 RAG 管道 | [week2-rag-pipeline.md](docs/week2-rag-pipeline.md) | [rag-build-and-code-guide.md](docs/rag-build-and-code-guide.md) |
 | 第 3 周 RAG 问答 | [week3-rag-query.md](docs/week3-rag-query.md) | [rag-query-build-and-code-guide.md](docs/rag-query-build-and-code-guide.md) |
 | 第 4 周 Agent | [week4-agent-runtime.md](docs/week4-agent-runtime.md) | [agent-build-and-code-guide.md](docs/agent-build-and-code-guide.md) |
+| 第 5 周 观测/评测 | [week5-observability-eval.md](docs/week5-observability-eval.md) | [observability-eval-build-and-code-guide.md](docs/observability-eval-build-and-code-guide.md) |
 
 - **周文档**：验收要点、curl 演示、API 说明。  
 - **导读专篇**：分层与搭建顺序、使用链路、逐文件读代码、错误码与自测用例（适合复习或给他人讲解）。
@@ -121,6 +140,7 @@ curl -s http://127.0.0.1:8000/v1/agent/run \
 | `week-2-rag-pipeline` | `2803a1b` | RAG：异步索引、kb 版本、Qdrant、`/internal/retrieve` |
 | `week-3-rag-query` | `5dbcf68` | RAG 问答：`/v1/rag/query`、阈值拒答、citations、timings |
 | `week-4-agent-runtime` | `617d535` | Agent：`/v1/agent/run`、工具白名单、会话、tool_calls 轨迹 |
+| `week-5-observability-eval` | _待打 tag_ | OTel、/metrics、eval/run、load_smoke |
 
 ```bash
 # 查看某周 tag 说明
@@ -141,7 +161,7 @@ git fetch origin --tags
 
 ```bash
 git push origin main
-git push origin week-1-gateway week-2-rag-pipeline week-3-rag-query week-4-agent-runtime
+git push origin week-1-gateway week-2-rag-pipeline week-3-rag-query week-4-agent-runtime week-5-observability-eval
 # 或一次性：git push origin main --tags
 ```
 

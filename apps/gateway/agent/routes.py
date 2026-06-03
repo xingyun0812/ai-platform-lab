@@ -9,6 +9,7 @@ from fastapi.responses import JSONResponse
 from apps.gateway.http_utils import json_error, resolve_tenant
 from apps.gateway.quota import get_quota_tracker
 from apps.gateway.settings import get_settings
+from packages.observability.otel import component_span
 from apps.gateway.tenants import TenantRecord, load_tenants
 from packages.agent.runner import AgentRunError, run_agent
 from packages.agent.session import get_session_store
@@ -69,15 +70,22 @@ async def agent_run(
         return json_error(429, "QUOTA_EXCEEDED", "租户日配额已用尽")
 
     try:
-        result = await run_agent(
+        with component_span(
+            "agent.run",
+            component="agent",
+            enabled=settings.otel_enabled,
             tenant_id=tenant.tenant_id,
             session_id=body.session_id.strip(),
-            new_messages=new_messages,
-            allowed_tools=tenant.allowed_tools,
-            allowed_models=tenant.allowed_models,
-            model=body.model,
-            session_store=get_session_store(),
-        )
+        ):
+            result = await run_agent(
+                tenant_id=tenant.tenant_id,
+                session_id=body.session_id.strip(),
+                new_messages=new_messages,
+                allowed_tools=tenant.allowed_tools,
+                allowed_models=tenant.allowed_models,
+                model=body.model,
+                session_store=get_session_store(),
+            )
     except AgentRunError as e:
         if e.code == "AGENT_TOOL_FORBIDDEN":
             return json_error(403, e.code, e.message, detail=e.detail)

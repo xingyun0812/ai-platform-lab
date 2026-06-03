@@ -197,7 +197,7 @@ async def retrieve(
             resolve_version=resolve_retrieve_version,
         )
     except ValueError as e:
-        return json_error(404, "KB_NOT_FOUND", str(e))
+        return json_error(404, "RAG_KB_NOT_FOUND", str(e))
     except Exception as e:
         logger.exception("retrieve failed kb_id=%s", body.kb_id)
         return json_error(503, "RETRIEVE_ERROR", str(e))

@@ -75,6 +75,11 @@ class Settings(BaseSettings):
     agent_tool_max_retries: int = Field(default=1, validation_alias="AGENT_TOOL_MAX_RETRIES")
     agent_model: str | None = Field(default=None, validation_alias="AGENT_MODEL")
 
+    # 观测（第 5 周）
+    otel_enabled: bool = Field(default=False, validation_alias="OTEL_ENABLED")
+    otel_console_export: bool = Field(default=True, validation_alias="OTEL_CONSOLE_EXPORT")
+    metrics_enabled: bool = Field(default=True, validation_alias="METRICS_ENABLED")
+
 
 def _load_yaml_defaults(path: Path) -> dict[str, Any]:
     if not path.is_file():
@@ -87,6 +92,7 @@ def _load_yaml_defaults(path: Path) -> dict[str, Any]:
 def get_settings() -> Settings:
     rag_defaults = _load_yaml_defaults(REPO_ROOT / "config" / "rag.yaml")
     agent_defaults = _load_yaml_defaults(REPO_ROOT / "config" / "agent.yaml")
+    obs_defaults = _load_yaml_defaults(REPO_ROOT / "config" / "observability.yaml")
     overrides: dict[str, Any] = {}
     if isinstance(rag_defaults.get("chunk_size"), int):
         overrides["chunk_size"] = rag_defaults["chunk_size"]
@@ -104,4 +110,10 @@ def get_settings() -> Settings:
         overrides["agent_tool_max_retries"] = agent_defaults["tool_max_retries"]
     if isinstance(agent_defaults.get("agent_model"), str):
         overrides["agent_model"] = agent_defaults["agent_model"]
+    if isinstance(obs_defaults.get("otel_enabled"), bool):
+        overrides["otel_enabled"] = obs_defaults["otel_enabled"]
+    if isinstance(obs_defaults.get("otel_console_export"), bool):
+        overrides["otel_console_export"] = obs_defaults["otel_console_export"]
+    if isinstance(obs_defaults.get("metrics_enabled"), bool):
+        overrides["metrics_enabled"] = obs_defaults["metrics_enabled"]
     return Settings(**overrides)

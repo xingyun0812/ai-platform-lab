@@ -10,6 +10,7 @@ from apps.gateway.http_utils import json_error, resolve_tenant
 from apps.gateway.quota import get_quota_tracker
 from apps.gateway.rag.query_service import RagQueryRefusal, run_rag_query
 from apps.gateway.settings import get_settings
+from packages.observability.otel import component_span
 from apps.gateway.tenants import TenantRecord, load_tenants
 from packages.contracts.rag_schemas import RagQueryRequest, RagQueryResponse
 
@@ -73,17 +74,24 @@ async def rag_query(
         )
 
     try:
-        result = await run_rag_query(
+        with component_span(
+            "rag.query",
+            component="rag",
+            enabled=settings.otel_enabled,
             kb_id=body.kb_id,
-            version=body.version,
-            query=body.query,
-            top_k=body.top_k,
-            min_score=body.min_score,
-            model=body.model,
             tenant_id=tenant.tenant_id,
-            daily_request_quota=tenant.daily_request_quota,
-            quota_tracker=quota_tracker,
-        )
+        ):
+            result = await run_rag_query(
+                kb_id=body.kb_id,
+                version=body.version,
+                query=body.query,
+                top_k=body.top_k,
+                min_score=body.min_score,
+                model=body.model,
+                tenant_id=tenant.tenant_id,
+                daily_request_quota=tenant.daily_request_quota,
+                quota_tracker=quota_tracker,
+            )
     except RagQueryRefusal as e:
         if e.code == "QUOTA_EXCEEDED":
             return json_error(429, e.code, e.message, detail=e.detail)

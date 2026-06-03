@@ -1,0 +1,4 @@
+# 观测（第 5 周）
+otel_enabled: false
+otel_console_export: true
+metrics_enabled: true

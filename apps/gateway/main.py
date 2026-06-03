@@ -5,7 +5,7 @@ import time
 from typing import Annotated, Any
 
 from fastapi import FastAPI, Header, HTTPException, Request, Response
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, PlainTextResponse
 
 from apps.gateway.http_utils import json_error, resolve_tenant
 from apps.gateway.llm_proxy import forward_chat_completions
@@ -17,7 +17,9 @@ from apps.gateway.settings import get_settings
 from apps.gateway.tenants import TenantRecord, load_tenants
 from packages.contracts.schemas import ChatCompletionRequest
 from packages.observability.context import get_trace_id
+from packages.observability.metrics import get_metrics_store
 from packages.observability.middleware import TraceIdMiddleware
+from packages.observability.otel import init_otel
 
 logger = logging.getLogger("ai_platform.gateway")
 
@@ -34,6 +36,11 @@ def get_tenants() -> dict[str, TenantRecord]:
 
 def create_app() -> FastAPI:
     settings = get_settings()
+    init_otel(
+        service_name=settings.app_name,
+        enabled=settings.otel_enabled,
+        console_export=settings.otel_console_export,
+    )
     app = FastAPI(title=settings.app_name, version=settings.app_version)
     app.add_middleware(TraceIdMiddleware)
     app.include_router(rag_router)
@@ -61,6 +68,13 @@ def create_app() -> FastAPI:
     @app.get("/healthz")
     async def healthz() -> dict[str, str]:
         return {"status": "ok", "version": settings.app_version}
+
+    @app.get("/metrics")
+    async def metrics() -> PlainTextResponse:
+        if not settings.metrics_enabled:
+            return PlainTextResponse("# metrics disabled\n", status_code=503)
+        body = get_metrics_store().prometheus_text()
+        return PlainTextResponse(body, media_type="text/plain; version=0.0.4; charset=utf-8")
 
     @app.post("/v1/chat/completions")
     async def chat_completions(
@@ -105,8 +119,16 @@ def create_app() -> FastAPI:
                 detail={"tenant_id": tenant.tenant_id, "quota": tenant.daily_request_quota},
             )
 
+        from packages.observability.otel import component_span
+
         payload = body.upstream_payload(settings.default_model)
-        status, upstream_json, err = await forward_chat_completions(payload)
+        with component_span(
+            "gateway.chat_completions",
+            component="gateway",
+            enabled=settings.otel_enabled,
+            tenant_id=tenant.tenant_id,
+        ):
+            status, upstream_json, err = await forward_chat_completions(payload)
 
         if err and upstream_json is None:
             return json_error(
