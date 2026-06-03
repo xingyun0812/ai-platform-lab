@@ -15,6 +15,7 @@ class TenantRecord:
     bearer_token: str
     daily_request_quota: int  # -1 表示不限
     allowed_models: tuple[str, ...]
+    allowed_tools: tuple[str, ...]  # 空表示可用全部注册工具
 
 
 def _read_yaml(path: Path) -> dict[str, Any]:
@@ -71,10 +72,18 @@ def load_tenants(path: Path | None = None) -> dict[str, TenantRecord]:
             allowed = tuple(str(m) for m in models)
         else:
             raise ValueError(f"租户 {tenant_id} allowed_models 须为列表或为空")
+        tools_cfg = cfg.get("allowed_tools")
+        if tools_cfg is None:
+            allowed_tools: tuple[str, ...] = ()
+        elif isinstance(tools_cfg, list):
+            allowed_tools = tuple(str(t) for t in tools_cfg)
+        else:
+            raise ValueError(f"租户 {tenant_id} allowed_tools 须为列表或为空")
         out[str(tenant_id)] = TenantRecord(
             tenant_id=str(tenant_id),
             bearer_token=token,
             daily_request_quota=quota,
             allowed_models=allowed,
+            allowed_tools=allowed_tools,
         )
     return out

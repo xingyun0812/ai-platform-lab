@@ -6,13 +6,21 @@ tenants:
     daily_request_quota: 1000
     allowed_models:
       - "gpt-4o-mini"
+    # 仅允许知识库检索与计算器（不可调用 httpbin_delay）
+    allowed_tools:
+      - "get_kb_snippet"
+      - "calc"
   demo-b:
     bearer_token: "sk-tenant-demo-b-change-me"
     daily_request_quota: 200
     allowed_models:
       - "gpt-4o-mini"
+    allowed_tools:
+      - "calc"
   admin:
     bearer_token: "sk-tenant-admin-change-me"
     daily_request_quota: -1
     # 空列表表示不限制模型（中台开发自用）
     allowed_models: []
+    # 空列表表示可用全部注册工具
+    allowed_tools: []

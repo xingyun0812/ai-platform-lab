@@ -66,8 +66,17 @@ class Settings(BaseSettings):
     )
     rag_query_model: str | None = Field(default=None, validation_alias="RAG_QUERY_MODEL")
 
+    # Agent（第 4 周）
+    agent_max_steps: int = Field(default=8, validation_alias="AGENT_MAX_STEPS")
+    agent_tool_timeout_seconds: float = Field(
+        default=10.0,
+        validation_alias="AGENT_TOOL_TIMEOUT_SECONDS",
+    )
+    agent_tool_max_retries: int = Field(default=1, validation_alias="AGENT_TOOL_MAX_RETRIES")
+    agent_model: str | None = Field(default=None, validation_alias="AGENT_MODEL")
 
-def _load_rag_yaml_defaults(path: Path) -> dict[str, Any]:
+
+def _load_yaml_defaults(path: Path) -> dict[str, Any]:
     if not path.is_file():
         return {}
     data = yaml.safe_load(path.read_text(encoding="utf-8"))
@@ -76,7 +85,8 @@ def _load_rag_yaml_defaults(path: Path) -> dict[str, Any]:
 
 @lru_cache
 def get_settings() -> Settings:
-    rag_defaults = _load_rag_yaml_defaults(REPO_ROOT / "config" / "rag.yaml")
+    rag_defaults = _load_yaml_defaults(REPO_ROOT / "config" / "rag.yaml")
+    agent_defaults = _load_yaml_defaults(REPO_ROOT / "config" / "agent.yaml")
     overrides: dict[str, Any] = {}
     if isinstance(rag_defaults.get("chunk_size"), int):
         overrides["chunk_size"] = rag_defaults["chunk_size"]
@@ -86,4 +96,12 @@ def get_settings() -> Settings:
         overrides["rag_min_score"] = float(rag_defaults["min_score"])
     if isinstance(rag_defaults.get("prompt_path"), str):
         overrides["rag_prompt_path"] = REPO_ROOT / rag_defaults["prompt_path"]
+    if isinstance(agent_defaults.get("max_steps"), int):
+        overrides["agent_max_steps"] = agent_defaults["max_steps"]
+    if isinstance(agent_defaults.get("tool_timeout_seconds"), (int, float)):
+        overrides["agent_tool_timeout_seconds"] = float(agent_defaults["tool_timeout_seconds"])
+    if isinstance(agent_defaults.get("tool_max_retries"), int):
+        overrides["agent_tool_max_retries"] = agent_defaults["tool_max_retries"]
+    if isinstance(agent_defaults.get("agent_model"), str):
+        overrides["agent_model"] = agent_defaults["agent_model"]
     return Settings(**overrides)

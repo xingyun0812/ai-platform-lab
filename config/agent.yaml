@@ -1,0 +1,6 @@
+# Agent 运行时策略（可被环境变量覆盖）
+max_steps: 8
+tool_timeout_seconds: 10
+tool_max_retries: 1
+# 默认对话模型（省略时用 DEFAULT_MODEL）
+# agent_model: gpt-4o-mini
