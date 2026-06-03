@@ -140,7 +140,7 @@ python eval/load_smoke.py --concurrency 50
 | `week-2-rag-pipeline` | `2803a1b` | RAG：异步索引、kb 版本、Qdrant、`/internal/retrieve` |
 | `week-3-rag-query` | `5dbcf68` | RAG 问答：`/v1/rag/query`、阈值拒答、citations、timings |
 | `week-4-agent-runtime` | `617d535` | Agent：`/v1/agent/run`、工具白名单、会话、tool_calls 轨迹 |
-| `week-5-observability-eval` | _待打 tag_ | OTel、/metrics、eval/run、load_smoke |
+| `week-5-observability-eval | `66978a0` | OTel、/metrics、eval/run、load_smoke |
 
 ```bash
 # 查看某周 tag 说明
