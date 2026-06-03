@@ -120,17 +120,18 @@ curl -s http://127.0.0.1:8000/v1/agent/run \
 | `week-1-gateway` | `f39b098` | 多租户 Gateway：鉴权、配额、chat 转发、trace_id |
 | `week-2-rag-pipeline` | `2803a1b` | RAG：异步索引、kb 版本、Qdrant、`/internal/retrieve` |
 | `week-3-rag-query` | `5dbcf68` | RAG 问答：`/v1/rag/query`、阈值拒答、citations、timings |
+| `week-4-agent-runtime` | `617d535` | Agent：`/v1/agent/run`、工具白名单、会话、tool_calls 轨迹 |
 
 ```bash
 # 查看某周 tag 说明
-git show week-3-rag-query
+git show week-4-agent-runtime
 
 # 切换到该周代码（ detached HEAD，看完回到 main）
-git switch --detach week-3-rag-query
+git switch --detach week-4-agent-runtime
 git switch main
 
-# 两周之间的提交（示例：第 2 周 → 第 3 周）
-git log week-2-rag-pipeline..week-3-rag-query --oneline
+# 两周之间的提交（示例：第 3 周 → 第 4 周）
+git log week-3-rag-query..week-4-agent-runtime --oneline
 
 # 首次克隆后拉取远程 tag
 git fetch origin --tags
@@ -140,7 +141,7 @@ git fetch origin --tags
 
 ```bash
 git push origin main
-git push origin week-1-gateway week-2-rag-pipeline week-3-rag-query
+git push origin week-1-gateway week-2-rag-pipeline week-3-rag-query week-4-agent-runtime
 # 或一次性：git push origin main --tags
 ```
 
