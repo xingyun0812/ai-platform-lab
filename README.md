@@ -104,7 +104,7 @@ curl -s http://127.0.0.1:8000/v1/rag/query \
 |-----|--------|------|
 | `week-1-gateway` | `f39b098` | 多租户 Gateway：鉴权、配额、chat 转发、trace_id |
 | `week-2-rag-pipeline` | `2803a1b` | RAG：异步索引、kb 版本、Qdrant、`/internal/retrieve` |
-| `week-3-rag-query` | （见 `git show week-3-rag-query`） | RAG 问答：`/v1/rag/query`、阈值拒答、citations、timings |
+| `week-3-rag-query` | `5dbcf68` | RAG 问答：`/v1/rag/query`、阈值拒答、citations、timings |
 
 ```bash
 # 查看某周 tag 说明
