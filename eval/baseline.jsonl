@@ -1,1 +1,36 @@
-{"query": "ping", "expect": "sanity", "notes": "占位：第 3 周起填充 RAG 评测用例"}
+{"id": "hit-01", "kb_id": "lab-demo", "version": 1, "query": "RAG 数据管道是什么", "expect": "hit", "contains_any": ["RAG", "数据管道", "第 2 周"]}
+{"id": "hit-02", "kb_id": "lab-demo", "version": 1, "query": "第 2 周实验讲什么", "expect": "hit", "contains_any": ["第 2 周", "实验"]}
+{"id": "hit-03", "kb_id": "lab-demo", "version": 1, "query": "本地索引演示", "expect": "hit", "contains_any": ["索引", "演示"]}
+{"id": "hit-04", "kb_id": "lab-demo", "version": 1, "query": "知识库 kb_id 建议", "expect": "hit", "contains_any": ["lab-demo", "kb_id"]}
+{"id": "hit-05", "kb_id": "lab-demo", "version": 2, "query": "默认最新版本检索", "expect": "hit", "contains_any": ["version", "最新"]}
+{"id": "hit-06", "kb_id": "lab-demo", "version": 2, "query": "同一 kb_id 多个 version", "expect": "hit", "contains_any": ["version", "kb_id"]}
+{"id": "hit-07", "kb_id": "lab-demo", "query": "RAG 管道第二版强调什么", "expect": "hit", "contains_any": ["v2", "版本"]}
+{"id": "hit-08", "kb_id": "lab-demo", "version": 1, "query": "chunk 关键词片段", "expect": "hit", "top_k": 3}
+{"id": "hit-09", "kb_id": "lab-demo", "version": 1, "query": "AI 中台学习", "expect": "hit", "contains_any": ["中台", "学习"]}
+{"id": "hit-10", "kb_id": "lab-demo", "version": 1, "query": "检索应能命中哪些词", "expect": "hit", "contains_any": ["命中", "关键词"]}
+{"id": "refuse-01", "kb_id": "lab-demo", "query": "2026年诺贝尔物理学奖得主是谁", "expect": "refuse", "refuse_codes": ["RAG_NO_EVIDENCE", "RAG_LOW_CONFIDENCE"]}
+{"id": "refuse-02", "kb_id": "lab-demo", "query": "上海迪士尼今日门票价格", "expect": "refuse"}
+{"id": "refuse-03", "kb_id": "lab-demo", "query": "如何修理柴油发动机", "expect": "refuse"}
+{"id": "refuse-04", "kb_id": "lab-demo", "query": "比特币当前美元价格", "expect": "refuse"}
+{"id": "refuse-05", "kb_id": "lab-demo", "query": "Python 3.12 发布日期是哪一天", "expect": "refuse"}
+{"id": "refuse-06", "kb_id": "lab-demo", "query": "火星大气主要成分", "expect": "refuse"}
+{"id": "refuse-07", "kb_id": "lab-demo", "query": "王者荣耀最新赛季名称", "expect": "refuse"}
+{"id": "refuse-08", "kb_id": "lab-demo", "query": "欧盟 GDPR 罚款上限是多少", "expect": "refuse"}
+{"id": "refuse-09", "kb_id": "lab-demo", "query": "特斯拉 Model Y 续航里程", "expect": "refuse"}
+{"id": "refuse-10", "kb_id": "lab-demo", "query": "《红楼梦》作者籍贯", "expect": "refuse"}
+{"id": "threshold-01", "kb_id": "lab-demo", "version": 1, "query": "RAG 数据管道", "expect": "hit", "min_score": 0.1}
+{"id": "threshold-02", "kb_id": "lab-demo", "version": 1, "query": "RAG 数据管道", "expect": "refuse", "min_score": 0.99, "refuse_codes": ["RAG_LOW_CONFIDENCE"]}
+{"id": "threshold-03", "kb_id": "lab-demo", "version": 1, "query": "完全无关的量子纠缠实验细节", "expect": "refuse", "min_score": 0.5}
+{"id": "topk-01", "kb_id": "lab-demo", "version": 1, "query": "AI 中台", "expect": "hit", "top_k": 1}
+{"id": "topk-02", "kb_id": "lab-demo", "version": 1, "query": "AI 中台", "expect": "hit", "top_k": 10}
+{"id": "version-01", "kb_id": "lab-demo", "version": 1, "query": "手动 bump 版本号", "expect": "hit", "contains_any": ["v1", "版本"]}
+{"id": "version-02", "kb_id": "lab-demo", "version": 2, "query": "检索时可指定 version", "expect": "hit", "contains_any": ["指定", "version"]}
+{"id": "miss-kb-01", "kb_id": "no-such-kb", "query": "测试", "expect": "refuse", "refuse_codes": ["RAG_KB_NOT_FOUND"]}
+{"id": "hit-11", "kb_id": "lab-demo", "version": 1, "query": "样例文本用于什么", "expect": "hit", "contains_any": ["样例", "本地"]}
+{"id": "hit-12", "kb_id": "lab-demo", "version": 1, "query": "OpenAI embedding 配置", "expect": "hit", "contains_any": ["embedding", "API"]}
+{"id": "refuse-11", "kb_id": "lab-demo", "query": "今天北京空气质量指数", "expect": "refuse"}
+{"id": "refuse-12", "kb_id": "lab-demo", "query": "iPhone 17 发布会时间", "expect": "refuse"}
+{"id": "hit-13", "kb_id": "lab-demo", "version": 1, "query": "chunk_id 列表", "expect": "hit", "contains_any": ["chunk", "检索"]}
+{"id": "hit-14", "kb_id": "lab-demo", "version": 2, "query": "第二版强调默认最新", "expect": "hit", "contains_any": ["最新", "默认"]}
+{"id": "threshold-04", "kb_id": "lab-demo", "query": "华尔街股市", "expect": "refuse", "min_score": 0.8}
+{"id": "meta-01", "kb_id": "lab-demo", "version": 1, "query": "Qdrant 向量库", "expect": "hit", "notes": "需已索引；未索引时可能 RAG_KB_NOT_FOUND"}

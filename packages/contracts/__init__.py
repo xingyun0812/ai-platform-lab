@@ -2,6 +2,8 @@ from packages.contracts.errors import ErrorBody, ErrorDetail
 from packages.contracts.rag_schemas import (
     IndexJobRequest,
     IndexTaskView,
+    RagQueryRequest,
+    RagQueryResponse,
     RetrieveRequest,
     RetrieveResponse,
     TaskStatus,
@@ -14,6 +16,8 @@ __all__ = [
     "ErrorDetail",
     "IndexJobRequest",
     "IndexTaskView",
+    "RagQueryRequest",
+    "RagQueryResponse",
     "RetrieveRequest",
     "RetrieveResponse",
     "TaskStatus",

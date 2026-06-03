@@ -2,7 +2,8 @@
 
 学习计划见 [AI中台学习执行手册](./AI中台学习执行手册.md) 第 2 周。  
 构建思路、使用链路与逐文件代码说明见 [rag-build-and-code-guide.md](./rag-build-and-code-guide.md)。  
-第 1 周 Gateway 见 [gateway-build-and-code-guide.md](./gateway-build-and-code-guide.md)。
+第 1 周 Gateway 见 [gateway-build-and-code-guide.md](./gateway-build-and-code-guide.md)。  
+第 3 周对外问答见 [week3-rag-query.md](./week3-rag-query.md)。
 
 ---
 

@@ -1,3 +1,9 @@
 # RAG 管道默认参数（可被环境变量覆盖，见 settings）
 chunk_size: 512
 chunk_overlap: 64
+
+# 第 3 周：检索相关度阈值（Cosine 分，低于此不入 LLM）
+min_score: 0.35
+prompt_path: config/rag_prompt.txt
+
+# 混合检索（BM25 + 向量）留待后续，当前仅向量检索

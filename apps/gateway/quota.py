@@ -5,6 +5,16 @@ import threading
 from collections import defaultdict
 
 
+_quota_singleton: "DailyQuotaTracker | None" = None
+
+
+def get_quota_tracker() -> "DailyQuotaTracker":
+    global _quota_singleton
+    if _quota_singleton is None:
+        _quota_singleton = DailyQuotaTracker()
+    return _quota_singleton
+
+
 class DailyQuotaTracker:
     """进程内按「租户 + UTC 日期」计数；重启清零。适合本地实验。"""
 
@@ -19,6 +29,14 @@ class DailyQuotaTracker:
         day = self._today_key()
         with self._lock:
             return self._counts[(tenant_id, day)]
+
+    def has_quota(self, tenant_id: str, limit: int) -> bool:
+        """是否尚有日配额（不扣减）。"""
+        if limit < 0:
+            return True
+        day = self._today_key()
+        with self._lock:
+            return self._counts[(tenant_id, day)] < limit
 
     def try_consume(self, tenant_id: str, limit: int) -> bool:
         """limit == -1 表示不限。返回是否允许本次请求。"""

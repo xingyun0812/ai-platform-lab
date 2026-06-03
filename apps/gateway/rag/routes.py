@@ -9,6 +9,7 @@ from fastapi.responses import JSONResponse
 from apps.gateway.http_utils import json_error, resolve_tenant
 from apps.gateway.rag.paths import resolve_source_path
 from apps.gateway.rag.pipeline import resolve_retrieve_version, run_index_task, task_store
+from packages.rag.retrieval import retrieve_chunks
 from apps.gateway.settings import get_settings
 from apps.gateway.tenants import TenantRecord, load_tenants
 from packages.contracts.rag_schemas import (
@@ -19,10 +20,8 @@ from packages.contracts.rag_schemas import (
     KbVersionsResponse,
     RetrieveRequest,
     RetrieveResponse,
-    RetrievedChunk,
     TaskStatus,
 )
-from packages.rag.embeddings import embed_texts
 from packages.rag.vector_store import VectorStore
 
 logger = logging.getLogger("ai_platform.gateway.rag")
@@ -190,43 +189,18 @@ async def retrieve(
         return json_error(503, "UPSTREAM_NOT_CONFIGURED", "LLM_API_KEY 未配置")
 
     try:
-        resolved_version = resolve_retrieve_version(body.kb_id, body.version)
-        query_vectors = await embed_texts([body.query])
-        store = VectorStore()
-        hits = store.retrieve(
+        resolved_version, chunks = await retrieve_chunks(
             kb_id=body.kb_id,
-            version=resolved_version,
-            query_vector=query_vectors[0],
+            version=body.version,
+            query=body.query,
             top_k=body.top_k,
+            resolve_version=resolve_retrieve_version,
         )
     except ValueError as e:
         return json_error(404, "KB_NOT_FOUND", str(e))
     except Exception as e:
         logger.exception("retrieve failed kb_id=%s", body.kb_id)
         return json_error(503, "RETRIEVE_ERROR", str(e))
-
-    chunks: list[RetrievedChunk] = []
-    for hit in hits:
-        chunk_id = hit.get("chunk_id")
-        version = hit.get("version")
-        source_uri = hit.get("source_uri")
-        text = hit.get("text")
-        if not isinstance(chunk_id, str) or not isinstance(version, int):
-            continue
-        if not isinstance(source_uri, str) or not isinstance(text, str):
-            continue
-        offset = hit.get("offset")
-        chunks.append(
-            RetrievedChunk(
-                chunk_id=chunk_id,
-                kb_id=str(hit.get("kb_id", body.kb_id)),
-                version=version,
-                source_uri=source_uri,
-                offset=int(offset) if isinstance(offset, int) else 0,
-                text=text,
-                score=float(hit.get("score", 0.0)),
-            )
-        )
 
     return RetrieveResponse(
         kb_id=body.kb_id,

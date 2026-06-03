@@ -81,3 +81,47 @@ class IndexUploadResponse(BaseModel):
     version: int
     source_uri: str
     saved_path: str
+
+
+class RagQueryRequest(BaseModel):
+    """第 3 周对外 RAG 问答；tenant_id 须与请求头 X-Tenant-Id 一致。"""
+
+    tenant_id: str = Field(..., min_length=1)
+    kb_id: str = Field(..., min_length=1)
+    version: int | None = Field(default=None, description="省略则使用最新已索引版本")
+    query: str = Field(..., min_length=1)
+    top_k: int = Field(default=5, ge=1, le=50)
+    min_score: float | None = Field(
+        default=None,
+        ge=0.0,
+        le=1.0,
+        description="相关度阈值，低于此分的片段不送入 LLM",
+    )
+    model: str | None = Field(default=None, description="覆盖默认 RAG 回答模型")
+
+
+class RagCitation(BaseModel):
+    chunk_id: str
+    kb_id: str
+    version: int
+    source_uri: str
+    score: float
+
+
+class RagQueryTimings(BaseModel):
+    retrieve_ms: float
+    llm_ms: float
+    total_ms: float
+
+
+class RagQueryResponse(BaseModel):
+    tenant_id: str
+    kb_id: str
+    version: int
+    query: str
+    answer: str
+    citations: list[RagCitation]
+    timings: RagQueryTimings
+    model: str
+    min_score: float
+    trace_id: str | None = None

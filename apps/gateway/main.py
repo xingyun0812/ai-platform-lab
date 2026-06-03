@@ -9,7 +9,8 @@ from fastapi.responses import JSONResponse
 
 from apps.gateway.http_utils import json_error, resolve_tenant
 from apps.gateway.llm_proxy import forward_chat_completions
-from apps.gateway.quota import DailyQuotaTracker
+from apps.gateway.quota import get_quota_tracker
+from apps.gateway.rag.query_routes import router as rag_query_router
 from apps.gateway.rag.routes import router as rag_router
 from apps.gateway.settings import get_settings
 from apps.gateway.tenants import TenantRecord, load_tenants
@@ -19,7 +20,7 @@ from packages.observability.middleware import TraceIdMiddleware
 
 logger = logging.getLogger("ai_platform.gateway")
 
-quota_tracker = DailyQuotaTracker()
+quota_tracker = get_quota_tracker()
 _tenants_cache: dict[str, TenantRecord] | None = None
 
 
@@ -35,6 +36,7 @@ def create_app() -> FastAPI:
     app = FastAPI(title=settings.app_name, version=settings.app_version)
     app.add_middleware(TraceIdMiddleware)
     app.include_router(rag_router)
+    app.include_router(rag_query_router)
 
     @app.middleware("http")
     async def access_log(request: Request, call_next):

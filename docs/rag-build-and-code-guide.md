@@ -379,12 +379,11 @@ flowchart TD
 
 ## 附录：与第 3 周的边界
 
-| 第 2 周（当前） | 第 3 周（未做） |
-|-----------------|----------------|
-| `POST /internal/retrieve` 返回 chunks | `POST /v1/rag/query` 检索 + LLM 生成 |
-| 无 `min_score` 拒答 | 低分阈值、空检索拒答 |
-| 无 prompt 模板 | `config` 或独立模板文件 |
-| `eval/baseline.jsonl` 占位 | ≥30 条评测用例 + 行为可观测 |
+| 第 2 周 | 第 3 周（见 [rag-query-build-and-code-guide.md](./rag-query-build-and-code-guide.md)） |
+|--------|--------|
+| `POST /internal/retrieve` 返回 chunks | `POST /v1/rag/query` 检索 + LLM + citations |
+| — | `min_score` 拒答、`config/rag_prompt.txt` |
+| — | `eval/baseline.jsonl` 35 条 |
 
 ---
 

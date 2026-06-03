@@ -58,6 +58,14 @@ class Settings(BaseSettings):
     chunk_overlap: int = Field(default=64, validation_alias="CHUNK_OVERLAP")
     embedding_batch_size: int = Field(default=32, validation_alias="EMBEDDING_BATCH_SIZE")
 
+    # RAG 问答（第 3 周）
+    rag_min_score: float = Field(default=0.35, validation_alias="RAG_MIN_SCORE")
+    rag_prompt_path: Path = Field(
+        default=REPO_ROOT / "config" / "rag_prompt.txt",
+        validation_alias="RAG_PROMPT_PATH",
+    )
+    rag_query_model: str | None = Field(default=None, validation_alias="RAG_QUERY_MODEL")
+
 
 def _load_rag_yaml_defaults(path: Path) -> dict[str, Any]:
     if not path.is_file():
@@ -74,4 +82,8 @@ def get_settings() -> Settings:
         overrides["chunk_size"] = rag_defaults["chunk_size"]
     if isinstance(rag_defaults.get("chunk_overlap"), int):
         overrides["chunk_overlap"] = rag_defaults["chunk_overlap"]
+    if isinstance(rag_defaults.get("min_score"), (int, float)):
+        overrides["rag_min_score"] = float(rag_defaults["min_score"])
+    if isinstance(rag_defaults.get("prompt_path"), str):
+        overrides["rag_prompt_path"] = REPO_ROOT / rag_defaults["prompt_path"]
     return Settings(**overrides)
