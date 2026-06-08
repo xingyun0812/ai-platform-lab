@@ -106,6 +106,20 @@ B3 文档：[phase-b3-rerank-canary.md](./phase-b3-rerank-canary.md)
 
 C 文档：[phase-c-platform.md](./phase-c-platform.md)
 
+### Phase D 及后续（规划稿，未实现）
+
+Phase A→C 已闭合本仓库「最小中台」主线。若继续演进，建议按 **运维 → 治理 → 控制台 → 效果 → 商业化** 推进。
+
+| 波次 | 主题 | 说明 |
+|------|------|------|
+| D1 | 运维硬化 | 多实例、熔断、Grafana/SLO、索引队列生产化 |
+| D2 | 身份与治理 | OIDC/RBAC、审计升级、密钥生产化 |
+| D3 | 控制台 MVP | 轻量 UI 消费 Phase C internal API |
+| D4 | 效果与工作流 | 真 rerank、自动回滚、MCP、Session 持久化、eval 门禁 |
+| D5 | 商业化 | 分价、账单、成本归因 |
+
+详见 [phase-d-future-evolution.md](./phase-d-future-evolution.md)（含验收草案、非目标、Issue 模板）。
+
 ---
 
 ## 非目标（本 repo 刻意不做）

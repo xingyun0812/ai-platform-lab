@@ -163,6 +163,10 @@ python eval/canary_stats.py --samples 1000   # 命中率模拟
 
 详见 [docs/phase-c-platform.md](docs/phase-c-platform.md)。
 
+## Phase D 及后续（规划稿）
+
+Phase A→C 已完成；若继续演进，见 [phase-d-future-evolution.md](docs/phase-d-future-evolution.md)（D1 运维 → D2 治理 → D3 控制台 → D4 效果 → D5 商业化）。
+
 ## 文档与代码导读
 
 | 周次 | 接口 / 演示 | 构建思路与代码导读 |
@@ -174,6 +178,7 @@ python eval/canary_stats.py --samples 1000   # 命中率模拟
 | Phase B2 并行 | [phase-b2-parallel.md](docs/phase-b2-parallel.md) | — |
 | Phase B3 rerank | [phase-b3-rerank-canary.md](docs/phase-b3-rerank-canary.md) | — |
 | Phase C 平台化 | [phase-c-platform.md](docs/phase-c-platform.md) | — |
+| Phase D 规划 | [phase-d-future-evolution.md](docs/phase-d-future-evolution.md) | — |
 | 第 1 周 Gateway | [week1-gateway.md](docs/week1-gateway.md) | [gateway-build-and-code-guide.md](docs/gateway-build-and-code-guide.md) |
 | 第 2 周 RAG 管道 | [week2-rag-pipeline.md](docs/week2-rag-pipeline.md) | [rag-build-and-code-guide.md](docs/rag-build-and-code-guide.md) |
 | 第 3 周 RAG 问答 | [week3-rag-query.md](docs/week3-rag-query.md) | [rag-query-build-and-code-guide.md](docs/rag-query-build-and-code-guide.md) |
