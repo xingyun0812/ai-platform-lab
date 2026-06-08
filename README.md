@@ -142,6 +142,18 @@ docker compose --profile observability up -d  # 可选可观测栈
 
 详见 [docs/phase-b2-parallel.md](docs/phase-b2-parallel.md)。
 
+## Phase B3 — rerank + kb 金丝雀
+
+- **Rerank**：`RAG_RERANK_ENABLED=true`（stub 词面重排，检索链 retrieve → rerank → LLM）
+- **金丝雀**：`config/rag.yaml` → `kb_routing.{kb_id}.canary_percent`；回滚设为 `0`
+- **路由查询**：`GET /internal/kb/{kb_id}/routing`
+
+```bash
+python eval/canary_stats.py --samples 1000   # 命中率模拟
+```
+
+详见 [docs/phase-b3-rerank-canary.md](docs/phase-b3-rerank-canary.md)。
+
 ## 文档与代码导读
 
 | 周次 | 接口 / 演示 | 构建思路与代码导读 |
@@ -151,6 +163,7 @@ docker compose --profile observability up -d  # 可选可观测栈
 | Phase A 可内测 | [phase-a-internal-beta.md](docs/phase-a-internal-beta.md) | — |
 | Phase B1 计费 | [phase-b-small-production.md](docs/phase-b-small-production.md) | — |
 | Phase B2 并行 | [phase-b2-parallel.md](docs/phase-b2-parallel.md) | — |
+| Phase B3 rerank | [phase-b3-rerank-canary.md](docs/phase-b3-rerank-canary.md) | — |
 | 第 1 周 Gateway | [week1-gateway.md](docs/week1-gateway.md) | [gateway-build-and-code-guide.md](docs/gateway-build-and-code-guide.md) |
 | 第 2 周 RAG 管道 | [week2-rag-pipeline.md](docs/week2-rag-pipeline.md) | [rag-build-and-code-guide.md](docs/rag-build-and-code-guide.md) |
 | 第 3 周 RAG 问答 | [week3-rag-query.md](docs/week3-rag-query.md) | [rag-query-build-and-code-guide.md](docs/rag-query-build-and-code-guide.md) |
@@ -193,6 +206,8 @@ git show phase-b2-parallel
 | `packages/billing/` | Postgres token 计量与预算 |
 | `packages/secrets/` | Env / Vault 密钥托管 |
 | `packages/rag/bm25_index.py` | BM25 索引与混合检索 |
+| `packages/rag/rerank.py` | 检索后 rerank（stub） |
+| `packages/rag/routing.py` | kb 版本金丝雀分桶 |
 | `config/tenants.yaml` | 三假租户 + 限速默认值 |
 | `eval/baseline.jsonl` | RAG 评测用例（35 条） |
 | `docs/` | 学习手册、周文档、架构与路线图 |

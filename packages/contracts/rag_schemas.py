@@ -73,6 +73,15 @@ class KbVersionsResponse(BaseModel):
     latest: int | None = None
 
 
+class KbRoutingResponse(BaseModel):
+    kb_id: str
+    indexed_versions: list[int]
+    stable_version: int | None = None
+    canary_version: int | None = None
+    canary_percent: int = 0
+    rollback_hint: str = ""
+
+
 class IndexUploadResponse(BaseModel):
     task_id: str
     status: TaskStatus
@@ -114,6 +123,7 @@ class RagQueryTimings(BaseModel):
     retrieve_vector_ms: float | None = None
     retrieve_bm25_ms: float | None = None
     fusion_ms: float | None = None
+    rerank_ms: float | None = None
 
 
 class RagQueryResponse(BaseModel):

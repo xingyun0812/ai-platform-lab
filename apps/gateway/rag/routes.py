@@ -8,7 +8,13 @@ from fastapi.responses import JSONResponse
 
 from apps.gateway.http_utils import json_error, resolve_tenant
 from apps.gateway.rag.paths import resolve_source_path
-from apps.gateway.rag.pipeline import resolve_retrieve_version, run_index_task, task_store
+from apps.gateway.rag.pipeline import (
+    _kb_routing_rules,
+    _list_kb_versions,
+    resolve_query_version,
+    run_index_task,
+    task_store,
+)
 from apps.gateway.settings import get_settings
 from apps.gateway.tenants import TenantRecord, load_tenants
 from packages.contracts.rag_schemas import (
@@ -16,11 +22,14 @@ from packages.contracts.rag_schemas import (
     IndexJobResponse,
     IndexTaskView,
     IndexUploadResponse,
+    KbRoutingResponse,
     KbVersionsResponse,
     RetrieveRequest,
     RetrieveResponse,
 )
+from packages.rag.rerank import rerank_chunks
 from packages.rag.retrieval import retrieve_chunks
+from packages.rag.routing import describe_routing
 from packages.rag.vector_store import VectorStore
 from packages.tasks.queue import get_index_task_queue
 
@@ -181,6 +190,29 @@ async def list_kb_versions(
     return KbVersionsResponse(kb_id=kb_id, versions=versions, latest=latest)
 
 
+@router.get("/kb/{kb_id}/routing", response_model=KbRoutingResponse)
+async def get_kb_routing(
+    kb_id: str,
+    x_tenant_id: Annotated[str | None, Header(alias="X-Tenant-Id")] = None,
+    authorization: Annotated[str | None, Header()] = None,
+) -> Any:
+    tenants = load_tenants()
+    tenant = _require_tenant(x_tenant_id, authorization, tenants)
+    if isinstance(tenant, JSONResponse):
+        return tenant
+
+    try:
+        info = describe_routing(
+            kb_id,
+            rules=_kb_routing_rules(),
+            list_versions=_list_kb_versions,
+        )
+    except Exception as e:
+        return json_error(503, "VECTOR_STORE_ERROR", str(e))
+
+    return KbRoutingResponse(**info)
+
+
 @router.post("/retrieve", response_model=RetrieveResponse)
 async def retrieve(
     body: RetrieveRequest,
@@ -196,19 +228,38 @@ async def retrieve(
     if not (settings.llm_api_key or "").strip():
         return json_error(503, "UPSTREAM_NOT_CONFIGURED", "LLM_API_KEY 未配置")
 
+    tenant_id = tenant.tenant_id
+
+    def _resolve(kb: str, ver: int | None) -> int:
+        resolved, _, _ = resolve_query_version(
+            kb,
+            ver,
+            tenant_id=tenant_id,
+            query=body.query,
+        )
+        return resolved
+
     try:
         resolved_version, chunks, _ = await retrieve_chunks(
             kb_id=body.kb_id,
             version=body.version,
             query=body.query,
             top_k=body.top_k,
-            resolve_version=resolve_retrieve_version,
+            resolve_version=_resolve,
         )
     except ValueError as e:
         return json_error(404, "RAG_KB_NOT_FOUND", str(e))
     except Exception as e:
         logger.exception("retrieve failed kb_id=%s", body.kb_id)
         return json_error(503, "RETRIEVE_ERROR", str(e))
+
+    if settings.rag_rerank_enabled and chunks:
+        chunks, _ = rerank_chunks(
+            body.query,
+            chunks,
+            top_n=settings.rag_rerank_top_n,
+            mode=settings.rag_rerank_mode,
+        )
 
     return RetrieveResponse(
         kb_id=body.kb_id,

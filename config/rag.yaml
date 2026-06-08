@@ -10,3 +10,15 @@ prompt_path: config/rag_prompt.txt
 retrieval_mode: vector
 bm25_top_k: 20
 hybrid_rrf_k: 60
+
+# Phase B3：rerank + kb 版本金丝雀
+rerank_enabled: false
+rerank_mode: stub
+rerank_top_n: 10
+
+# 按 kb_id 配置金丝雀；canary_percent=0 时 100% stable_version（或 latest）
+kb_routing:
+  lab-demo:
+    stable_version: 1
+    canary_version: 2
+    canary_percent: 0

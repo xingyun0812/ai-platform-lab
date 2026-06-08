@@ -139,6 +139,97 @@ async def run_checks(*, with_llm: bool) -> list[Check]:
             out.append(Check("PB2", "rag_retrieval_mode", False, str(e)))
 
         try:
+            from packages.contracts.rag_schemas import RetrievedChunk
+            from packages.rag.rerank import rerank_chunks
+
+            hi = RetrievedChunk(
+                chunk_id="a",
+                kb_id="k",
+                version=1,
+                source_uri="s",
+                offset=0,
+                text="无关内容",
+                score=0.9,
+            )
+            lo = RetrievedChunk(
+                chunk_id="b",
+                kb_id="k",
+                version=1,
+                source_uri="s",
+                offset=0,
+                text="RAG 数据管道说明",
+                score=0.5,
+            )
+            reranked, _ms = rerank_chunks("RAG 数据管道", [hi, lo], top_n=2)
+            out.append(
+                Check(
+                    "PB3",
+                    "rerank stub 重排",
+                    reranked[0].chunk_id == "b",
+                    f"top={reranked[0].chunk_id}",
+                )
+            )
+        except Exception as e:
+            out.append(Check("PB3", "rerank stub 重排", False, str(e)))
+
+        try:
+            from packages.rag.routing import KbRoutingRule, pick_query_version, routing_bucket
+
+            rules = {
+                "lab-demo": KbRoutingRule(stable_version=1, canary_version=2, canary_percent=30),
+            }
+
+            def _versions(_kb: str) -> list[int]:
+                return [1, 2]
+
+            canary_n = 0
+            for i in range(200):
+                _ver, route, _ = pick_query_version(
+                    "lab-demo",
+                    None,
+                    tenant_id="admin",
+                    query=f"probe-{i}",
+                    rules=rules,
+                    list_versions=_versions,
+                )
+                if route == "canary":
+                    canary_n += 1
+            rate = canary_n / 200
+            out.append(
+                Check(
+                    "PB3",
+                    "canary 30% 分桶",
+                    0.20 <= rate <= 0.42,
+                    f"rate={rate:.2f}",
+                )
+            )
+            b1 = routing_bucket("admin", "same-query")
+            b2 = routing_bucket("admin", "same-query")
+            zero_rules = {"lab-demo": KbRoutingRule(canary_version=2, canary_percent=0)}
+            stable_only = all(
+                pick_query_version(
+                    "lab-demo",
+                    None,
+                    tenant_id="admin",
+                    query=f"z-{i}",
+                    rules=zero_rules,
+                    list_versions=_versions,
+                )[1]
+                == "stable"
+                for i in range(20)
+            )
+            out.append(
+                Check(
+                    "PB3",
+                    "canary_percent=0 全 stable",
+                    stable_only and b1 == b2,
+                    f"stable_only={stable_only} bucket={b1}",
+                )
+            )
+        except Exception as e:
+            out.append(Check("PB3", "canary 路由", False, str(e)))
+
+        try:
             from apps.gateway.tenants import load_tenants
 
             demo_b = load_tenants()["demo-b"]

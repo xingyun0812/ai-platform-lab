@@ -69,6 +69,9 @@ class Settings(BaseSettings):
     rag_retrieval_mode: str = Field(default="vector", validation_alias="RAG_RETRIEVAL_MODE")
     rag_bm25_top_k: int = Field(default=20, validation_alias="RAG_BM25_TOP_K")
     rag_hybrid_rrf_k: int = Field(default=60, validation_alias="RAG_HYBRID_RRF_K")
+    rag_rerank_enabled: bool = Field(default=False, validation_alias="RAG_RERANK_ENABLED")
+    rag_rerank_mode: str = Field(default="stub", validation_alias="RAG_RERANK_MODE")
+    rag_rerank_top_n: int = Field(default=10, validation_alias="RAG_RERANK_TOP_N")
 
     # Agent（第 4 周）
     agent_max_steps: int = Field(default=8, validation_alias="AGENT_MAX_STEPS")
@@ -162,6 +165,12 @@ def get_settings() -> Settings:
         overrides["rag_bm25_top_k"] = rag_defaults["bm25_top_k"]
     if isinstance(rag_defaults.get("hybrid_rrf_k"), int):
         overrides["rag_hybrid_rrf_k"] = rag_defaults["hybrid_rrf_k"]
+    if isinstance(rag_defaults.get("rerank_enabled"), bool):
+        overrides["rag_rerank_enabled"] = rag_defaults["rerank_enabled"]
+    if isinstance(rag_defaults.get("rerank_mode"), str):
+        overrides["rag_rerank_mode"] = rag_defaults["rerank_mode"]
+    if isinstance(rag_defaults.get("rerank_top_n"), int):
+        overrides["rag_rerank_top_n"] = rag_defaults["rerank_top_n"]
 
     settings = Settings(**overrides)
     if settings.llm_secret_ref:

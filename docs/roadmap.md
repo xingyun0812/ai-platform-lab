@@ -44,8 +44,8 @@ Phase A 文档：[phase-a-internal-beta.md](./phase-a-internal-beta.md)
 
 ### 数据与 RAG
 
-- 知识库版本为整数递增，**无**灰度发布与自动回滚。
-- 可选 **hybrid**（BM25 + 向量 RRF）；**无** rerank、金丝雀（#9 待做）。
+- 知识库版本为整数递增；支持 **canary_percent** 灰度，**无**自动回滚编排。
+- 可选 **hybrid** + **rerank stub**；**kb 金丝雀**（`kb_routing`）；无自动回滚编排。
 - Embedding 与 LLM 共用同一上游 Key，**无**独立 embedding 服务治理。
 
 ### Agent
@@ -82,10 +82,11 @@ Phase A 文档：[phase-a-internal-beta.md](./phase-a-internal-beta.md)
 | B2 并行 ✅ | [#7](https://github.com/xingyun0812/ai-platform-lab/issues/7) | 密钥托管抽象（Env + Vault dev profile） |
 | B2 并行 ✅ | [#8](https://github.com/xingyun0812/ai-platform-lab/issues/8) | RAG 混合检索（向量 + 关键词融合） |
 | B2 并行 ✅ | [#10](https://github.com/xingyun0812/ai-platform-lab/issues/10) | OTel Collector + Jaeger + Prometheus |
-| B3 | [#9](https://github.com/xingyun0812/ai-platform-lab/issues/9) | RAG rerank + kb 版本金丝雀（依赖 #8） |
+| B3 ✅ | [#9](https://github.com/xingyun0812/ai-platform-lab/issues/9) | RAG rerank + kb 版本金丝雀（依赖 #8） |
 
 B1 文档：[phase-b-small-production.md](./phase-b-small-production.md)  
-B2 文档：[phase-b2-parallel.md](./phase-b2-parallel.md)
+B2 文档：[phase-b2-parallel.md](./phase-b2-parallel.md)  
+B3 文档：[phase-b3-rerank-canary.md](./phase-b3-rerank-canary.md)
 
 路线图四项与 issue 映射：
 

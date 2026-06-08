@@ -6,13 +6,14 @@ from typing import Any
 
 from apps.gateway.model_router import forward_with_model_router, resolve_model_name
 from apps.gateway.quota import DailyQuotaTracker
-from apps.gateway.rag.pipeline import resolve_retrieve_version
+from apps.gateway.rag.pipeline import resolve_query_version
 from apps.gateway.settings import get_settings
 from packages.billing.budget import budget_platform_meta, get_budget_snapshot
 from packages.billing.recorder import record_upstream_usage
 from packages.contracts.rag_schemas import RagCitation, RagQueryTimings, RetrievedChunk
 from packages.observability.context import get_trace_id
 from packages.rag.prompt import build_context_block, load_prompt_template, render_rag_prompt
+from packages.rag.rerank import rerank_chunks
 from packages.rag.retrieval import retrieve_chunks
 
 logger = logging.getLogger("ai_platform.rag.query")
@@ -81,17 +82,39 @@ async def run_rag_query(
 
     t0 = time.perf_counter()
     retrieve_start = t0
+    route_label = "pinned" if version is not None else "stable"
+    routing_bucket = 0
+
+    def _resolve_version(kb: str, ver: int | None) -> int:
+        nonlocal route_label, routing_bucket
+        resolved, route_label, routing_bucket = resolve_query_version(
+            kb,
+            ver,
+            tenant_id=tenant_id,
+            query=query,
+        )
+        return resolved
+
     try:
         resolved_version, raw_chunks, retrieve_breakdown = await retrieve_chunks(
             kb_id=kb_id,
             version=version,
             query=query,
             top_k=top_k,
-            resolve_version=resolve_retrieve_version,
+            resolve_version=_resolve_version,
         )
     except ValueError as e:
         raise RagQueryRefusal("RAG_KB_NOT_FOUND", str(e)) from e
     retrieve_ms = (time.perf_counter() - retrieve_start) * 1000
+
+    rerank_ms = 0.0
+    if settings.rag_rerank_enabled and raw_chunks:
+        raw_chunks, rerank_ms = rerank_chunks(
+            query,
+            raw_chunks,
+            top_n=settings.rag_rerank_top_n,
+            mode=settings.rag_rerank_mode,
+        )
 
     if not raw_chunks:
         raise RagQueryRefusal(
@@ -186,6 +209,7 @@ async def run_rag_query(
         retrieve_vector_ms=round(retrieve_breakdown.vector_ms, 2) if retrieve_breakdown else None,
         retrieve_bm25_ms=round(retrieve_breakdown.bm25_ms, 2) if retrieve_breakdown else None,
         fusion_ms=round(retrieve_breakdown.fusion_ms, 2) if retrieve_breakdown else None,
+        rerank_ms=round(rerank_ms, 2) if settings.rag_rerank_enabled else None,
     )
 
     logger.info(
@@ -194,7 +218,10 @@ async def run_rag_query(
             "trace_id": get_trace_id(),
             "kb_id": kb_id,
             "version": resolved_version,
+            "route": route_label,
+            "routing_bucket": routing_bucket,
             "retrieve_ms": timings.retrieve_ms,
+            "rerank_ms": rerank_ms,
             "llm_ms": timings.llm_ms,
             "total_ms": timings.total_ms,
             "chunks_used": len(chunks),
@@ -212,13 +239,19 @@ async def run_rag_query(
         "min_score": effective_min,
         "trace_id": get_trace_id(),
     }
+    platform_meta: dict[str, Any] = {
+        "routing": {
+            "route": route_label,
+            "bucket": routing_bucket,
+            "version": resolved_version,
+        },
+    }
     if usage is not None:
-        result["_platform"] = {
-            "usage": {
-                "input_tokens": usage.input_tokens,
-                "output_tokens": usage.output_tokens,
-                "total_tokens": usage.total_tokens,
-                **budget_platform_meta(snap, usage.total_tokens),
-            }
+        platform_meta["usage"] = {
+            "input_tokens": usage.input_tokens,
+            "output_tokens": usage.output_tokens,
+            "total_tokens": usage.total_tokens,
+            **budget_platform_meta(snap, usage.total_tokens),
         }
+    result["_platform"] = platform_meta
     return result
