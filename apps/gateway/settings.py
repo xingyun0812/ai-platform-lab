@@ -101,6 +101,9 @@ class Settings(BaseSettings):
         validation_alias="AUDIT_DB_PATH",
     )
 
+    # Phase B — 小流量生产（计费）
+    database_url: str = Field(default="", validation_alias="DATABASE_URL")
+
 
 def _load_yaml_defaults(path: Path) -> dict[str, Any]:
     if not path.is_file():

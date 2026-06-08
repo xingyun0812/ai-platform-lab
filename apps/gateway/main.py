@@ -9,14 +9,17 @@ from fastapi.responses import JSONResponse, PlainTextResponse
 
 from apps.gateway.agent.routes import router as agent_router
 from apps.gateway.audit_routes import router as audit_router
+from apps.gateway.billing_routes import router as billing_router
 from apps.gateway.http_utils import json_error, resolve_tenant
 from apps.gateway.model_router import forward_with_model_router
 from apps.gateway.quota import get_quota_tracker
 from apps.gateway.rag.query_routes import router as rag_query_router
 from apps.gateway.rag.routes import router as rag_router
-from apps.gateway.request_guards import check_model_allowed, check_rate_limit
+from apps.gateway.request_guards import check_model_allowed, check_rate_limit, check_token_budget
 from apps.gateway.settings import get_settings
 from apps.gateway.tenants import TenantRecord, load_tenants
+from packages.billing.budget import budget_platform_meta, get_budget_snapshot
+from packages.billing.recorder import record_upstream_usage
 from packages.contracts.schemas import ChatCompletionRequest
 from packages.observability.context import get_trace_id
 from packages.observability.metrics import get_metrics_store
@@ -49,6 +52,7 @@ def create_app() -> FastAPI:
     app.include_router(rag_query_router)
     app.include_router(agent_router)
     app.include_router(audit_router)
+    app.include_router(billing_router)
 
     @app.middleware("http")
     async def access_log(request: Request, call_next):
@@ -122,6 +126,10 @@ def create_app() -> FastAPI:
         if rate_err is not None:
             return rate_err
 
+        budget_err = check_token_budget(tenant)
+        if budget_err is not None:
+            return budget_err
+
         model_err, resolved_model = check_model_allowed(tenant, body.model)
         if model_err is not None:
             return model_err
@@ -183,12 +191,31 @@ def create_app() -> FastAPI:
             )
 
         content = dict(routed.body)
-        if routed.fallback_used and routed.model_used:
-            meta = content.setdefault("_platform", {})
-            if isinstance(meta, dict):
+        usage = record_upstream_usage(
+            tenant_id=tenant.tenant_id,
+            path="/v1/chat/completions",
+            model=routed.model_used or resolved_model,
+            upstream_body=routed.body,
+            trace_id=get_trace_id(),
+        )
+        snap = get_budget_snapshot(
+            tenant.tenant_id,
+            token_budget_daily=tenant.token_budget_daily,
+            token_budget_monthly=tenant.token_budget_monthly,
+        )
+        meta = content.setdefault("_platform", {})
+        if isinstance(meta, dict):
+            if routed.fallback_used and routed.model_used:
                 meta["model_used"] = routed.model_used
                 meta["fallback_used"] = True
                 meta["models_tried"] = list(routed.models_tried)
+            if usage is not None:
+                meta["usage"] = {
+                    "input_tokens": usage.input_tokens,
+                    "output_tokens": usage.output_tokens,
+                    "total_tokens": usage.total_tokens,
+                    **budget_platform_meta(snap, usage.total_tokens),
+                }
         return JSONResponse(status_code=200, content=content)
 
     return app

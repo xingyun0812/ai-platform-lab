@@ -8,6 +8,23 @@ from apps.gateway.http_utils import json_error
 from apps.gateway.model_router import is_model_allowed
 from apps.gateway.rate_limit import RateLimitPolicy, get_rate_limiter
 from apps.gateway.tenants import TenantRecord
+from packages.billing.budget import is_budget_exceeded
+
+
+def check_token_budget(tenant: TenantRecord) -> JSONResponse | None:
+    exceeded, code, detail = is_budget_exceeded(
+        tenant.tenant_id,
+        token_budget_daily=tenant.token_budget_daily,
+        token_budget_monthly=tenant.token_budget_monthly,
+    )
+    if not exceeded:
+        return None
+    return json_error(
+        429,
+        code or "BUDGET_EXCEEDED",
+        "租户 token 预算已用尽",
+        detail={**(detail or {}), "tenant_id": tenant.tenant_id},
+    )
 
 
 def check_rate_limit(tenant: TenantRecord) -> JSONResponse | None:

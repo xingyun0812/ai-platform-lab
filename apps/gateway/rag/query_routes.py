@@ -9,7 +9,7 @@ from fastapi.responses import JSONResponse
 from apps.gateway.http_utils import json_error, resolve_tenant
 from apps.gateway.quota import get_quota_tracker
 from apps.gateway.rag.query_service import RagQueryRefusal, run_rag_query
-from apps.gateway.request_guards import check_model_allowed, check_rate_limit
+from apps.gateway.request_guards import check_model_allowed, check_rate_limit, check_token_budget
 from apps.gateway.settings import get_settings
 from apps.gateway.tenants import TenantRecord, load_tenants
 from packages.contracts.rag_schemas import RagQueryRequest, RagQueryResponse
@@ -58,6 +58,10 @@ async def rag_query(
     if rate_err is not None:
         return rate_err
 
+    budget_err = check_token_budget(tenant)
+    if budget_err is not None:
+        return budget_err
+
     model_err, _resolved_model = check_model_allowed(
         tenant,
         body.model or settings.rag_query_model,
@@ -94,9 +98,11 @@ async def rag_query(
                 tenant_id=tenant.tenant_id,
                 daily_request_quota=tenant.daily_request_quota,
                 quota_tracker=quota_tracker,
+                token_budget_daily=tenant.token_budget_daily,
+                token_budget_monthly=tenant.token_budget_monthly,
             )
     except RagQueryRefusal as e:
-        if e.code == "QUOTA_EXCEEDED":
+        if e.code in ("QUOTA_EXCEEDED", "BUDGET_EXCEEDED"):
             return json_error(429, e.code, e.message, detail=e.detail)
         # 业务拒答：HTTP 422 + 统一 error.code（与成功 200 分离）
         return json_error(422, e.code, e.message, detail=e.detail)
@@ -104,5 +110,9 @@ async def rag_query(
         logger.exception("rag_query failed tenant=%s kb=%s", tenant.tenant_id, body.kb_id)
         return json_error(503, "RAG_QUERY_ERROR", str(e))
 
+    platform = result.pop("_platform", None)
     response = RagQueryResponse(tenant_id=tenant.tenant_id, **result)
-    return JSONResponse(status_code=200, content=response.model_dump())
+    content = response.model_dump()
+    if platform:
+        content["_platform"] = platform
+    return JSONResponse(status_code=200, content=content)

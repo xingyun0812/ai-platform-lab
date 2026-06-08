@@ -10,6 +10,8 @@ from apps.gateway.model_router import forward_with_model_router, is_model_allowe
 from apps.gateway.settings import get_settings
 from packages.agent.registry import ToolRegistry
 from packages.agent.session import SessionStore
+from packages.billing.budget import budget_platform_meta, get_budget_snapshot
+from packages.billing.recorder import record_upstream_usage
 from packages.contracts.agent_schemas import ToolCallRecord
 from packages.observability.context import get_trace_id
 
@@ -114,6 +116,8 @@ async def run_agent(
     model: str | None,
     session_store: SessionStore,
     registry: ToolRegistry | None = None,
+    token_budget_daily: int = -1,
+    token_budget_monthly: int = -1,
 ) -> dict[str, Any]:
     settings = get_settings()
     reg = registry or ToolRegistry()
@@ -135,6 +139,9 @@ async def run_agent(
     trace: list[ToolCallRecord] = []
     steps = 0
     final_message = ""
+    total_input_tokens = 0
+    total_output_tokens = 0
+    total_tokens = 0
 
     while steps < settings.agent_max_steps:
         steps += 1
@@ -166,6 +173,18 @@ async def run_agent(
             )
         if routed.model_used:
             resolved_model = routed.model_used
+
+        usage = record_upstream_usage(
+            tenant_id=tenant_id,
+            path="/v1/agent/run",
+            model=resolved_model,
+            upstream_body=body,
+            trace_id=get_trace_id(),
+        )
+        if usage is not None:
+            total_input_tokens += usage.input_tokens
+            total_output_tokens += usage.output_tokens
+            total_tokens += usage.total_tokens
 
         choices = body.get("choices")
         if not isinstance(choices, list) or not choices:
@@ -270,7 +289,12 @@ async def run_agent(
         },
     )
 
-    return {
+    snap = get_budget_snapshot(
+        tenant_id,
+        token_budget_daily=token_budget_daily,
+        token_budget_monthly=token_budget_monthly,
+    )
+    payload: dict[str, Any] = {
         "tenant_id": tenant_id,
         "session_id": session_id,
         "final_message": final_message,
@@ -279,3 +303,13 @@ async def run_agent(
         "model": resolved_model,
         "trace_id": get_trace_id(),
     }
+    if total_tokens > 0:
+        payload["_platform"] = {
+            "usage": {
+                "input_tokens": total_input_tokens,
+                "output_tokens": total_output_tokens,
+                "total_tokens": total_tokens,
+                **budget_platform_meta(snap, total_tokens),
+            }
+        }
+    return payload

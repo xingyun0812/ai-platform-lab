@@ -19,6 +19,8 @@ class TenantRecord:
     default_model: str | None  # 租户默认模型或别名
     rate_limit_rps: float
     rate_limit_burst: int
+    token_budget_daily: int  # -1 表示不限（UTC 日切）
+    token_budget_monthly: int  # -1 表示不限（自然月）
 
 
 def _read_yaml(path: Path) -> dict[str, Any]:
@@ -105,6 +107,12 @@ def load_tenants(path: Path | None = None) -> dict[str, TenantRecord]:
             raise ValueError(f"租户 {tenant_id} rate_limit_rps 须为非负数字")
         if not isinstance(burst, int) or burst < 0:
             raise ValueError(f"租户 {tenant_id} rate_limit_burst 须为非负整数")
+        token_daily = cfg.get("token_budget_daily", -1)
+        token_monthly = cfg.get("token_budget_monthly", -1)
+        if not isinstance(token_daily, int):
+            raise ValueError(f"租户 {tenant_id} token_budget_daily 须为整数")
+        if not isinstance(token_monthly, int):
+            raise ValueError(f"租户 {tenant_id} token_budget_monthly 须为整数")
         out[str(tenant_id)] = TenantRecord(
             tenant_id=str(tenant_id),
             bearer_token=token,
@@ -114,5 +122,7 @@ def load_tenants(path: Path | None = None) -> dict[str, TenantRecord]:
             default_model=str(default_model) if default_model else None,
             rate_limit_rps=float(rps),
             rate_limit_burst=int(burst),
+            token_budget_daily=token_daily,
+            token_budget_monthly=token_monthly,
         )
     return out

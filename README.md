@@ -7,7 +7,7 @@
 ```bash
 cd /Users/zhangyue/IdeaProjects/ai-platform-lab
 cp .env.example .env          # 可选：填 LLM_API_KEY 以联调 chat/RAG/agent
-docker compose up -d --build  # redis + gateway :8000 + worker + qdrant :6333
+docker compose up -d --build  # postgres + redis + gateway :8000 + worker + qdrant
 curl -s http://127.0.0.1:8000/healthz
 ```
 
@@ -114,6 +114,21 @@ python eval/acceptance_smoke.py
 
 详见 [docs/phase-a-internal-beta.md](docs/phase-a-internal-beta.md)。
 
+## Phase B1 — Token 计量与预算
+
+- **Postgres**：`DATABASE_URL` + `usage_records` 表（chat/RAG/agent 上游 `usage`）
+- **预算**：`token_budget_daily/monthly`（`demo-b` 默认日预算 500 tokens）
+- **API**：`GET /internal/billing/usage`、`GET /internal/billing/export`（admin）
+- 超限 → `429 BUDGET_EXCEEDED`（与 `QUOTA_EXCEEDED` 区分）
+
+```bash
+curl -s "http://127.0.0.1:8000/internal/billing/usage?hours=24" \
+  -H "X-Tenant-Id: admin" \
+  -H "Authorization: Bearer sk-tenant-admin-change-me"
+```
+
+详见 [docs/phase-b-small-production.md](docs/phase-b-small-production.md)。
+
 ## 文档与代码导读
 
 | 周次 | 接口 / 演示 | 构建思路与代码导读 |
@@ -121,6 +136,7 @@ python eval/acceptance_smoke.py
 | 全路线 | [AI中台学习执行手册](docs/AI中台学习执行手册.md) | — |
 | 架构 | [architecture.md](docs/architecture.md) | [roadmap.md](docs/roadmap.md) |
 | Phase A 可内测 | [phase-a-internal-beta.md](docs/phase-a-internal-beta.md) | — |
+| Phase B1 计费 | [phase-b-small-production.md](docs/phase-b-small-production.md) | — |
 | 第 1 周 Gateway | [week1-gateway.md](docs/week1-gateway.md) | [gateway-build-and-code-guide.md](docs/gateway-build-and-code-guide.md) |
 | 第 2 周 RAG 管道 | [week2-rag-pipeline.md](docs/week2-rag-pipeline.md) | [rag-build-and-code-guide.md](docs/rag-build-and-code-guide.md) |
 | 第 3 周 RAG 问答 | [week3-rag-query.md](docs/week3-rag-query.md) | [rag-query-build-and-code-guide.md](docs/rag-query-build-and-code-guide.md) |
@@ -139,10 +155,11 @@ python eval/acceptance_smoke.py
 | `week-5-observability-eval` | `66978a0` | OTel、/metrics、eval/run、load_smoke |
 | `week-6-hardening` | `4368665` | Model Router、令牌桶、Compose、architecture/roadmap |
 | `phase-a-internal-beta` | `1ce0806` | Redis 共享状态、Worker 队列、SQLite 审计、CI 门禁 |
+| `phase-b1-billing` | _(本周 tag)_ | Postgres token 计量、租户预算、billing API |
 
 ```bash
 git fetch origin --tags
-git show phase-a-internal-beta
+git show phase-b1-billing
 ```
 
 ## 目录说明
@@ -158,6 +175,7 @@ git show phase-a-internal-beta
 | `config/models.yaml` | 模型别名与 fallback 链 |
 | `packages/audit/` | SQLite 审计落库 |
 | `packages/tasks/` | Redis 索引任务队列 |
+| `packages/billing/` | Postgres token 计量与预算 |
 | `config/tenants.yaml` | 三假租户 + 限速默认值 |
 | `eval/baseline.jsonl` | RAG 评测用例（35 条） |
 | `docs/` | 学习手册、周文档、架构与路线图 |

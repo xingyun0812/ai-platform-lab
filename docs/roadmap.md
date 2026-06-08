@@ -24,8 +24,8 @@ Phase A 文档：[phase-a-internal-beta.md](./phase-a-internal-beta.md)
 
 ### 计费与用量
 
-- **未**按 token 精确计费，仅有「按请求次数」的日配额。
-- **未**区分 input/output token 单价，无账单导出。
+- 已支持 **按 token 落库**（Postgres）与日/月预算拦截；**未**区分 input/output 单价，无发票。
+- 仍保留「按请求次数」日配额（`daily_request_quota`），与 token 预算并存。
 - 配置 `REDIS_URL` 后配额与限流 **跨 gateway 实例共享**；未配置时仍回退进程内存。
 
 ### 可用性与扩展
@@ -75,10 +75,23 @@ Phase A 文档：[phase-a-internal-beta.md](./phase-a-internal-beta.md)
 
 ### Phase B — 可小流量生产（1～2 月）
 
-1. 按 token 计量 + 租户预算（Postgres 账单表）
-2. 密钥托管（Vault / 云厂商 Secret Manager）
-3. RAG 混合检索 + rerank；kb 版本金丝雀
-4. OTel Collector → Jaeger/Tempo + Prometheus 远程写
+| 波次 | Issue | 内容 |
+|------|-------|------|
+| B1 ✅ | [#5](https://github.com/xingyun0812/ai-platform-lab/issues/5) | Postgres + token 用量落库 |
+| B1 ✅ | [#6](https://github.com/xingyun0812/ai-platform-lab/issues/6) | 租户 token 预算、拦截、用量 API（依赖 #5） |
+| B2 并行 | [#7](https://github.com/xingyun0812/ai-platform-lab/issues/7) | 密钥托管抽象（Env + Vault dev profile） |
+| B2 并行 | [#8](https://github.com/xingyun0812/ai-platform-lab/issues/8) | RAG 混合检索（向量 + 关键词融合） |
+| B2 并行 | [#10](https://github.com/xingyun0812/ai-platform-lab/issues/10) | OTel Collector + Jaeger + Prometheus |
+| B3 | [#9](https://github.com/xingyun0812/ai-platform-lab/issues/9) | RAG rerank + kb 版本金丝雀（依赖 #8） |
+
+B1 文档：[phase-b-small-production.md](./phase-b-small-production.md)
+
+路线图四项与 issue 映射：
+
+1. 按 token 计量 + 租户预算 → **#5 + #6**
+2. 密钥托管 → **#7**
+3. RAG 混合检索 + rerank；kb 金丝雀 → **#8 + #9**
+4. OTel Collector → Jaeger/Tempo + Prometheus → **#10**
 
 ### Phase C — 平台化
 

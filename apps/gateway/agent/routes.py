@@ -8,7 +8,7 @@ from fastapi.responses import JSONResponse
 
 from apps.gateway.http_utils import json_error, resolve_tenant
 from apps.gateway.quota import get_quota_tracker
-from apps.gateway.request_guards import check_rate_limit
+from apps.gateway.request_guards import check_rate_limit, check_token_budget
 from apps.gateway.settings import get_settings
 from apps.gateway.tenants import TenantRecord, load_tenants
 from packages.agent.runner import AgentRunError, run_agent
@@ -52,6 +52,10 @@ async def agent_run(
     if rate_err is not None:
         return rate_err
 
+    budget_err = check_token_budget(tenant)
+    if budget_err is not None:
+        return budget_err
+
     if not quota_tracker.has_quota(tenant.tenant_id, tenant.daily_request_quota):
         return json_error(429, "QUOTA_EXCEEDED", "租户日配额已用尽")
 
@@ -90,6 +94,8 @@ async def agent_run(
                 allowed_models=tenant.allowed_models,
                 model=body.model,
                 session_store=get_session_store(),
+                token_budget_daily=tenant.token_budget_daily,
+                token_budget_monthly=tenant.token_budget_monthly,
             )
     except AgentRunError as e:
         if e.code == "AGENT_TOOL_FORBIDDEN":
@@ -102,5 +108,9 @@ async def agent_run(
         logger.exception("agent_run failed tenant=%s", tenant.tenant_id)
         return json_error(503, "AGENT_RUN_ERROR", str(e))
 
+    platform = result.pop("_platform", None)
     response = AgentRunResponse(**result)
-    return JSONResponse(status_code=200, content=response.model_dump())
+    content = response.model_dump()
+    if platform:
+        content["_platform"] = platform
+    return JSONResponse(status_code=200, content=content)

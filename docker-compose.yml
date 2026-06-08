@@ -1,11 +1,25 @@
 name: ai-platform-lab
 
-# Phase A：默认一键启动 redis + gateway + worker + Qdrant
+# Phase A/B：默认一键启动 postgres + redis + gateway + worker + Qdrant
 #   docker compose up -d --build
-# 本地无 worker（BackgroundTasks 模式）：
-#   USE_INDEX_WORKER=false docker compose up -d --build redis qdrant gateway
 
 services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: aiplatform
+      POSTGRES_PASSWORD: aiplatform
+      POSTGRES_DB: ai_platform_lab
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aiplatform -d ai_platform_lab"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
   redis:
     image: redis:7-alpine
     ports:
@@ -37,6 +51,7 @@ services:
       - path: .env
         required: false
     environment:
+      DATABASE_URL: postgresql://aiplatform:aiplatform@postgres:5432/ai_platform_lab
       REDIS_URL: redis://redis:6379/0
       USE_INDEX_WORKER: "true"
       QDRANT_URL: http://qdrant:6333
@@ -49,6 +64,8 @@ services:
       - ./data:/app/data
       - gateway_rag_work:/app/data/rag/work
     depends_on:
+      postgres:
+        condition: service_healthy
       redis:
         condition: service_healthy
       qdrant:
@@ -61,6 +78,7 @@ services:
       - path: .env
         required: false
     environment:
+      DATABASE_URL: postgresql://aiplatform:aiplatform@postgres:5432/ai_platform_lab
       REDIS_URL: redis://redis:6379/0
       USE_INDEX_WORKER: "true"
       QDRANT_URL: http://qdrant:6333
@@ -72,6 +90,8 @@ services:
       - ./data:/app/data
       - gateway_rag_work:/app/data/rag/work
     depends_on:
+      postgres:
+        condition: service_healthy
       redis:
         condition: service_healthy
       qdrant:
@@ -80,5 +100,6 @@ services:
         condition: service_started
 
 volumes:
+  postgres_data: {}
   qdrant_storage: {}
   gateway_rag_work: {}

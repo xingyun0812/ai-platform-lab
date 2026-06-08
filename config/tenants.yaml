@@ -1,7 +1,8 @@
 # 三假租户（与《AI中台学习执行手册》一致）。Bearer 与 X-Tenant-Id 须同时匹配同一租户。
 # 生产环境请改用密钥管理系统；本地可把 token 改成自己的随机串。
 #
-# 第 6 周：default_model 可为 config/models.yaml 中的别名；rate_limit_* 为令牌桶（进程内）。
+# 第 6 周：default_model 可为 config/models.yaml 中的别名；rate_limit_* 为令牌桶。
+# Phase B：token_budget_* 为 Postgres 计量预算（-1 不限）；需 DATABASE_URL。
 defaults:
   rate_limit_rps: 20
   rate_limit_burst: 40
@@ -23,6 +24,8 @@ tenants:
     daily_request_quota: 200
     rate_limit_rps: 2
     rate_limit_burst: 2
+    token_budget_daily: 500
+    token_budget_monthly: 5000
     allowed_models:
       - "gpt-4o-mini"
     allowed_tools:

@@ -8,6 +8,8 @@ from apps.gateway.model_router import forward_with_model_router, resolve_model_n
 from apps.gateway.quota import DailyQuotaTracker
 from apps.gateway.rag.pipeline import resolve_retrieve_version
 from apps.gateway.settings import get_settings
+from packages.billing.budget import budget_platform_meta, get_budget_snapshot
+from packages.billing.recorder import record_upstream_usage
 from packages.contracts.rag_schemas import RagCitation, RagQueryTimings, RetrievedChunk
 from packages.observability.context import get_trace_id
 from packages.rag.prompt import build_context_block, load_prompt_template, render_rag_prompt
@@ -70,6 +72,8 @@ async def run_rag_query(
     tenant_id: str,
     daily_request_quota: int,
     quota_tracker: DailyQuotaTracker,
+    token_budget_daily: int = -1,
+    token_budget_monthly: int = -1,
 ) -> dict[str, Any]:
     settings = get_settings()
     effective_min = min_score if min_score is not None else settings.rag_min_score
@@ -111,6 +115,20 @@ async def run_rag_query(
             },
         )
 
+    from packages.billing.budget import is_budget_exceeded
+
+    exceeded, code, detail = is_budget_exceeded(
+        tenant_id,
+        token_budget_daily=token_budget_daily,
+        token_budget_monthly=token_budget_monthly,
+    )
+    if exceeded:
+        raise RagQueryRefusal(
+            code or "BUDGET_EXCEEDED",
+            "租户 token 预算已用尽",
+            detail={**(detail or {}), "tenant_id": tenant_id},
+        )
+
     if not quota_tracker.try_consume(tenant_id, daily_request_quota):
         raise RagQueryRefusal(
             "QUOTA_EXCEEDED",
@@ -147,6 +165,18 @@ async def run_rag_query(
 
     answer = extract_answer(routed.body)
     model_used = routed.model_used or effective_model
+    usage = record_upstream_usage(
+        tenant_id=tenant_id,
+        path="/v1/rag/query",
+        model=model_used,
+        upstream_body=routed.body,
+        trace_id=get_trace_id(),
+    )
+    snap = get_budget_snapshot(
+        tenant_id,
+        token_budget_daily=token_budget_daily,
+        token_budget_monthly=token_budget_monthly,
+    )
     total_ms = (time.perf_counter() - t0) * 1000
 
     timings = RagQueryTimings(
@@ -168,7 +198,7 @@ async def run_rag_query(
         },
     )
 
-    return {
+    result: dict[str, Any] = {
         "kb_id": kb_id,
         "version": resolved_version,
         "query": query,
@@ -179,3 +209,13 @@ async def run_rag_query(
         "min_score": effective_min,
         "trace_id": get_trace_id(),
     }
+    if usage is not None:
+        result["_platform"] = {
+            "usage": {
+                "input_tokens": usage.input_tokens,
+                "output_tokens": usage.output_tokens,
+                "total_tokens": usage.total_tokens,
+                **budget_platform_meta(snap, usage.total_tokens),
+            }
+        }
+    return result

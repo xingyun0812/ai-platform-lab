@@ -67,6 +67,54 @@ async def run_checks(*, with_llm: bool) -> list[Check]:
             )
         )
 
+        # PB billing（无 DATABASE_URL 时应 503）
+        r = await c.get("/internal/billing/usage", headers=ADMIN_HEADERS)
+        body = r.json() if r.content else {}
+        code = (body.get("error") or {}).get("code")
+        billing_ok = (
+            r.status_code == 200 and "items" in body
+        ) or (r.status_code == 503 and code == "BILLING_DISABLED")
+        out.append(
+            Check(
+                "PB",
+                "GET /internal/billing/usage",
+                billing_ok,
+                f"status={r.status_code} code={code}",
+            )
+        )
+
+        try:
+            from packages.billing.usage import parse_token_usage
+
+            u = parse_token_usage(
+                {"usage": {"prompt_tokens": 10, "completion_tokens": 5, "total_tokens": 15}}
+            )
+            out.append(
+                Check(
+                    "PB",
+                    "parse_token_usage",
+                    u is not None and u.total_tokens == 15,
+                    str(u),
+                )
+            )
+        except Exception as e:
+            out.append(Check("PB", "parse_token_usage", False, str(e)))
+
+        try:
+            from apps.gateway.tenants import load_tenants
+
+            demo_b = load_tenants()["demo-b"]
+            out.append(
+                Check(
+                    "PB",
+                    "demo-b token_budget_daily",
+                    demo_b.token_budget_daily == 500,
+                    str(demo_b.token_budget_daily),
+                )
+            )
+        except Exception as e:
+            out.append(Check("PB", "demo-b token_budget_daily", False, str(e)))
+
         # PA audit
         await c.get("/healthz", headers=ADMIN_HEADERS)
         r = await c.get("/internal/audit/recent?limit=3", headers=ADMIN_HEADERS)
