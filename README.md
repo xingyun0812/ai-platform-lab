@@ -170,7 +170,7 @@ docker compose --profile observability up -d  # 可选可观测栈
 | `week-6-hardening` | `4368665` | Model Router、令牌桶、Compose、architecture/roadmap |
 | `phase-a-internal-beta` | `1ce0806` | Redis 共享状态、Worker 队列、SQLite 审计、CI 门禁 |
 | `phase-b1-billing` | `e54adbc` | Postgres token 计量、租户预算、billing API |
-| `phase-b2-parallel` | （见 `git show phase-b2-parallel`） | 密钥 Env/Vault、RAG hybrid、OTel Collector 栈 |
+| `phase-b2-parallel` | `e621c7f` | 密钥 Env/Vault、RAG hybrid、OTel Collector 栈 |
 
 ```bash
 git fetch origin --tags
