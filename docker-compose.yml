@@ -99,6 +99,52 @@ services:
       gateway:
         condition: service_started
 
+  # Phase B2 可选：docker compose --profile vault up -d
+  vault:
+    profiles: ["vault"]
+    image: hashicorp/vault:1.16
+    ports:
+      - "8200:8200"
+    environment:
+      VAULT_DEV_ROOT_TOKEN_ID: dev-only-token
+      VAULT_DEV_LISTEN_ADDRESS: 0.0.0.0:8200
+    cap_add:
+      - IPC_LOCK
+    command: server -dev
+
+  # Phase B2 可选：docker compose --profile observability up -d
+  otel-collector:
+    profiles: ["observability"]
+    image: otel/opentelemetry-collector-contrib:0.96.0
+    command: ["--config=/etc/otel-collector.yaml"]
+    volumes:
+      - ./config/otel-collector.yaml:/etc/otel-collector.yaml:ro
+    ports:
+      - "4317:4317"
+      - "4318:4318"
+    depends_on:
+      jaeger:
+        condition: service_started
+
+  jaeger:
+    profiles: ["observability"]
+    image: jaegertracing/all-in-one:1.56
+    ports:
+      - "16686:16686"
+    environment:
+      COLLECTOR_OTLP_ENABLED: "true"
+
+  prometheus:
+    profiles: ["observability"]
+    image: prom/prometheus:v2.51.0
+    volumes:
+      - ./config/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - "9090:9090"
+    depends_on:
+      gateway:
+        condition: service_started
+
 volumes:
   postgres_data: {}
   qdrant_storage: {}

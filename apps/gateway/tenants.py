@@ -78,9 +78,18 @@ def load_tenants(path: Path | None = None) -> dict[str, TenantRecord]:
     for tenant_id, cfg in raw.items():
         if not isinstance(cfg, dict):
             raise ValueError(f"租户 {tenant_id} 配置必须为映射")
-        token = cfg.get("bearer_token")
-        if not token or not isinstance(token, str):
-            raise ValueError(f"租户 {tenant_id} 缺少 bearer_token")
+        secret_ref = cfg.get("bearer_secret_ref")
+        plain_token = cfg.get("bearer_token")
+        token: str | None = None
+        if isinstance(secret_ref, str) and secret_ref.strip():
+            from packages.secrets.provider import resolve_secret
+
+            fallback = plain_token if isinstance(plain_token, str) else None
+            token = resolve_secret(secret_ref, fallback=fallback)
+        elif isinstance(plain_token, str) and plain_token.strip():
+            token = plain_token
+        if not token:
+            raise ValueError(f"租户 {tenant_id} 须配置 bearer_token 或 bearer_secret_ref")
         quota = cfg.get("daily_request_quota", 0)
         if not isinstance(quota, int):
             raise ValueError(f"租户 {tenant_id} daily_request_quota 须为整数")

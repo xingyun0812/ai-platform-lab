@@ -6,4 +6,7 @@ chunk_overlap: 64
 min_score: 0.35
 prompt_path: config/rag_prompt.txt
 
-# 混合检索（BM25 + 向量）留待后续，当前仅向量检索
+# Phase B2：检索模式 vector | hybrid（BM25 + 向量 RRF 融合）
+retrieval_mode: vector
+bm25_top_k: 20
+hybrid_rrf_k: 60

@@ -82,7 +82,7 @@ async def run_rag_query(
     t0 = time.perf_counter()
     retrieve_start = t0
     try:
-        resolved_version, raw_chunks = await retrieve_chunks(
+        resolved_version, raw_chunks, retrieve_breakdown = await retrieve_chunks(
             kb_id=kb_id,
             version=version,
             query=query,
@@ -183,6 +183,9 @@ async def run_rag_query(
         retrieve_ms=round(retrieve_ms, 2),
         llm_ms=round(llm_ms, 2),
         total_ms=round(total_ms, 2),
+        retrieve_vector_ms=round(retrieve_breakdown.vector_ms, 2) if retrieve_breakdown else None,
+        retrieve_bm25_ms=round(retrieve_breakdown.bm25_ms, 2) if retrieve_breakdown else None,
+        fusion_ms=round(retrieve_breakdown.fusion_ms, 2) if retrieve_breakdown else None,
     )
 
     logger.info(

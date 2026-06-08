@@ -101,6 +101,44 @@ async def run_checks(*, with_llm: bool) -> list[Check]:
             out.append(Check("PB", "parse_token_usage", False, str(e)))
 
         try:
+            from packages.contracts.rag_schemas import RetrievedChunk
+            from packages.rag.bm25_index import tokenize
+            from packages.rag.hybrid import rrf_fusion
+
+            toks = tokenize("RAG 数据管道 hello")
+            ok = len(toks) >= 2
+            c1 = RetrievedChunk(
+                chunk_id="a", kb_id="k", version=1, source_uri="s", offset=0, text="t", score=0.9
+            )
+            c2 = RetrievedChunk(
+                chunk_id="b", kb_id="k", version=1, source_uri="s", offset=0, text="t", score=0.8
+            )
+            fused = rrf_fusion(vector_chunks=[c1, c2], bm25_hits=[(c2, 1.0)], top_k=2, rrf_k=60)
+            ok = ok and len(fused) == 2
+            out.append(Check("PB2", "hybrid RRF 融合", ok, f"tokens={toks} fused={len(fused)}"))
+        except Exception as e:
+            out.append(Check("PB2", "hybrid RRF 融合", False, str(e)))
+
+        try:
+            import os
+
+            from packages.secrets.provider import EnvSecretProvider
+
+            os.environ["SECRET_TEST_KEY"] = "hello-secret"
+            val = EnvSecretProvider().get_secret("env:SECRET_TEST_KEY")
+            out.append(Check("PB2", "EnvSecretProvider", val == "hello-secret", val))
+        except Exception as e:
+            out.append(Check("PB2", "EnvSecretProvider", False, str(e)))
+
+        try:
+            from apps.gateway.settings import get_settings
+
+            mode = get_settings().rag_retrieval_mode
+            out.append(Check("PB2", "rag_retrieval_mode 默认 vector", mode == "vector", mode))
+        except Exception as e:
+            out.append(Check("PB2", "rag_retrieval_mode", False, str(e)))
+
+        try:
             from apps.gateway.tenants import load_tenants
 
             demo_b = load_tenants()["demo-b"]

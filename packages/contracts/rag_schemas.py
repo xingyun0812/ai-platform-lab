@@ -111,6 +111,9 @@ class RagQueryTimings(BaseModel):
     retrieve_ms: float
     llm_ms: float
     total_ms: float
+    retrieve_vector_ms: float | None = None
+    retrieve_bm25_ms: float | None = None
+    fusion_ms: float | None = None
 
 
 class RagQueryResponse(BaseModel):

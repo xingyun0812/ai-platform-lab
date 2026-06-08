@@ -6,6 +6,7 @@ from apps.gateway.rag.paths import resolve_source_path
 from apps.gateway.rag.task_store import get_task_store
 from apps.gateway.settings import get_settings
 from packages.contracts.rag_schemas import TaskStatus
+from packages.rag.bm25_index import build_index_from_chunks, save_index
 from packages.rag.chunker import chunk_text
 from packages.rag.embeddings import embed_texts
 from packages.rag.vector_store import VectorStore
@@ -65,6 +66,8 @@ async def run_index_task(task_id: str) -> None:
             chunks=chunks,
             vectors=all_vectors,
         )
+        bm25 = build_index_from_chunks(chunks)
+        save_index(bm25, record.kb_id, record.version)
         task_store.update(
             task_id,
             status=TaskStatus.success,

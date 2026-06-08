@@ -197,7 +197,7 @@ async def retrieve(
         return json_error(503, "UPSTREAM_NOT_CONFIGURED", "LLM_API_KEY 未配置")
 
     try:
-        resolved_version, chunks = await retrieve_chunks(
+        resolved_version, chunks, _ = await retrieve_chunks(
             kb_id=body.kb_id,
             version=body.version,
             query=body.query,

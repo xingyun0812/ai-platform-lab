@@ -25,6 +25,7 @@ class Settings(BaseSettings):
         description="OpenAI 兼容 API 根，勿带末尾路径 /chat/completions",
     )
     llm_api_key: str = Field(default="", validation_alias="LLM_API_KEY")
+    llm_secret_ref: str = Field(default="", validation_alias="LLM_SECRET_REF")
     default_model: str = Field(default="gpt-4o-mini", validation_alias="DEFAULT_MODEL")
 
     tenants_config_path: Path = Field(
@@ -65,6 +66,9 @@ class Settings(BaseSettings):
         validation_alias="RAG_PROMPT_PATH",
     )
     rag_query_model: str | None = Field(default=None, validation_alias="RAG_QUERY_MODEL")
+    rag_retrieval_mode: str = Field(default="vector", validation_alias="RAG_RETRIEVAL_MODE")
+    rag_bm25_top_k: int = Field(default=20, validation_alias="RAG_BM25_TOP_K")
+    rag_hybrid_rrf_k: int = Field(default=60, validation_alias="RAG_HYBRID_RRF_K")
 
     # Agent（第 4 周）
     agent_max_steps: int = Field(default=8, validation_alias="AGENT_MAX_STEPS")
@@ -78,6 +82,10 @@ class Settings(BaseSettings):
     # 观测（第 5 周）
     otel_enabled: bool = Field(default=False, validation_alias="OTEL_ENABLED")
     otel_console_export: bool = Field(default=True, validation_alias="OTEL_CONSOLE_EXPORT")
+    otel_exporter_otlp_endpoint: str = Field(
+        default="",
+        validation_alias="OTEL_EXPORTER_OTLP_ENDPOINT",
+    )
     metrics_enabled: bool = Field(default=True, validation_alias="METRICS_ENABLED")
 
     # 硬化（第 6 周）
@@ -103,6 +111,12 @@ class Settings(BaseSettings):
 
     # Phase B — 小流量生产（计费）
     database_url: str = Field(default="", validation_alias="DATABASE_URL")
+
+    # Phase B2 — 密钥 / 混合检索 / 可观测栈
+    secrets_provider: str = Field(default="env", validation_alias="SECRETS_PROVIDER")
+    vault_addr: str = Field(default="", validation_alias="VAULT_ADDR")
+    vault_token: str = Field(default="", validation_alias="VAULT_TOKEN")
+    vault_mount: str = Field(default="secret", validation_alias="VAULT_MOUNT")
 
 
 def _load_yaml_defaults(path: Path) -> dict[str, Any]:
@@ -140,4 +154,22 @@ def get_settings() -> Settings:
         overrides["otel_console_export"] = obs_defaults["otel_console_export"]
     if isinstance(obs_defaults.get("metrics_enabled"), bool):
         overrides["metrics_enabled"] = obs_defaults["metrics_enabled"]
-    return Settings(**overrides)
+    if isinstance(obs_defaults.get("otel_exporter_otlp_endpoint"), str):
+        overrides["otel_exporter_otlp_endpoint"] = obs_defaults["otel_exporter_otlp_endpoint"]
+    if isinstance(rag_defaults.get("retrieval_mode"), str):
+        overrides["rag_retrieval_mode"] = rag_defaults["retrieval_mode"]
+    if isinstance(rag_defaults.get("bm25_top_k"), int):
+        overrides["rag_bm25_top_k"] = rag_defaults["bm25_top_k"]
+    if isinstance(rag_defaults.get("hybrid_rrf_k"), int):
+        overrides["rag_hybrid_rrf_k"] = rag_defaults["hybrid_rrf_k"]
+
+    settings = Settings(**overrides)
+    if settings.llm_secret_ref:
+        try:
+            from packages.secrets.provider import resolve_secret
+
+            key = resolve_secret(settings.llm_secret_ref, fallback=settings.llm_api_key)
+            settings = settings.model_copy(update={"llm_api_key": key})
+        except Exception:
+            pass
+    return settings

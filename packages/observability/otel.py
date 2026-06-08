@@ -12,8 +12,14 @@ logger = logging.getLogger("ai_platform.observability.otel")
 _initialized = False
 
 
-def init_otel(*, service_name: str, enabled: bool, console_export: bool) -> None:
-    """初始化 OpenTelemetry TracerProvider（第 5 周选用 OTel）。"""
+def init_otel(
+    *,
+    service_name: str,
+    enabled: bool,
+    console_export: bool,
+    otlp_endpoint: str = "",
+) -> None:
+    """初始化 OpenTelemetry TracerProvider（第 5 周 + Phase B2 OTLP）。"""
     global _initialized
     if not enabled or _initialized:
         return
@@ -30,9 +36,25 @@ def init_otel(*, service_name: str, enabled: bool, console_export: bool) -> None
     provider = TracerProvider(resource=resource)
     if console_export:
         provider.add_span_processor(BatchSpanProcessor(ConsoleSpanExporter()))
+    endpoint = (otlp_endpoint or "").strip()
+    if endpoint:
+        try:
+            from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+
+            provider.add_span_processor(
+                BatchSpanProcessor(OTLPSpanExporter(endpoint=endpoint, insecure=True))
+            )
+            logger.info("OTLP trace exporter endpoint=%s", endpoint)
+        except ImportError as e:
+            logger.warning("OTLP exporter 未安装，跳过远程导出: %s", e)
     trace.set_tracer_provider(provider)
     _initialized = True
-    logger.info("OpenTelemetry initialized service=%s console=%s", service_name, console_export)
+    logger.info(
+        "OpenTelemetry initialized service=%s console=%s otlp=%s",
+        service_name,
+        console_export,
+        bool(endpoint),
+    )
 
 
 def extract_trace_context_from_headers(headers: dict[str, str]) -> Any:

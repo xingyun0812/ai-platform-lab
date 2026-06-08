@@ -45,6 +45,7 @@ def create_app() -> FastAPI:
         service_name=settings.app_name,
         enabled=settings.otel_enabled,
         console_export=settings.otel_console_export,
+        otlp_endpoint=settings.otel_exporter_otlp_endpoint,
     )
     app = FastAPI(title=settings.app_name, version=settings.app_version)
     app.add_middleware(TraceIdMiddleware)

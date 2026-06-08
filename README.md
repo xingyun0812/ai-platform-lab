@@ -129,6 +129,19 @@ curl -s "http://127.0.0.1:8000/internal/billing/usage?hours=24" \
 
 详见 [docs/phase-b-small-production.md](docs/phase-b-small-production.md)。
 
+## Phase B2 — 密钥 / 混合检索 / 可观测（并行）
+
+- **密钥**：`SECRETS_PROVIDER=env|vault`，`bearer_secret_ref` 或 `LLM_SECRET_REF`
+- **RAG hybrid**：`RAG_RETRIEVAL_MODE=hybrid`（BM25 + 向量 RRF，需重新索引）
+- **可观测 profile**：`docker compose --profile observability up -d` → Jaeger `:16686`、Prometheus `:9090`
+
+```bash
+docker compose --profile vault up -d          # 可选 Vault :8200
+docker compose --profile observability up -d  # 可选可观测栈
+```
+
+详见 [docs/phase-b2-parallel.md](docs/phase-b2-parallel.md)。
+
 ## 文档与代码导读
 
 | 周次 | 接口 / 演示 | 构建思路与代码导读 |
@@ -137,6 +150,7 @@ curl -s "http://127.0.0.1:8000/internal/billing/usage?hours=24" \
 | 架构 | [architecture.md](docs/architecture.md) | [roadmap.md](docs/roadmap.md) |
 | Phase A 可内测 | [phase-a-internal-beta.md](docs/phase-a-internal-beta.md) | — |
 | Phase B1 计费 | [phase-b-small-production.md](docs/phase-b-small-production.md) | — |
+| Phase B2 并行 | [phase-b2-parallel.md](docs/phase-b2-parallel.md) | — |
 | 第 1 周 Gateway | [week1-gateway.md](docs/week1-gateway.md) | [gateway-build-and-code-guide.md](docs/gateway-build-and-code-guide.md) |
 | 第 2 周 RAG 管道 | [week2-rag-pipeline.md](docs/week2-rag-pipeline.md) | [rag-build-and-code-guide.md](docs/rag-build-and-code-guide.md) |
 | 第 3 周 RAG 问答 | [week3-rag-query.md](docs/week3-rag-query.md) | [rag-query-build-and-code-guide.md](docs/rag-query-build-and-code-guide.md) |
@@ -156,10 +170,11 @@ curl -s "http://127.0.0.1:8000/internal/billing/usage?hours=24" \
 | `week-6-hardening` | `4368665` | Model Router、令牌桶、Compose、architecture/roadmap |
 | `phase-a-internal-beta` | `1ce0806` | Redis 共享状态、Worker 队列、SQLite 审计、CI 门禁 |
 | `phase-b1-billing` | `e54adbc` | Postgres token 计量、租户预算、billing API |
+| `phase-b2-parallel` | （见 `git show phase-b2-parallel`） | 密钥 Env/Vault、RAG hybrid、OTel Collector 栈 |
 
 ```bash
 git fetch origin --tags
-git show phase-b1-billing
+git show phase-b2-parallel
 ```
 
 ## 目录说明
@@ -176,6 +191,8 @@ git show phase-b1-billing
 | `packages/audit/` | SQLite 审计落库 |
 | `packages/tasks/` | Redis 索引任务队列 |
 | `packages/billing/` | Postgres token 计量与预算 |
+| `packages/secrets/` | Env / Vault 密钥托管 |
+| `packages/rag/bm25_index.py` | BM25 索引与混合检索 |
 | `config/tenants.yaml` | 三假租户 + 限速默认值 |
 | `eval/baseline.jsonl` | RAG 评测用例（35 条） |
 | `docs/` | 学习手册、周文档、架构与路线图 |

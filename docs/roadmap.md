@@ -37,7 +37,7 @@ Phase A 文档：[phase-a-internal-beta.md](./phase-a-internal-beta.md)
 
 ### 安全与合规
 
-- 租户 Bearer 写在 yaml，**非** KMS / OAuth / mTLS。
+- 支持 **Env / Vault dev** 密钥引用；生产级 KMS / OAuth / mTLS 仍无。
 - **无**细粒度 RBAC（按用户/角色/资源），仅租户级工具与模型 ACL。
 - 审计为 **SQLite 文件**（`data/audit.db`），非集中式 SIEM；细粒度 RBAC 仍无。
 - **无** PII 脱敏、内容安全策略、prompt 注入防护专项。
@@ -45,7 +45,7 @@ Phase A 文档：[phase-a-internal-beta.md](./phase-a-internal-beta.md)
 ### 数据与 RAG
 
 - 知识库版本为整数递增，**无**灰度发布与自动回滚。
-- 检索仅向量 top_k，**无**混合检索、重排序、多路召回。
+- 可选 **hybrid**（BM25 + 向量 RRF）；**无** rerank、金丝雀（#9 待做）。
 - Embedding 与 LLM 共用同一上游 Key，**无**独立 embedding 服务治理。
 
 ### Agent
@@ -57,7 +57,7 @@ Phase A 文档：[phase-a-internal-beta.md](./phase-a-internal-beta.md)
 ### 评测与 SRE
 
 - CI 跑 lint + 冒烟 + baseline 校验；**全量** RAG eval 门禁需 LLM Key（`--min-pass-rate`）。
-- `/metrics` 为进程内聚合，**未**接 Prometheus/Grafana 样板。
+- `--profile observability` 可接 Collector/Jaeger/Prometheus；默认栈仍为进程内 `/metrics`。
 - 无 SLO/错误预算、无 on-call runbook。
 
 ---
@@ -79,12 +79,13 @@ Phase A 文档：[phase-a-internal-beta.md](./phase-a-internal-beta.md)
 |------|-------|------|
 | B1 ✅ | [#5](https://github.com/xingyun0812/ai-platform-lab/issues/5) | Postgres + token 用量落库 |
 | B1 ✅ | [#6](https://github.com/xingyun0812/ai-platform-lab/issues/6) | 租户 token 预算、拦截、用量 API（依赖 #5） |
-| B2 并行 | [#7](https://github.com/xingyun0812/ai-platform-lab/issues/7) | 密钥托管抽象（Env + Vault dev profile） |
-| B2 并行 | [#8](https://github.com/xingyun0812/ai-platform-lab/issues/8) | RAG 混合检索（向量 + 关键词融合） |
-| B2 并行 | [#10](https://github.com/xingyun0812/ai-platform-lab/issues/10) | OTel Collector + Jaeger + Prometheus |
+| B2 并行 ✅ | [#7](https://github.com/xingyun0812/ai-platform-lab/issues/7) | 密钥托管抽象（Env + Vault dev profile） |
+| B2 并行 ✅ | [#8](https://github.com/xingyun0812/ai-platform-lab/issues/8) | RAG 混合检索（向量 + 关键词融合） |
+| B2 并行 ✅ | [#10](https://github.com/xingyun0812/ai-platform-lab/issues/10) | OTel Collector + Jaeger + Prometheus |
 | B3 | [#9](https://github.com/xingyun0812/ai-platform-lab/issues/9) | RAG rerank + kb 版本金丝雀（依赖 #8） |
 
-B1 文档：[phase-b-small-production.md](./phase-b-small-production.md)
+B1 文档：[phase-b-small-production.md](./phase-b-small-production.md)  
+B2 文档：[phase-b2-parallel.md](./phase-b2-parallel.md)
 
 路线图四项与 issue 映射：
 
