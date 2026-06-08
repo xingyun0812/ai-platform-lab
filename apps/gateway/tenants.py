@@ -21,6 +21,8 @@ class TenantRecord:
     rate_limit_burst: int
     token_budget_daily: int  # -1 表示不限（UTC 日切）
     token_budget_monthly: int  # -1 表示不限（自然月）
+    home_region: str | None = None  # Phase C：默认 region
+    data_zone: str = "GLOBAL"  # Phase C：数据驻留区 CN/EU/GLOBAL
 
 
 def _read_yaml(path: Path) -> dict[str, Any]:
@@ -74,6 +76,10 @@ def load_tenants(path: Path | None = None) -> dict[str, TenantRecord]:
             default_burst = int(local_defaults["rate_limit_burst"])
         raw = _merge_tenant_dict(raw, local_raw)
 
+    from packages.tenant_admin.overrides import merge_tenant_overrides
+
+    raw = merge_tenant_overrides(raw)
+
     out: dict[str, TenantRecord] = {}
     for tenant_id, cfg in raw.items():
         if not isinstance(cfg, dict):
@@ -122,6 +128,12 @@ def load_tenants(path: Path | None = None) -> dict[str, TenantRecord]:
             raise ValueError(f"租户 {tenant_id} token_budget_daily 须为整数")
         if not isinstance(token_monthly, int):
             raise ValueError(f"租户 {tenant_id} token_budget_monthly 须为整数")
+        home_region = cfg.get("home_region")
+        if home_region is not None and not isinstance(home_region, str):
+            raise ValueError(f"租户 {tenant_id} home_region 须为字符串或省略")
+        data_zone = cfg.get("data_zone", "GLOBAL")
+        if not isinstance(data_zone, str):
+            raise ValueError(f"租户 {tenant_id} data_zone 须为字符串")
         out[str(tenant_id)] = TenantRecord(
             tenant_id=str(tenant_id),
             bearer_token=token,
@@ -133,5 +145,7 @@ def load_tenants(path: Path | None = None) -> dict[str, TenantRecord]:
             rate_limit_burst=int(burst),
             token_budget_daily=token_daily,
             token_budget_monthly=token_monthly,
+            home_region=str(home_region) if home_region else None,
+            data_zone=str(data_zone),
         )
     return out

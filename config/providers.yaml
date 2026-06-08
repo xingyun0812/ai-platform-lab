@@ -1,0 +1,38 @@
+# Phase C：多模型供应商矩阵（价格/延迟/能力为示意值，便于路由演示）
+routing_policy: balanced   # cost | latency | balanced
+
+providers:
+  openai-primary:
+    base_url: https://api.openai.com/v1
+    api_key_env: LLM_API_KEY
+    models:
+      gpt-4o-mini:
+        input_price_per_1k: 0.15
+        output_price_per_1k: 0.60
+        latency_p50_ms: 750
+        capabilities: [chat, json]
+      gpt-4o:
+        input_price_per_1k: 2.50
+        output_price_per_1k: 10.00
+        latency_p50_ms: 1200
+        capabilities: [chat, vision, json]
+
+  openai-backup:
+    base_url: https://api.openai.com/v1
+    api_key_env: LLM_API_KEY
+    models:
+      gpt-4o-mini:
+        input_price_per_1k: 0.18
+        output_price_per_1k: 0.65
+        latency_p50_ms: 900
+        capabilities: [chat]
+
+  local-ollama:
+    base_url: http://127.0.0.1:11434/v1
+    api_key_env: ""
+    models:
+      llama3:
+        input_price_per_1k: 0.0
+        output_price_per_1k: 0.0
+        latency_p50_ms: 400
+        capabilities: [chat]

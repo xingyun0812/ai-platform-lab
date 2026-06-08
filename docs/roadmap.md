@@ -95,12 +95,16 @@ B3 文档：[phase-b3-rerank-canary.md](./phase-b3-rerank-canary.md)
 3. RAG 混合检索 + rerank；kb 金丝雀 → **#8 + #9**
 4. OTel Collector → Jaeger/Tempo + Prometheus → **#10**
 
-### Phase C — 平台化
+### Phase C — 平台化 ✅
 
-1. 多 region 路由与数据驻留
-2. 租户自助控制台（模型、工具、配额、知识库）
-3. Agent 工具市场 + 审批流
-4. 多模型供应商抽象（价格/延迟/能力矩阵）
+| 波次 | Issue | 内容 |
+|------|-------|------|
+| C1 ✅ | [#11](https://github.com/xingyun0812/ai-platform-lab/issues/11) | 多模型供应商矩阵与路由策略 |
+| C2 ✅ | [#12](https://github.com/xingyun0812/ai-platform-lab/issues/12) | 多 Region 路由与数据驻留 |
+| C3 ✅ | [#13](https://github.com/xingyun0812/ai-platform-lab/issues/13) | 租户自助管理 API（JSON，无完整 UI） |
+| C4 ✅ | [#14](https://github.com/xingyun0812/ai-platform-lab/issues/14) | Agent 工具市场与审批流 |
+
+C 文档：[phase-c-platform.md](./phase-c-platform.md)
 
 ---
 

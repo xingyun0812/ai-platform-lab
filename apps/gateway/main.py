@@ -12,6 +12,7 @@ from apps.gateway.audit_routes import router as audit_router
 from apps.gateway.billing_routes import router as billing_router
 from apps.gateway.http_utils import json_error, resolve_tenant
 from apps.gateway.model_router import forward_with_model_router
+from apps.gateway.platform_routes import router as platform_router
 from apps.gateway.quota import get_quota_tracker
 from apps.gateway.rag.query_routes import router as rag_query_router
 from apps.gateway.rag.routes import router as rag_router
@@ -29,14 +30,10 @@ from packages.observability.otel import init_otel
 logger = logging.getLogger("ai_platform.gateway")
 
 quota_tracker = get_quota_tracker()
-_tenants_cache: dict[str, TenantRecord] | None = None
 
 
 def get_tenants() -> dict[str, TenantRecord]:
-    global _tenants_cache
-    if _tenants_cache is None:
-        _tenants_cache = load_tenants()
-    return _tenants_cache
+    return load_tenants()
 
 
 def create_app() -> FastAPI:
@@ -54,6 +51,7 @@ def create_app() -> FastAPI:
     app.include_router(agent_router)
     app.include_router(audit_router)
     app.include_router(billing_router)
+    app.include_router(platform_router)
 
     @app.middleware("http")
     async def access_log(request: Request, call_next):
@@ -92,6 +90,19 @@ def create_app() -> FastAPI:
             except Exception:
                 logger.exception("audit insert failed path=%s", request.url.path)
         return response
+
+    @app.middleware("http")
+    async def region_context(request: Request, call_next):
+        from packages.region.context import clear_request_region
+        from packages.region.middleware import bind_region_context
+
+        region_err = await bind_region_context(request)
+        if region_err is not None:
+            return region_err
+        try:
+            return await call_next(request)
+        finally:
+            clear_request_region()
 
     @app.get("/healthz")
     async def healthz() -> dict[str, str]:
@@ -210,6 +221,8 @@ def create_app() -> FastAPI:
                 meta["model_used"] = routed.model_used
                 meta["fallback_used"] = True
                 meta["models_tried"] = list(routed.models_tried)
+            if routed.provider_id:
+                meta["provider_id"] = routed.provider_id
             if usage is not None:
                 meta["usage"] = {
                     "input_tokens": usage.input_tokens,

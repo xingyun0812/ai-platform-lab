@@ -30,6 +30,7 @@ class ModelRouteResult:
     model_used: str | None
     models_tried: tuple[str, ...]
     fallback_used: bool
+    provider_id: str | None = None
 
 
 def _read_yaml(path: Path) -> dict[str, Any]:
@@ -115,7 +116,14 @@ async def forward_with_model_router(
             continue
         tried.append(model_name)
         attempt_payload = {**payload, "model": model_name}
-        status, body, err = await forward_chat_completions(attempt_payload)
+        from packages.providers.registry import pick_provider_for_model
+
+        offering = pick_provider_for_model(model_name)
+        status, body, err = await forward_chat_completions(
+            attempt_payload,
+            base_url=offering.base_url if offering else None,
+            api_key=offering.api_key if offering else None,
+        )
         last_status, last_body, last_err = status, body, err
 
         if err is None and body is not None and 200 <= status < 300:
@@ -126,6 +134,7 @@ async def forward_with_model_router(
                 model_used=model_name,
                 models_tried=tuple(tried),
                 fallback_used=idx > 0,
+                provider_id=offering.provider_id if offering else None,
             )
 
         if not _should_try_fallback(status, err) or idx >= len(chain) - 1:
@@ -145,4 +154,5 @@ async def forward_with_model_router(
         model_used=None,
         models_tried=tuple(tried),
         fallback_used=len(tried) > 1,
+        provider_id=None,
     )

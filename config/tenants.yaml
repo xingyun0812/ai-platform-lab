@@ -9,6 +9,8 @@ defaults:
 
 tenants:
   demo-a:
+    data_zone: CN
+    home_region: cn-local
     bearer_token: "sk-tenant-demo-a-change-me"
     # bearer_secret_ref: tenants/demo-a/bearer  # Vault/env 模式，与 bearer_token 二选一
     daily_request_quota: 1000

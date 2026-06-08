@@ -1,0 +1,17 @@
+# Phase C：Agent 工具市场目录（审批后写入租户 allowed_tools 覆盖）
+tools:
+  httpbin_delay:
+    display_name: HTTP 延迟探测
+    description: 调用 httpbin 模拟慢接口，用于超时与重试测试
+    risk_level: medium
+    requires_approval: true
+  get_kb_snippet:
+    display_name: 知识库片段
+    description: 向量检索知识库片段
+    risk_level: low
+    requires_approval: false
+  calc:
+    display_name: 计算器
+    description: 本地确定性算术
+    risk_level: low
+    requires_approval: false

@@ -18,7 +18,10 @@ class VectorStore:
 
     def __init__(self) -> None:
         settings = get_settings()
-        self._client = QdrantClient(url=settings.qdrant_url)
+        from packages.region.context import get_request_qdrant_url
+
+        qdrant_url = get_request_qdrant_url() or settings.qdrant_url
+        self._client = QdrantClient(url=qdrant_url)
         self._collection = settings.qdrant_collection
         self._vector_size = settings.embedding_dimensions
 

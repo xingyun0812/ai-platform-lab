@@ -230,6 +230,83 @@ async def run_checks(*, with_llm: bool) -> list[Check]:
             out.append(Check("PB3", "canary 路由", False, str(e)))
 
         try:
+            from packages.providers.registry import get_provider_matrix, pick_provider_for_model
+
+            matrix = get_provider_matrix()
+            mini = pick_provider_for_model("gpt-4o-mini")
+            ok = len(matrix.offerings) >= 2 and mini is not None
+            r = await c.get("/internal/providers/matrix", headers=ADMIN_HEADERS)
+            body = r.json() if r.content else {}
+            ok = ok and r.status_code == 200 and len(body.get("offerings", [])) >= 2
+            out.append(
+                Check(
+                    "PC",
+                    "providers matrix",
+                    ok,
+                    f"policy={body.get('routing_policy')} n={len(body.get('offerings', []))}",
+                )
+            )
+        except Exception as e:
+            out.append(Check("PC", "providers matrix", False, str(e)))
+
+        try:
+            from packages.region.resolver import RegionViolation, resolve_region
+
+            r = await c.get("/internal/regions", headers=ADMIN_HEADERS)
+            ok = r.status_code == 200 and len((r.json() or {}).get("regions", [])) >= 2
+            try:
+                resolve_region(header_region="eu-de", tenant_home_region=None, tenant_data_zone="CN")
+                viol = False
+            except RegionViolation:
+                viol = True
+            out.append(
+                Check(
+                    "PC",
+                    "regions + 驻留校验",
+                    ok and viol,
+                    f"regions_status={r.status_code} viol={viol}",
+                )
+            )
+        except Exception as e:
+            out.append(Check("PC", "regions", False, str(e)))
+
+        try:
+            r = await c.get("/internal/tenants/demo-a/profile", headers=ADMIN_HEADERS)
+            body = r.json() if r.content else {}
+            ok = (
+                r.status_code == 200
+                and body.get("tenant_id") == "demo-a"
+                and body.get("data_zone") == "CN"
+            )
+            out.append(
+                Check(
+                    "PC",
+                    "tenant profile",
+                    ok,
+                    f"zone={body.get('data_zone')}",
+                )
+            )
+        except Exception as e:
+            out.append(Check("PC", "tenant profile", False, str(e)))
+
+        try:
+            from packages.agent.marketplace import catalog_payload
+
+            cat = catalog_payload()
+            r = await c.get("/internal/tools/marketplace", headers=DEMO_A_HEADERS)
+            ok = r.status_code == 200 and len(cat.get("tools", [])) >= 3
+            out.append(
+                Check(
+                    "PC",
+                    "tools marketplace",
+                    ok,
+                    f"tools={len(cat.get('tools', []))}",
+                )
+            )
+        except Exception as e:
+            out.append(Check("PC", "tools marketplace", False, str(e)))
+
+        try:
             from apps.gateway.tenants import load_tenants
 
             demo_b = load_tenants()["demo-b"]

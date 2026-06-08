@@ -154,6 +154,15 @@ python eval/canary_stats.py --samples 1000   # 命中率模拟
 
 详见 [docs/phase-b3-rerank-canary.md](docs/phase-b3-rerank-canary.md)。
 
+## Phase C — 平台化
+
+- **供应商矩阵**：`GET /internal/providers/matrix`，`routing_policy` 选型
+- **Region**：`X-Region` + `data_zone` 驻留，`GET /internal/regions`
+- **租户 API**：`GET /internal/tenants/{id}/profile`，`PATCH .../limits`
+- **工具市场**：申请 → admin 审批 → `data/tenant_overrides.json`
+
+详见 [docs/phase-c-platform.md](docs/phase-c-platform.md)。
+
 ## 文档与代码导读
 
 | 周次 | 接口 / 演示 | 构建思路与代码导读 |
@@ -164,6 +173,7 @@ python eval/canary_stats.py --samples 1000   # 命中率模拟
 | Phase B1 计费 | [phase-b-small-production.md](docs/phase-b-small-production.md) | — |
 | Phase B2 并行 | [phase-b2-parallel.md](docs/phase-b2-parallel.md) | — |
 | Phase B3 rerank | [phase-b3-rerank-canary.md](docs/phase-b3-rerank-canary.md) | — |
+| Phase C 平台化 | [phase-c-platform.md](docs/phase-c-platform.md) | — |
 | 第 1 周 Gateway | [week1-gateway.md](docs/week1-gateway.md) | [gateway-build-and-code-guide.md](docs/gateway-build-and-code-guide.md) |
 | 第 2 周 RAG 管道 | [week2-rag-pipeline.md](docs/week2-rag-pipeline.md) | [rag-build-and-code-guide.md](docs/rag-build-and-code-guide.md) |
 | 第 3 周 RAG 问答 | [week3-rag-query.md](docs/week3-rag-query.md) | [rag-query-build-and-code-guide.md](docs/rag-query-build-and-code-guide.md) |

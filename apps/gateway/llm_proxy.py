@@ -10,17 +10,22 @@ from apps.gateway.settings import get_settings
 logger = logging.getLogger("ai_platform.gateway.llm")
 
 
-async def forward_chat_completions(payload: dict[str, Any]) -> tuple[int, dict[str, Any] | None, str | None]:
+async def forward_chat_completions(
+    payload: dict[str, Any],
+    *,
+    base_url: str | None = None,
+    api_key: str | None = None,
+) -> tuple[int, dict[str, Any] | None, str | None]:
     """
     调用上游 OpenAI 兼容 /chat/completions（非流式）。
     返回 (http_status, json_body_or_none, error_text_or_none)。
     """
     settings = get_settings()
-    key = (settings.llm_api_key or "").strip()
+    key = (api_key or settings.llm_api_key or "").strip()
     if not key:
         return 503, None, "LLM_API_KEY 未配置：申请到账号后写入 .env 即可联调"
 
-    base = settings.llm_base_url.rstrip("/")
+    base = (base_url or settings.llm_base_url).rstrip("/")
     url = f"{base}/chat/completions"
 
     headers = {

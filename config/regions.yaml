@@ -1,0 +1,12 @@
+# Phase C：Region 与数据驻留（Qdrant URL 按 region 切换）
+default_region: cn-local
+
+regions:
+  cn-local:
+    qdrant_url: http://127.0.0.1:6333
+    data_zone: CN
+    allowed_tenant_zones: [CN, GLOBAL]
+  eu-de:
+    qdrant_url: http://127.0.0.1:6334
+    data_zone: EU
+    allowed_tenant_zones: [EU, GLOBAL]
