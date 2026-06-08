@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Iterator
 from contextlib import contextmanager
-from typing import Any, Iterator
+from typing import Any
 
 from packages.observability.context import get_trace_id
 
@@ -37,7 +38,7 @@ def init_otel(*, service_name: str, enabled: bool, console_export: bool) -> None
 def extract_trace_context_from_headers(headers: dict[str, str]) -> Any:
     """W3C tracecontext 传播：从入站头恢复父 Context。"""
     try:
-        from opentelemetry.context import attach, detach
+        from opentelemetry.context import attach
         from opentelemetry.propagate import extract
     except ImportError:
         return None

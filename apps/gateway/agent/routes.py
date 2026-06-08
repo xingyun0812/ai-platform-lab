@@ -10,11 +10,11 @@ from apps.gateway.http_utils import json_error, resolve_tenant
 from apps.gateway.quota import get_quota_tracker
 from apps.gateway.request_guards import check_rate_limit
 from apps.gateway.settings import get_settings
-from packages.observability.otel import component_span
 from apps.gateway.tenants import TenantRecord, load_tenants
 from packages.agent.runner import AgentRunError, run_agent
 from packages.agent.session import get_session_store
 from packages.contracts.agent_schemas import AgentRunRequest, AgentRunResponse
+from packages.observability.otel import component_span
 
 logger = logging.getLogger("ai_platform.gateway.agent")
 

@@ -18,7 +18,7 @@ def check_rate_limit(tenant: TenantRecord) -> JSONResponse | None:
         return json_error(
             429,
             "RATE_LIMIT_EXCEEDED",
-            "租户请求速率超限（令牌桶，进程内计数）",
+            "租户请求速率超限（令牌桶）",
             detail={
                 "tenant_id": tenant.tenant_id,
                 "rate_limit_rps": tenant.rate_limit_rps,

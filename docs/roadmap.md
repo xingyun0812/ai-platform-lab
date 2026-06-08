@@ -14,6 +14,9 @@
 | Agent 运行时 | ✅ | 工具白名单、session、tool_trace |
 | 观测与评测 | ✅ | OTel span、/metrics、eval/run.py |
 | 硬化（第 6 周） | ✅ | Model Router、令牌桶、Compose 一键起 |
+| 可内测（Phase A） | ✅ | Redis 共享配额/限流、Worker 队列、SQLite 审计、CI |
+
+Phase A 文档：[phase-a-internal-beta.md](./phase-a-internal-beta.md)
 
 ---
 
@@ -23,20 +26,20 @@
 
 - **未**按 token 精确计费，仅有「按请求次数」的日配额。
 - **未**区分 input/output token 单价，无账单导出。
-- 配额与限流均在 **进程内存**，重启清零，多实例不共享。
+- 配置 `REDIS_URL` 后配额与限流 **跨 gateway 实例共享**；未配置时仍回退进程内存。
 
 ### 可用性与扩展
 
 - **单进程** Gateway；无水平扩展、无 leader 选举。
 - Qdrant 单节点 Compose，无副本、无跨 AZ。
-- 索引任务在 Gateway 后台线程，**非**独立 Worker 队列（`apps/worker` 仅为占位说明）。
+- `USE_INDEX_WORKER=true` 时索引走 Redis 队列 + 独立 worker；本地可关回 BackgroundTasks。
 - Model Router fallback 为 **同步串行**尝试，无熔断器、无权重路由。
 
 ### 安全与合规
 
 - 租户 Bearer 写在 yaml，**非** KMS / OAuth / mTLS。
 - **无**细粒度 RBAC（按用户/角色/资源），仅租户级工具与模型 ACL。
-- **无**操作审计日志落库（仅有 access log + 可选 OTel）。
+- 审计为 **SQLite 文件**（`data/audit.db`），非集中式 SIEM；细粒度 RBAC 仍无。
 - **无** PII 脱敏、内容安全策略、prompt 注入防护专项。
 
 ### 数据与 RAG
@@ -53,7 +56,7 @@
 
 ### 评测与 SRE
 
-- `eval/run.py` 为离线脚本，**非** CI 门禁、无自动告警。
+- CI 跑 lint + 冒烟 + baseline 校验；**全量** RAG eval 门禁需 LLM Key（`--min-pass-rate`）。
 - `/metrics` 为进程内聚合，**未**接 Prometheus/Grafana 样板。
 - 无 SLO/错误预算、无 on-call runbook。
 
@@ -61,12 +64,14 @@
 
 ## 建议演进路线（按性价比）
 
-### Phase A — 可内测（1～2 周工程量）
+### Phase A — 可内测 ✅ 已完成
 
-1. Redis 共享配额 + 令牌桶
-2. 结构化审计表（tenant、path、model、latency、trace_id）
-3. `eval/run.py` 接入 GitHub Actions，PR 回归阈值门禁
-4. 独立 Worker + 任务队列（索引与 Agent 长任务）
+1. ✅ Redis 共享配额 + 令牌桶（`REDIS_URL`，可回退内存）
+2. ✅ SQLite 审计表 + `GET /internal/audit/recent`
+3. ✅ GitHub Actions CI + `eval/run.py validate-baseline` / `--min-pass-rate`
+4. ✅ 独立 Worker + Redis 索引队列（`USE_INDEX_WORKER`）
+
+详见 [phase-a-internal-beta.md](./phase-a-internal-beta.md)。
 
 ### Phase B — 可小流量生产（1～2 月）
 

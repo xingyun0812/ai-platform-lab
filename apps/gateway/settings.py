@@ -88,6 +88,19 @@ class Settings(BaseSettings):
     default_rate_limit_rps: float = Field(default=20.0, validation_alias="DEFAULT_RATE_LIMIT_RPS")
     default_rate_limit_burst: int = Field(default=40, validation_alias="DEFAULT_RATE_LIMIT_BURST")
 
+    # Phase A — 可内测
+    redis_url: str = Field(default="", validation_alias="REDIS_URL")
+    use_index_worker: bool = Field(default=False, validation_alias="USE_INDEX_WORKER")
+    index_queue_name: str = Field(
+        default="ai_platform:index_queue",
+        validation_alias="INDEX_QUEUE_NAME",
+    )
+    audit_enabled: bool = Field(default=True, validation_alias="AUDIT_ENABLED")
+    audit_db_path: Path = Field(
+        default=REPO_ROOT / "data" / "audit.db",
+        validation_alias="AUDIT_DB_PATH",
+    )
+
 
 def _load_yaml_defaults(path: Path) -> dict[str, Any]:
     if not path.is_file():

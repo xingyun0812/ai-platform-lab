@@ -77,7 +77,7 @@ async def _execute_tool(
                 attempt=attempt,
             )
             return result, record
-        except asyncio.TimeoutError:
+        except TimeoutError:
             last_err = f"工具执行超时（>{tool_timeout}s）"
         except AgentRunError:
             raise

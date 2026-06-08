@@ -4,7 +4,6 @@ import math
 import threading
 import time
 from collections import defaultdict
-from typing import DefaultDict
 
 
 class MetricsStore:
@@ -13,8 +12,8 @@ class MetricsStore:
     def __init__(self, *, max_latency_samples: int = 2000) -> None:
         self._lock = threading.Lock()
         self._max_samples = max_latency_samples
-        self._request_total: DefaultDict[tuple[str, str, str], int] = defaultdict(int)
-        self._latency_ms: DefaultDict[tuple[str, str], list[float]] = defaultdict(list)
+        self._request_total: defaultdict[tuple[str, str, str], int] = defaultdict(int)
+        self._latency_ms: defaultdict[tuple[str, str], list[float]] = defaultdict(list)
 
     def record_request(
         self,

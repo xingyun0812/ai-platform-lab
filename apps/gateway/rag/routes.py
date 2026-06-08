@@ -9,7 +9,6 @@ from fastapi.responses import JSONResponse
 from apps.gateway.http_utils import json_error, resolve_tenant
 from apps.gateway.rag.paths import resolve_source_path
 from apps.gateway.rag.pipeline import resolve_retrieve_version, run_index_task, task_store
-from packages.rag.retrieval import retrieve_chunks
 from apps.gateway.settings import get_settings
 from apps.gateway.tenants import TenantRecord, load_tenants
 from packages.contracts.rag_schemas import (
@@ -20,9 +19,10 @@ from packages.contracts.rag_schemas import (
     KbVersionsResponse,
     RetrieveRequest,
     RetrieveResponse,
-    TaskStatus,
 )
+from packages.rag.retrieval import retrieve_chunks
 from packages.rag.vector_store import VectorStore
+from packages.tasks.queue import get_index_task_queue
 
 logger = logging.getLogger("ai_platform.gateway.rag")
 
@@ -38,6 +38,14 @@ def _require_tenant(
         return resolve_tenant(x_tenant_id, authorization, tenants)
     except HTTPException as e:
         return json_error(int(e.status_code), "UNAUTHORIZED", str(e.detail))
+
+
+def _dispatch_index(task_id: str, background_tasks: BackgroundTasks) -> None:
+    queue = get_index_task_queue()
+    if queue is not None:
+        queue.enqueue(task_id)
+        return
+    background_tasks.add_task(run_index_task, task_id)
 
 
 def _task_view(record) -> IndexTaskView:
@@ -84,7 +92,7 @@ async def create_index_job(
         version=body.version,
         source_uri=body.source_uri,
     )
-    background_tasks.add_task(run_index_task, record.task_id)
+    _dispatch_index(record.task_id, background_tasks)
     return IndexJobResponse(
         task_id=record.task_id,
         status=record.status,
@@ -124,7 +132,7 @@ async def upload_and_index(
     dest.write_bytes(content)
 
     record = task_store.create(kb_id=kb_id, version=version, source_uri=source_uri)
-    background_tasks.add_task(run_index_task, record.task_id)
+    _dispatch_index(record.task_id, background_tasks)
     return IndexUploadResponse(
         task_id=record.task_id,
         status=record.status,

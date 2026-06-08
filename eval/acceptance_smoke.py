@@ -9,7 +9,6 @@ import json
 import subprocess
 import sys
 from dataclasses import dataclass
-from typing import Any
 
 import httpx
 
@@ -65,6 +64,19 @@ async def run_checks(*, with_llm: bool) -> list[Check]:
                 r.status_code == 503 and code == "UPSTREAM_NOT_CONFIGURED",
                 f"status={r.status_code} code={code}",
                 blocked=not with_llm,
+            )
+        )
+
+        # PA audit
+        await c.get("/healthz", headers=ADMIN_HEADERS)
+        r = await c.get("/internal/audit/recent?limit=3", headers=ADMIN_HEADERS)
+        body = r.json() if r.content else {}
+        out.append(
+            Check(
+                "PA",
+                "GET /internal/audit/recent",
+                r.status_code == 200 and body.get("count", 0) >= 1,
+                f"status={r.status_code} count={body.get('count')}",
             )
         )
 

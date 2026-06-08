@@ -9,7 +9,7 @@ from typing import Any
 import yaml
 
 from apps.gateway.llm_proxy import forward_chat_completions
-from apps.gateway.settings import REPO_ROOT, get_settings
+from apps.gateway.settings import get_settings
 
 logger = logging.getLogger("ai_platform.gateway.model_router")
 
@@ -75,7 +75,6 @@ def is_model_allowed(
     """白名单校验：允许别名或其解析后的真实模型名。"""
     if not allowed_models:
         return True, resolve_model_name(requested, tenant_default=tenant_default)
-    cfg = get_model_router_config()
     raw = requested or tenant_default or get_settings().default_model
     resolved = resolve_model_name(requested, tenant_default=tenant_default)
     if raw in allowed_models or resolved in allowed_models:

@@ -1,5 +1,5 @@
-from packages.contracts.errors import ErrorBody, ErrorDetail
 from packages.contracts.agent_schemas import AgentRunRequest, AgentRunResponse, ToolCallRecord
+from packages.contracts.errors import ErrorBody, ErrorDetail
 from packages.contracts.rag_schemas import (
     IndexJobRequest,
     IndexTaskView,

@@ -1,11 +1,21 @@
 name: ai-platform-lab
 
-# 第 6 周：默认一键启动 gateway + Qdrant
+# Phase A：默认一键启动 redis + gateway + worker + Qdrant
 #   docker compose up -d --build
-# 可选独立 worker profile（当前索引仍在 gateway 后台执行，见 apps/worker）：
-#   docker compose --profile worker up -d
+# 本地无 worker（BackgroundTasks 模式）：
+#   USE_INDEX_WORKER=false docker compose up -d --build redis qdrant gateway
 
 services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
   qdrant:
     image: qdrant/qdrant:v1.12.5
     ports:
@@ -27,6 +37,32 @@ services:
       - path: .env
         required: false
     environment:
+      REDIS_URL: redis://redis:6379/0
+      USE_INDEX_WORKER: "true"
+      QDRANT_URL: http://qdrant:6333
+      RAG_DATA_ROOT: /app/data/rag
+      AUDIT_DB_PATH: /app/data/audit.db
+      TENANTS_CONFIG_PATH: /app/config/tenants.yaml
+      MODELS_CONFIG_PATH: /app/config/models.yaml
+    volumes:
+      - ./config:/app/config:ro
+      - ./data:/app/data
+      - gateway_rag_work:/app/data/rag/work
+    depends_on:
+      redis:
+        condition: service_healthy
+      qdrant:
+        condition: service_healthy
+
+  worker:
+    build: .
+    command: ["python", "-m", "apps.worker.main", "--poll-seconds", "3"]
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      REDIS_URL: redis://redis:6379/0
+      USE_INDEX_WORKER: "true"
       QDRANT_URL: http://qdrant:6333
       RAG_DATA_ROOT: /app/data/rag
       TENANTS_CONFIG_PATH: /app/config/tenants.yaml
@@ -36,19 +72,8 @@ services:
       - ./data:/app/data
       - gateway_rag_work:/app/data/rag/work
     depends_on:
-      qdrant:
+      redis:
         condition: service_healthy
-
-  worker:
-    profiles: ["worker"]
-    build: .
-    command: ["python", "-m", "apps.worker.main"]
-    env_file:
-      - path: .env
-        required: false
-    environment:
-      QDRANT_URL: http://qdrant:6333
-    depends_on:
       qdrant:
         condition: service_healthy
       gateway:

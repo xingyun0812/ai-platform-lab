@@ -3,16 +3,16 @@ from __future__ import annotations
 import logging
 
 from apps.gateway.rag.paths import resolve_source_path
-from apps.gateway.rag.task_store import IndexTaskStore
-from packages.contracts.rag_schemas import TaskStatus
+from apps.gateway.rag.task_store import get_task_store
 from apps.gateway.settings import get_settings
+from packages.contracts.rag_schemas import TaskStatus
 from packages.rag.chunker import chunk_text
 from packages.rag.embeddings import embed_texts
 from packages.rag.vector_store import VectorStore
 
 logger = logging.getLogger("ai_platform.rag.pipeline")
 
-task_store = IndexTaskStore()
+task_store = get_task_store()
 
 
 async def run_index_task(task_id: str) -> None:

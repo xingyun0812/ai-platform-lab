@@ -140,15 +140,23 @@ sequenceDiagram
 %%{init: {'theme': 'dark', 'themeVariables': { 'primaryColor': '#1e3a5f', 'primaryTextColor': '#e6edf3', 'primaryBorderColor': '#58a6ff', 'lineColor': '#8b949e', 'secondaryColor': '#21262d', 'tertiaryColor': '#161b22'}}}%%
 flowchart LR
   Host["开发者本机"]
-  subgraph Compose["docker compose up"]
+  subgraph Compose["docker compose up（Phase A）"]
     GW["gateway :8000"]
+    WK["worker"]
+    RD["redis :6379"]
     QD["qdrant :6333"]
+    AU["audit.db"]
   end
   LLM["上游 LLM API"]
 
   Host --> GW
+  GW --> RD
   GW --> QD
+  GW --> AU
   GW --> LLM
+  WK --> RD
+  WK --> QD
+  WK --> LLM
 ```
 
 本地也可不用 Docker：`uvicorn` 直连本机 Qdrant（`QDRANT_URL=http://127.0.0.1:6333`）。

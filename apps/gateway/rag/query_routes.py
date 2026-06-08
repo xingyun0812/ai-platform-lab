@@ -8,12 +8,12 @@ from fastapi.responses import JSONResponse
 
 from apps.gateway.http_utils import json_error, resolve_tenant
 from apps.gateway.quota import get_quota_tracker
-from apps.gateway.request_guards import check_model_allowed, check_rate_limit
 from apps.gateway.rag.query_service import RagQueryRefusal, run_rag_query
+from apps.gateway.request_guards import check_model_allowed, check_rate_limit
 from apps.gateway.settings import get_settings
-from packages.observability.otel import component_span
 from apps.gateway.tenants import TenantRecord, load_tenants
 from packages.contracts.rag_schemas import RagQueryRequest, RagQueryResponse
+from packages.observability.otel import component_span
 
 logger = logging.getLogger("ai_platform.gateway.rag.query")
 

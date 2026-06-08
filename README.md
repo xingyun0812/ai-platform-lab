@@ -1,13 +1,13 @@
 # ai-platform-lab
 
-最小 **AI 中台** 实验仓库（与 [《AI中台学习执行手册》](docs/AI中台学习执行手册.md) 配套）。当前完成 **第 1～6 周**：Gateway、RAG、Agent、观测评测、硬化（Model Router、令牌桶、Docker Compose、架构文档）。
+最小 **AI 中台** 实验仓库（与 [《AI中台学习执行手册》](docs/AI中台学习执行手册.md) 配套）。当前完成 **第 1～6 周** + **Phase A 可内测**：Gateway、RAG、Agent、观测评测、硬化，以及 Redis 共享状态、Worker 队列、SQLite 审计、CI 门禁。
 
 ## 15 分钟快速跑通
 
 ```bash
 cd /Users/zhangyue/IdeaProjects/ai-platform-lab
 cp .env.example .env          # 可选：填 LLM_API_KEY 以联调 chat/RAG/agent
-docker compose up -d --build  # 启动 gateway :8000 + qdrant :6333
+docker compose up -d --build  # redis + gateway :8000 + worker + qdrant :6333
 curl -s http://127.0.0.1:8000/healthz
 ```
 
@@ -30,7 +30,7 @@ curl -s http://127.0.0.1:8000/v1/rag/query \
 python eval/run.py run
 ```
 
-平台叙事：[docs/architecture.md](docs/architecture.md) · 已知限制：[docs/roadmap.md](docs/roadmap.md)
+平台叙事：[docs/architecture.md](docs/architecture.md) · 已知限制：[docs/roadmap.md](docs/roadmap.md) · Phase A：[docs/phase-a-internal-beta.md](docs/phase-a-internal-beta.md)
 
 ---
 
@@ -100,12 +100,27 @@ python eval/load_smoke.py --concurrency 50
 
 详见 [docs/week6-hardening.md](docs/week6-hardening.md)。
 
+## Phase A — 可内测
+
+- **Redis**：`REDIS_URL` 共享日配额与令牌桶（未配置则回退内存）
+- **Worker**：`USE_INDEX_WORKER=true` 时索引入 Redis 队列，worker BLPOP 执行
+- **审计**：`GET /internal/audit/recent`（SQLite `data/audit.db`）
+- **CI**：`.github/workflows/ci.yml`（ruff + 冒烟 + baseline 校验）
+
+```bash
+python eval/run.py validate-baseline
+python eval/acceptance_smoke.py
+```
+
+详见 [docs/phase-a-internal-beta.md](docs/phase-a-internal-beta.md)。
+
 ## 文档与代码导读
 
 | 周次 | 接口 / 演示 | 构建思路与代码导读 |
 |------|-------------|-------------------|
 | 全路线 | [AI中台学习执行手册](docs/AI中台学习执行手册.md) | — |
 | 架构 | [architecture.md](docs/architecture.md) | [roadmap.md](docs/roadmap.md) |
+| Phase A 可内测 | [phase-a-internal-beta.md](docs/phase-a-internal-beta.md) | — |
 | 第 1 周 Gateway | [week1-gateway.md](docs/week1-gateway.md) | [gateway-build-and-code-guide.md](docs/gateway-build-and-code-guide.md) |
 | 第 2 周 RAG 管道 | [week2-rag-pipeline.md](docs/week2-rag-pipeline.md) | [rag-build-and-code-guide.md](docs/rag-build-and-code-guide.md) |
 | 第 3 周 RAG 问答 | [week3-rag-query.md](docs/week3-rag-query.md) | [rag-query-build-and-code-guide.md](docs/rag-query-build-and-code-guide.md) |
@@ -140,6 +155,8 @@ git show week-6-hardening
 | `packages/agent` | 工具注册表 / Agent 循环 / 会话 |
 | `packages/observability` | trace / metrics / OTel |
 | `config/models.yaml` | 模型别名与 fallback 链 |
+| `packages/audit/` | SQLite 审计落库 |
+| `packages/tasks/` | Redis 索引任务队列 |
 | `config/tenants.yaml` | 三假租户 + 限速默认值 |
 | `eval/baseline.jsonl` | RAG 评测用例（35 条） |
 | `docs/` | 学习手册、周文档、架构与路线图 |

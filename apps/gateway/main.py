@@ -2,18 +2,19 @@ from __future__ import annotations
 
 import logging
 import time
-from typing import Annotated, Any
+from typing import Annotated
 
 from fastapi import FastAPI, Header, HTTPException, Request, Response
 from fastapi.responses import JSONResponse, PlainTextResponse
 
+from apps.gateway.agent.routes import router as agent_router
+from apps.gateway.audit_routes import router as audit_router
 from apps.gateway.http_utils import json_error, resolve_tenant
 from apps.gateway.model_router import forward_with_model_router
 from apps.gateway.quota import get_quota_tracker
-from apps.gateway.request_guards import check_model_allowed, check_rate_limit
-from apps.gateway.agent.routes import router as agent_router
 from apps.gateway.rag.query_routes import router as rag_query_router
 from apps.gateway.rag.routes import router as rag_router
+from apps.gateway.request_guards import check_model_allowed, check_rate_limit
 from apps.gateway.settings import get_settings
 from apps.gateway.tenants import TenantRecord, load_tenants
 from packages.contracts.schemas import ChatCompletionRequest
@@ -47,6 +48,7 @@ def create_app() -> FastAPI:
     app.include_router(rag_router)
     app.include_router(rag_query_router)
     app.include_router(agent_router)
+    app.include_router(audit_router)
 
     @app.middleware("http")
     async def access_log(request: Request, call_next):
@@ -54,6 +56,9 @@ def create_app() -> FastAPI:
         trace_id = get_trace_id()
         response = await call_next(request)
         elapsed_ms = (time.perf_counter() - start) * 1000
+        tenant_id = request.headers.get("x-tenant-id")
+        error_code = getattr(request.state, "audit_error_code", None)
+        model = getattr(request.state, "audit_model", None)
         logger.info(
             "request",
             extra={
@@ -62,8 +67,25 @@ def create_app() -> FastAPI:
                 "path": request.url.path,
                 "status": response.status_code,
                 "latency_ms": round(elapsed_ms, 2),
+                "tenant_id": tenant_id,
             },
         )
+        if settings.audit_enabled and request.url.path not in ("/healthz", "/metrics"):
+            try:
+                from packages.audit.store import get_audit_store
+
+                get_audit_store(settings.audit_db_path).insert(
+                    tenant_id=tenant_id,
+                    method=request.method,
+                    path=request.url.path,
+                    status_code=response.status_code,
+                    latency_ms=elapsed_ms,
+                    trace_id=trace_id,
+                    model=model,
+                    error_code=error_code,
+                )
+            except Exception:
+                logger.exception("audit insert failed path=%s", request.url.path)
         return response
 
     @app.get("/healthz")
@@ -108,7 +130,7 @@ def create_app() -> FastAPI:
             return json_error(
                 429,
                 "QUOTA_EXCEEDED",
-                "租户日配额已用尽（进程内计数，UTC 日切重置）",
+                "租户日配额已用尽（UTC 日切重置）",
                 detail={"tenant_id": tenant.tenant_id, "quota": tenant.daily_request_quota},
             )
 

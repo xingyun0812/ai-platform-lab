@@ -5,7 +5,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import sys
 import uuid
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
@@ -158,6 +157,35 @@ def save_report(report: dict[str, Any]) -> Path:
     return path
 
 
+def validate_baseline(path: Path) -> tuple[bool, list[str]]:
+    """校验 baseline.jsonl 结构，无需运行服务。"""
+    errors: list[str] = []
+    if not path.is_file():
+        return False, [f"文件不存在: {path}"]
+    for i, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            case = json.loads(line)
+        except json.JSONDecodeError as e:
+            errors.append(f"行 {i}: JSON 解析失败 — {e}")
+            continue
+        if not isinstance(case, dict):
+            errors.append(f"行 {i}: 每行须为 JSON 对象")
+            continue
+        if "id" not in case:
+            errors.append(f"行 {i}: 缺少 id")
+        if "kb_id" not in case:
+            errors.append(f"行 {i}: 缺少 kb_id")
+        if "query" not in case:
+            errors.append(f"行 {i}: 缺少 query")
+        expect = case.get("expect", "hit")
+        if expect not in ("hit", "refuse"):
+            errors.append(f"行 {i}: expect 须为 hit 或 refuse，实际 {expect!r}")
+    return len(errors) == 0, errors
+
+
 def compare_reports(path_a: Path, path_b: Path) -> dict[str, Any]:
     a = json.loads(path_a.read_text(encoding="utf-8"))
     b = json.loads(path_b.read_text(encoding="utf-8"))
@@ -192,6 +220,14 @@ async def _async_main(args: argparse.Namespace) -> int:
         print(json.dumps(diff, ensure_ascii=False, indent=2))
         return 0
 
+    if args.command == "validate-baseline":
+        ok, errors = validate_baseline(Path(args.baseline))
+        if ok:
+            print(json.dumps({"valid": True, "baseline": str(args.baseline)}, ensure_ascii=False))
+            return 0
+        print(json.dumps({"valid": False, "errors": errors}, ensure_ascii=False, indent=2))
+        return 1
+
     report = await run_baseline(
         base_url=args.base_url,
         tenant_id=args.tenant_id,
@@ -201,9 +237,36 @@ async def _async_main(args: argparse.Namespace) -> int:
         timeout=args.timeout,
     )
     out = save_report(report)
-    print(json.dumps(report["summary"], ensure_ascii=False, indent=2))
+    summary = report["summary"]
+    print(json.dumps(summary, ensure_ascii=False, indent=2))
     print(f"报告已写入: {out}")
-    return 0 if report["summary"]["failed"] == 0 else 1
+    if summary["failed"] > 0:
+        return 1
+    min_rate = getattr(args, "min_pass_rate", None)
+    if min_rate is not None and summary["pass_rate"] < min_rate:
+        print(
+            json.dumps(
+                {
+                    "gate": "failed",
+                    "pass_rate": summary["pass_rate"],
+                    "min_pass_rate": min_rate,
+                },
+                ensure_ascii=False,
+            )
+        )
+        return 1
+    if min_rate is not None:
+        print(
+            json.dumps(
+                {
+                    "gate": "passed",
+                    "pass_rate": summary["pass_rate"],
+                    "min_pass_rate": min_rate,
+                },
+                ensure_ascii=False,
+            )
+        )
+    return 0
 
 
 def main() -> None:
@@ -217,6 +280,15 @@ def main() -> None:
     run_p.add_argument("--baseline", default=str(DEFAULT_BASELINE))
     run_p.add_argument("--run-id", default=None)
     run_p.add_argument("--timeout", type=float, default=120.0)
+    run_p.add_argument(
+        "--min-pass-rate",
+        type=float,
+        default=None,
+        help="通过率门禁：低于该值 exit 1（如 0.85）",
+    )
+
+    val_p = sub.add_parser("validate-baseline", help="校验 baseline.jsonl 格式（无需服务）")
+    val_p.add_argument("--baseline", default=str(DEFAULT_BASELINE))
 
     cmp_p = sub.add_parser("compare", help="对比两次评测报告")
     cmp_p.add_argument("report_a")
@@ -227,6 +299,14 @@ def main() -> None:
         import asyncio
 
         raise SystemExit(asyncio.run(_async_main(args)))
+    if args.command == "validate-baseline":
+        ok, errors = validate_baseline(Path(args.baseline))
+        if ok:
+            print(json.dumps({"valid": True, "baseline": str(args.baseline)}, ensure_ascii=False))
+            raise SystemExit(0)
+        print(json.dumps({"valid": False, "errors": errors}, ensure_ascii=False, indent=2))
+        raise SystemExit(1)
+
     if args.command == "compare":
         diff = compare_reports(Path(args.report_a), Path(args.report_b))
         print(json.dumps(diff, ensure_ascii=False, indent=2))
