@@ -155,7 +155,7 @@ curl -s "http://127.0.0.1:8000/internal/billing/usage?hours=24" \
 | `week-5-observability-eval` | `66978a0` | OTel、/metrics、eval/run、load_smoke |
 | `week-6-hardening` | `4368665` | Model Router、令牌桶、Compose、architecture/roadmap |
 | `phase-a-internal-beta` | `1ce0806` | Redis 共享状态、Worker 队列、SQLite 审计、CI 门禁 |
-| `phase-b1-billing` | _(本周 tag)_ | Postgres token 计量、租户预算、billing API |
+| `phase-b1-billing` | `e54adbc` | Postgres token 计量、租户预算、billing API |
 
 ```bash
 git fetch origin --tags
