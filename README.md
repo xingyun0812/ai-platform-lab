@@ -122,7 +122,7 @@ python eval/load_smoke.py --concurrency 50
 | `week-3-rag-query` | `5dbcf68` | RAG 问答：`/v1/rag/query`、阈值拒答、citations、timings |
 | `week-4-agent-runtime` | `617d535` | Agent：`/v1/agent/run`、工具白名单、会话、tool_calls 轨迹 |
 | `week-5-observability-eval` | `66978a0` | OTel、/metrics、eval/run、load_smoke |
-| `week-6-hardening` | `b35928c` | Model Router、令牌桶、Compose、architecture/roadmap |
+| `week-6-hardening` | `4368665` | Model Router、令牌桶、Compose、architecture/roadmap |
 
 ```bash
 git fetch origin --tags
