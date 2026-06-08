@@ -4,7 +4,7 @@ import logging
 import time
 from typing import Any
 
-from apps.gateway.llm_proxy import forward_chat_completions
+from apps.gateway.model_router import forward_with_model_router, resolve_model_name
 from apps.gateway.quota import DailyQuotaTracker
 from apps.gateway.rag.pipeline import resolve_retrieve_version
 from apps.gateway.settings import get_settings
@@ -73,7 +73,7 @@ async def run_rag_query(
 ) -> dict[str, Any]:
     settings = get_settings()
     effective_min = min_score if min_score is not None else settings.rag_min_score
-    effective_model = model or settings.rag_query_model or settings.default_model
+    effective_model = resolve_model_name(model or settings.rag_query_model)
 
     t0 = time.perf_counter()
     retrieve_start = t0
@@ -134,15 +134,19 @@ async def run_rag_query(
         ],
         "temperature": 0.2,
     }
-    status, upstream_json, err = await forward_chat_completions(payload)
+    routed = await forward_with_model_router(
+        payload,
+        requested_model=model or settings.rag_query_model,
+    )
     llm_ms = (time.perf_counter() - llm_start) * 1000
 
-    if err and upstream_json is None:
-        raise RuntimeError(err)
-    if upstream_json is None or not (200 <= status < 300):
-        raise RuntimeError(f"LLM upstream status {status}: {err or upstream_json}")
+    if routed.error and routed.body is None:
+        raise RuntimeError(routed.error)
+    if routed.body is None or not (200 <= routed.status < 300):
+        raise RuntimeError(f"LLM upstream status {routed.status}: {routed.error or routed.body}")
 
-    answer = extract_answer(upstream_json)
+    answer = extract_answer(routed.body)
+    model_used = routed.model_used or effective_model
     total_ms = (time.perf_counter() - t0) * 1000
 
     timings = RagQueryTimings(
@@ -171,7 +175,7 @@ async def run_rag_query(
         "answer": answer,
         "citations": to_citations(chunks),
         "timings": timings,
-        "model": effective_model,
+        "model": model_used,
         "min_score": effective_min,
         "trace_id": get_trace_id(),
     }

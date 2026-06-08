@@ -8,6 +8,7 @@ from fastapi.responses import JSONResponse
 
 from apps.gateway.http_utils import json_error, resolve_tenant
 from apps.gateway.quota import get_quota_tracker
+from apps.gateway.request_guards import check_model_allowed, check_rate_limit
 from apps.gateway.rag.query_service import RagQueryRefusal, run_rag_query
 from apps.gateway.settings import get_settings
 from packages.observability.otel import component_span
@@ -53,17 +54,19 @@ async def rag_query(
         return json_error(403, "TENANT_FORBIDDEN", "tenant_id 与鉴权租户不一致")
 
     settings = get_settings()
+    rate_err = check_rate_limit(tenant)
+    if rate_err is not None:
+        return rate_err
+
+    model_err, _resolved_model = check_model_allowed(
+        tenant,
+        body.model or settings.rag_query_model,
+    )
+    if model_err is not None:
+        return model_err
+
     if not (settings.llm_api_key or "").strip():
         return json_error(503, "UPSTREAM_NOT_CONFIGURED", "LLM_API_KEY 未配置")
-
-    resolved_model = body.model or settings.rag_query_model or settings.default_model
-    if tenant.allowed_models and resolved_model not in tenant.allowed_models:
-        return json_error(
-            403,
-            "MODEL_NOT_ALLOWED",
-            f"模型不在租户白名单: {resolved_model}",
-            detail={"allowed_models": list(tenant.allowed_models)},
-        )
 
     if not quota_tracker.has_quota(tenant.tenant_id, tenant.daily_request_quota):
         return json_error(

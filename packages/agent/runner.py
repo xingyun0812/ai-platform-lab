@@ -6,7 +6,7 @@ import logging
 import time
 from typing import Any
 
-from apps.gateway.llm_proxy import forward_chat_completions
+from apps.gateway.model_router import forward_with_model_router, is_model_allowed
 from apps.gateway.settings import get_settings
 from packages.agent.registry import ToolRegistry
 from packages.agent.session import SessionStore
@@ -117,12 +117,16 @@ async def run_agent(
 ) -> dict[str, Any]:
     settings = get_settings()
     reg = registry or ToolRegistry()
-    resolved_model = model or settings.agent_model or settings.default_model
-    if allowed_models and resolved_model not in allowed_models:
+    allowed, resolved_model = is_model_allowed(
+        model or settings.agent_model,
+        tenant_default=None,
+        allowed_models=allowed_models,
+    )
+    if not allowed:
         raise AgentRunError(
             "MODEL_NOT_ALLOWED",
-            f"模型不在白名单: {resolved_model}",
-            detail={"allowed_models": list(allowed_models)},
+            f"模型不在白名单: {model or settings.agent_model or settings.default_model}",
+            detail={"allowed_models": list(allowed_models), "resolved_model": resolved_model},
         )
 
     history = session_store.get_messages(tenant_id, session_id)
@@ -143,15 +147,25 @@ async def run_agent(
             payload["tools"] = tools_spec
             payload["tool_choice"] = "auto"
 
-        status, body, err = await forward_chat_completions(payload)
-        if err and body is None:
-            raise AgentRunError("AGENT_UPSTREAM_ERROR", err, detail={"status": status})
-        if body is None or not (200 <= status < 300):
+        routed = await forward_with_model_router(
+            payload,
+            requested_model=model or settings.agent_model,
+        )
+        body = routed.body
+        if routed.error and body is None:
             raise AgentRunError(
                 "AGENT_UPSTREAM_ERROR",
-                f"upstream status {status}",
-                detail={"upstream": body},
+                routed.error,
+                detail={"status": routed.status, "models_tried": list(routed.models_tried)},
             )
+        if body is None or not (200 <= routed.status < 300):
+            raise AgentRunError(
+                "AGENT_UPSTREAM_ERROR",
+                f"upstream status {routed.status}",
+                detail={"upstream": body, "models_tried": list(routed.models_tried)},
+            )
+        if routed.model_used:
+            resolved_model = routed.model_used
 
         choices = body.get("choices")
         if not isinstance(choices, list) or not choices:

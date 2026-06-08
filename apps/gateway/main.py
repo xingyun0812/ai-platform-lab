@@ -8,8 +8,9 @@ from fastapi import FastAPI, Header, HTTPException, Request, Response
 from fastapi.responses import JSONResponse, PlainTextResponse
 
 from apps.gateway.http_utils import json_error, resolve_tenant
-from apps.gateway.llm_proxy import forward_chat_completions
+from apps.gateway.model_router import forward_with_model_router
 from apps.gateway.quota import get_quota_tracker
+from apps.gateway.request_guards import check_model_allowed, check_rate_limit
 from apps.gateway.agent.routes import router as agent_router
 from apps.gateway.rag.query_routes import router as rag_query_router
 from apps.gateway.rag.routes import router as rag_router
@@ -95,21 +96,13 @@ def create_app() -> FastAPI:
                 "当前骨架暂不支持 stream=true，请使用非流式",
             )
 
-        if not (settings.llm_api_key or "").strip():
-            return json_error(
-                503,
-                "UPSTREAM_NOT_CONFIGURED",
-                "LLM_API_KEY 未配置：申请到账号后写入项目根目录 .env 即可联调",
-            )
+        rate_err = check_rate_limit(tenant)
+        if rate_err is not None:
+            return rate_err
 
-        resolved_model = body.model or settings.default_model
-        if tenant.allowed_models and resolved_model not in tenant.allowed_models:
-            return json_error(
-                403,
-                "MODEL_NOT_ALLOWED",
-                f"模型不在租户白名单: {resolved_model}",
-                detail={"allowed_models": list(tenant.allowed_models)},
-            )
+        model_err, resolved_model = check_model_allowed(tenant, body.model)
+        if model_err is not None:
+            return model_err
 
         if not quota_tracker.try_consume(tenant.tenant_id, tenant.daily_request_quota):
             return json_error(
@@ -119,37 +112,62 @@ def create_app() -> FastAPI:
                 detail={"tenant_id": tenant.tenant_id, "quota": tenant.daily_request_quota},
             )
 
+        if not (settings.llm_api_key or "").strip():
+            return json_error(
+                503,
+                "UPSTREAM_NOT_CONFIGURED",
+                "LLM_API_KEY 未配置：申请到账号后写入项目根目录 .env 即可联调",
+            )
+
         from packages.observability.otel import component_span
 
-        payload = body.upstream_payload(settings.default_model)
+        payload = body.upstream_payload(resolved_model)
         with component_span(
             "gateway.chat_completions",
             component="gateway",
             enabled=settings.otel_enabled,
             tenant_id=tenant.tenant_id,
+            model=resolved_model,
         ):
-            status, upstream_json, err = await forward_chat_completions(payload)
+            routed = await forward_with_model_router(
+                payload,
+                requested_model=body.model,
+                tenant_default=tenant.default_model,
+            )
 
-        if err and upstream_json is None:
+        if routed.error and routed.body is None:
             return json_error(
                 503,
                 "UPSTREAM_ERROR",
-                err,
-                detail={"upstream_status": status},
+                routed.error,
+                detail={
+                    "upstream_status": routed.status,
+                    "models_tried": list(routed.models_tried),
+                },
             )
 
-        if upstream_json is None:
+        if routed.body is None:
             return json_error(502, "UPSTREAM_ERROR", "empty upstream body")
 
-        if not (200 <= status < 300):
+        if not (200 <= routed.status < 300):
             return json_error(
-                status if 400 <= status < 600 else 502,
+                routed.status if 400 <= routed.status < 600 else 502,
                 "UPSTREAM_ERROR",
-                f"upstream status {status}",
-                detail={"upstream": upstream_json},
+                f"upstream status {routed.status}",
+                detail={
+                    "upstream": routed.body,
+                    "models_tried": list(routed.models_tried),
+                },
             )
 
-        return JSONResponse(status_code=200, content=upstream_json)
+        content = dict(routed.body)
+        if routed.fallback_used and routed.model_used:
+            meta = content.setdefault("_platform", {})
+            if isinstance(meta, dict):
+                meta["model_used"] = routed.model_used
+                meta["fallback_used"] = True
+                meta["models_tried"] = list(routed.models_tried)
+        return JSONResponse(status_code=200, content=content)
 
     return app
 

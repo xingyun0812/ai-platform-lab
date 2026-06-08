@@ -1,0 +1,106 @@
+# 路线图与已知限制
+
+本仓库目标是 **6 周学习闭环 + 面试可讲**，以下诚实列出「还没做」与「若上生产还需补什么」。
+
+---
+
+## 当前已完成（v0.1 学习版）
+
+| 模块 | 状态 | 说明 |
+|------|------|------|
+| 多租户 Gateway | ✅ | 鉴权、日配额、trace_id |
+| RAG 管道 | ✅ | 异步索引、kb 版本、Qdrant |
+| RAG 问答 | ✅ | min_score 拒答、citations、baseline |
+| Agent 运行时 | ✅ | 工具白名单、session、tool_trace |
+| 观测与评测 | ✅ | OTel span、/metrics、eval/run.py |
+| 硬化（第 6 周） | ✅ | Model Router、令牌桶、Compose 一键起 |
+
+---
+
+## 已知限制（面试时主动说）
+
+### 计费与用量
+
+- **未**按 token 精确计费，仅有「按请求次数」的日配额。
+- **未**区分 input/output token 单价，无账单导出。
+- 配额与限流均在 **进程内存**，重启清零，多实例不共享。
+
+### 可用性与扩展
+
+- **单进程** Gateway；无水平扩展、无 leader 选举。
+- Qdrant 单节点 Compose，无副本、无跨 AZ。
+- 索引任务在 Gateway 后台线程，**非**独立 Worker 队列（`apps/worker` 仅为占位说明）。
+- Model Router fallback 为 **同步串行**尝试，无熔断器、无权重路由。
+
+### 安全与合规
+
+- 租户 Bearer 写在 yaml，**非** KMS / OAuth / mTLS。
+- **无**细粒度 RBAC（按用户/角色/资源），仅租户级工具与模型 ACL。
+- **无**操作审计日志落库（仅有 access log + 可选 OTel）。
+- **无** PII 脱敏、内容安全策略、prompt 注入防护专项。
+
+### 数据与 RAG
+
+- 知识库版本为整数递增，**无**灰度发布与自动回滚。
+- 检索仅向量 top_k，**无**混合检索、重排序、多路召回。
+- Embedding 与 LLM 共用同一上游 Key，**无**独立 embedding 服务治理。
+
+### Agent
+
+- 工具集为内置 demo（calc、httpbin、kb snippet），**非**可插拔 MCP 市场。
+- 无人工审批（human-in-the-loop）、无长任务异步回调。
+- Session 内存存储，重启丢失。
+
+### 评测与 SRE
+
+- `eval/run.py` 为离线脚本，**非** CI 门禁、无自动告警。
+- `/metrics` 为进程内聚合，**未**接 Prometheus/Grafana 样板。
+- 无 SLO/错误预算、无 on-call runbook。
+
+---
+
+## 建议演进路线（按性价比）
+
+### Phase A — 可内测（1～2 周工程量）
+
+1. Redis 共享配额 + 令牌桶
+2. 结构化审计表（tenant、path、model、latency、trace_id）
+3. `eval/run.py` 接入 GitHub Actions，PR 回归阈值门禁
+4. 独立 Worker + 任务队列（索引与 Agent 长任务）
+
+### Phase B — 可小流量生产（1～2 月）
+
+1. 按 token 计量 + 租户预算（Postgres 账单表）
+2. 密钥托管（Vault / 云厂商 Secret Manager）
+3. RAG 混合检索 + rerank；kb 版本金丝雀
+4. OTel Collector → Jaeger/Tempo + Prometheus 远程写
+
+### Phase C — 平台化
+
+1. 多 region 路由与数据驻留
+2. 租户自助控制台（模型、工具、配额、知识库）
+3. Agent 工具市场 + 审批流
+4. 多模型供应商抽象（价格/延迟/能力矩阵）
+
+---
+
+## 非目标（本 repo 刻意不做）
+
+- 训练/微调流水线
+- 向量库自研
+- 完整 LLMOps 产品 UI
+- 真实支付与发票
+
+---
+
+## 如何讲「为什么先这样」
+
+面试口述模板（约 10 分钟）：
+
+1. **租户故事**：三假租户演示隔离 — 模型别名、工具 ACL、配额/限流分层。
+2. **RAG 版本**：`kb_id + version` 可回放；低分拒答避免幻觉。
+3. **Agent 治理**：`allowed_tools` 在网关 enforce，轨迹可审计。
+4. **评测回归**：`baseline.jsonl` + `eval/run.py compare` 防退化。
+5. **诚实边界**：引用本文「已知限制」，说明下一阶段的 Redis/计费/Worker。
+
+详见 [architecture.md](./architecture.md) 与 [week6-hardening.md](./week6-hardening.md)。

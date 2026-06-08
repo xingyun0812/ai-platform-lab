@@ -80,6 +80,14 @@ class Settings(BaseSettings):
     otel_console_export: bool = Field(default=True, validation_alias="OTEL_CONSOLE_EXPORT")
     metrics_enabled: bool = Field(default=True, validation_alias="METRICS_ENABLED")
 
+    # 硬化（第 6 周）
+    models_config_path: Path = Field(
+        default=REPO_ROOT / "config" / "models.yaml",
+        validation_alias="MODELS_CONFIG_PATH",
+    )
+    default_rate_limit_rps: float = Field(default=20.0, validation_alias="DEFAULT_RATE_LIMIT_RPS")
+    default_rate_limit_burst: int = Field(default=40, validation_alias="DEFAULT_RATE_LIMIT_BURST")
+
 
 def _load_yaml_defaults(path: Path) -> dict[str, Any]:
     if not path.is_file():

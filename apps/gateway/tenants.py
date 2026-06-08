@@ -16,6 +16,9 @@ class TenantRecord:
     daily_request_quota: int  # -1 表示不限
     allowed_models: tuple[str, ...]
     allowed_tools: tuple[str, ...]  # 空表示可用全部注册工具
+    default_model: str | None  # 租户默认模型或别名
+    rate_limit_rps: float
+    rate_limit_burst: int
 
 
 def _read_yaml(path: Path) -> dict[str, Any]:
@@ -45,14 +48,28 @@ def _merge_tenant_dict(base: dict[str, Any], override: dict[str, Any]) -> dict[s
     return out
 
 
+def _defaults_from_file(path: Path) -> dict[str, Any]:
+    data = _read_yaml(path)
+    defaults = data.get("defaults")
+    return defaults if isinstance(defaults, dict) else {}
+
+
 def load_tenants(path: Path | None = None) -> dict[str, TenantRecord]:
     """加载租户；allowed_models 为空表示不限制模型。支持 config/tenants.local.yaml 覆盖。"""
     settings = get_settings()
     base_path = path or settings.tenants_config_path
+    file_defaults = _defaults_from_file(base_path)
+    default_rps = float(file_defaults.get("rate_limit_rps", settings.default_rate_limit_rps))
+    default_burst = int(file_defaults.get("rate_limit_burst", settings.default_rate_limit_burst))
     raw = _tenant_map_from_file(base_path)
     local_path = base_path.parent / "tenants.local.yaml"
     if local_path.is_file():
         local_raw = _tenant_map_from_file(local_path)
+        local_defaults = _defaults_from_file(local_path)
+        if isinstance(local_defaults.get("rate_limit_rps"), (int, float)):
+            default_rps = float(local_defaults["rate_limit_rps"])
+        if isinstance(local_defaults.get("rate_limit_burst"), int):
+            default_burst = int(local_defaults["rate_limit_burst"])
         raw = _merge_tenant_dict(raw, local_raw)
 
     out: dict[str, TenantRecord] = {}
@@ -79,11 +96,23 @@ def load_tenants(path: Path | None = None) -> dict[str, TenantRecord]:
             allowed_tools = tuple(str(t) for t in tools_cfg)
         else:
             raise ValueError(f"租户 {tenant_id} allowed_tools 须为列表或为空")
+        default_model = cfg.get("default_model")
+        if default_model is not None and not isinstance(default_model, str):
+            raise ValueError(f"租户 {tenant_id} default_model 须为字符串或省略")
+        rps = cfg.get("rate_limit_rps", default_rps)
+        burst = cfg.get("rate_limit_burst", default_burst)
+        if not isinstance(rps, (int, float)) or rps < 0:
+            raise ValueError(f"租户 {tenant_id} rate_limit_rps 须为非负数字")
+        if not isinstance(burst, int) or burst < 0:
+            raise ValueError(f"租户 {tenant_id} rate_limit_burst 须为非负整数")
         out[str(tenant_id)] = TenantRecord(
             tenant_id=str(tenant_id),
             bearer_token=token,
             daily_request_quota=quota,
             allowed_models=allowed,
             allowed_tools=allowed_tools,
+            default_model=str(default_model) if default_model else None,
+            rate_limit_rps=float(rps),
+            rate_limit_burst=int(burst),
         )
     return out

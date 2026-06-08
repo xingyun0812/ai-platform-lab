@@ -8,6 +8,7 @@ from fastapi.responses import JSONResponse
 
 from apps.gateway.http_utils import json_error, resolve_tenant
 from apps.gateway.quota import get_quota_tracker
+from apps.gateway.request_guards import check_rate_limit
 from apps.gateway.settings import get_settings
 from packages.observability.otel import component_span
 from apps.gateway.tenants import TenantRecord, load_tenants
@@ -47,11 +48,15 @@ async def agent_run(
         return json_error(400, "TENANT_MISMATCH", "body.tenant_id 须与 X-Tenant-Id 一致")
 
     settings = get_settings()
-    if not (settings.llm_api_key or "").strip():
-        return json_error(503, "UPSTREAM_NOT_CONFIGURED", "LLM_API_KEY 未配置")
+    rate_err = check_rate_limit(tenant)
+    if rate_err is not None:
+        return rate_err
 
     if not quota_tracker.has_quota(tenant.tenant_id, tenant.daily_request_quota):
         return json_error(429, "QUOTA_EXCEEDED", "租户日配额已用尽")
+
+    if not (settings.llm_api_key or "").strip():
+        return json_error(503, "UPSTREAM_NOT_CONFIGURED", "LLM_API_KEY 未配置")
 
     new_messages: list[dict[str, Any]] = [
         m.model_dump(exclude_none=True) for m in body.messages

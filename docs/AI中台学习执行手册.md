@@ -178,11 +178,11 @@ ai-platform-lab/
 
 ### 任务清单
 
-- [ ] **Model Router**（简版）：主模型失败切备用；或按租户映射 `model` 别名
-- [ ] 限流：租户级 **令牌桶**（仍可先内存）
-- [ ] Docker Compose：gateway + 向量库 +（可选）worker；一键 `docker compose up`
-- [ ] `docs/architecture.md`：Mermaid 一张 **分层图** + 数据流
-- [ ] `docs/roadmap.md`：诚实写未做：计费精确到 token、多 region、权限审计细化等
+- [x] **Model Router**（简版）：主模型失败切备用；或按租户映射 `model` 别名
+- [x] 限流：租户级 **令牌桶**（仍可先内存）
+- [x] Docker Compose：gateway + 向量库 +（可选）worker；一键 `docker compose up`
+- [x] `docs/architecture.md`：Mermaid 一张 **分层图** + 数据流
+- [x] `docs/roadmap.md`：诚实写未做：计费精确到 token、多 region、权限审计细化等
 
 ### 验收
 
