@@ -184,10 +184,11 @@ python eval/canary_stats.py --samples 1000   # 命中率模拟
 | `phase-a-internal-beta` | `1ce0806` | Redis 共享状态、Worker 队列、SQLite 审计、CI 门禁 |
 | `phase-b1-billing` | `e54adbc` | Postgres token 计量、租户预算、billing API |
 | `phase-b2-parallel` | `e621c7f` | 密钥 Env/Vault、RAG hybrid、OTel Collector 栈 |
+| `phase-b3-rerank-canary` | `5536a05` | RAG rerank stub、kb 金丝雀路由 |
 
 ```bash
 git fetch origin --tags
-git show phase-b2-parallel
+git show phase-b3-rerank-canary
 ```
 
 ## 目录说明
