@@ -206,10 +206,11 @@ python eval/canary_stats.py --samples 1000   # 命中率模拟
 | `phase-b2-parallel` | `e621c7f` | 密钥 Env/Vault、RAG hybrid、OTel Collector 栈 |
 | `phase-b3-rerank-canary` | `5536a05` | RAG rerank stub、kb 金丝雀路由 |
 | `phase-c-platform` | `e7e96c2` | 供应商矩阵、Region、租户 API、工具市场 |
+| `phase-d-ops` | `981ff89` | 熔断/Grafana、JWT/RBAC、控制台、账单 API |
 
 ```bash
 git fetch origin --tags
-git show phase-c-platform
+git show phase-d-ops
 ```
 
 ## 目录说明
