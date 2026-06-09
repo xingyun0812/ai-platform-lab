@@ -11,6 +11,7 @@ tenants:
   demo-a:
     data_zone: CN
     home_region: cn-local
+    role: developer
     bearer_token: "sk-tenant-demo-a-change-me"
     # bearer_secret_ref: tenants/demo-a/bearer  # Vault/env 模式，与 bearer_token 二选一
     daily_request_quota: 1000
@@ -34,6 +35,7 @@ tenants:
     allowed_tools:
       - "calc"
   admin:
+    role: platform_admin
     bearer_token: "sk-tenant-admin-change-me"
     daily_request_quota: -1
     # 空列表表示不限制模型（中台开发自用）

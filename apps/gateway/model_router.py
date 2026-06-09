@@ -111,10 +111,26 @@ async def forward_with_model_router(
     last_body: dict[str, Any] | None = None
     last_err: str | None = None
 
+    from packages.router.circuit_breaker import get_circuit_breaker
+
+    breaker = get_circuit_breaker()
+    breaker.failure_threshold = max(1, get_settings().circuit_breaker_threshold)
+
     for idx, model_name in enumerate(chain):
         if model_name in tried:
             continue
         tried.append(model_name)
+        allowed, cb_state = breaker.allow(model_name)
+        if not allowed:
+            return ModelRouteResult(
+                status=503,
+                body=None,
+                error=f"熔断已打开 model={model_name}",
+                model_used=None,
+                models_tried=tuple(tried),
+                fallback_used=idx > 0,
+                provider_id=None,
+            )
         attempt_payload = {**payload, "model": model_name}
         from packages.providers.registry import pick_provider_for_model
 
@@ -127,6 +143,7 @@ async def forward_with_model_router(
         last_status, last_body, last_err = status, body, err
 
         if err is None and body is not None and 200 <= status < 300:
+            breaker.record_success(model_name)
             return ModelRouteResult(
                 status=status,
                 body=body,
@@ -137,6 +154,8 @@ async def forward_with_model_router(
                 provider_id=offering.provider_id if offering else None,
             )
 
+        if _should_try_fallback(status, err):
+            breaker.record_failure(model_name)
         if not _should_try_fallback(status, err) or idx >= len(chain) - 1:
             break
         logger.warning(

@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>AI Platform Lab Console</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 2rem; background: #0d1117; color: #e6edf3; }
+    input, button { margin: 0.25rem; padding: 0.4rem 0.6rem; }
+    pre { background: #161b22; padding: 1rem; overflow: auto; border: 1px solid #30363d; }
+    .row { margin-bottom: 1rem; }
+  </style>
+</head>
+<body>
+  <h1>AI Platform Lab — 控制台 MVP</h1>
+  <p>消费 Phase C/D internal API（需 Gateway 运行中）。</p>
+  <div class="row">
+    <label>Tenant <input id="tenant" value="admin" /></label>
+    <label>Token <input id="token" size="40" value="sk-tenant-admin-change-me" /></label>
+  </div>
+  <div class="row">
+    <button onclick="loadProfile()">租户画像</button>
+    <button onclick="loadMatrix()">供应商矩阵</button>
+    <button onclick="loadRegions()">Regions</button>
+    <button onclick="loadUsage()">用量 24h</button>
+    <button onclick="loadMarketplace()">工具市场</button>
+  </div>
+  <pre id="out">点击按钮加载…</pre>
+  <script>
+    const base = location.origin;
+    function headers() {
+      return {
+        "X-Tenant-Id": document.getElementById("tenant").value,
+        "Authorization": "Bearer " + document.getElementById("token").value,
+      };
+    }
+    async function get(path) {
+      const r = await fetch(base + path, { headers: headers() });
+      const text = await r.text();
+      try { return JSON.stringify(JSON.parse(text), null, 2); } catch { return text; }
+    }
+    async function loadProfile() {
+      const t = document.getElementById("tenant").value;
+      document.getElementById("out").textContent = await get(`/internal/tenants/${t}/profile`);
+    }
+    async function loadMatrix() {
+      document.getElementById("out").textContent = await get("/internal/providers/matrix");
+    }
+    async function loadRegions() {
+      document.getElementById("out").textContent = await get("/internal/regions");
+    }
+    async function loadUsage() {
+      document.getElementById("out").textContent = await get("/internal/billing/usage?hours=24");
+    }
+    async function loadMarketplace() {
+      document.getElementById("out").textContent = await get("/internal/tools/marketplace");
+    }
+  </script>
+</body>
+</html>

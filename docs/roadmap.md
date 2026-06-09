@@ -106,19 +106,22 @@ B3 文档：[phase-b3-rerank-canary.md](./phase-b3-rerank-canary.md)
 
 C 文档：[phase-c-platform.md](./phase-c-platform.md)
 
-### Phase D 及后续（规划稿，未实现）
+### Phase D — 运维与平台深化 ✅
 
-Phase A→C 已闭合本仓库「最小中台」主线。若继续演进，建议按 **运维 → 治理 → 控制台 → 效果 → 商业化** 推进。
+| 波次 | Issue | 内容 |
+|------|-------|------|
+| D1 ✅ | [#15](https://github.com/xingyun0812/ai-platform-lab/issues/15) | Gateway 多实例 + Redis 配额一致性 |
+| D1 ✅ | [#16](https://github.com/xingyun0812/ai-platform-lab/issues/16) | Model Router 熔断 |
+| D1 ✅ | [#17](https://github.com/xingyun0812/ai-platform-lab/issues/17) | Grafana + Prometheus 告警 |
+| D2 ✅ | [#18](https://github.com/xingyun0812/ai-platform-lab/issues/18) | JWT HS256 + 租户角色 |
+| D2 ✅ | [#19](https://github.com/xingyun0812/ai-platform-lab/issues/19) | RBAC + 审计 Postgres 双写 |
+| D3 ✅ | [#20](https://github.com/xingyun0812/ai-platform-lab/issues/20) | 控制台 MVP `/console` |
+| D4 ✅ | [#21](https://github.com/xingyun0812/ai-platform-lab/issues/21) | kb 金丝雀自动回滚 |
+| D4 ✅ | [#22](https://github.com/xingyun0812/ai-platform-lab/issues/22) | Redis Session + MCP stub |
+| D5 ✅ | [#23](https://github.com/xingyun0812/ai-platform-lab/issues/23) | 分价账单 API |
 
-| 波次 | 主题 | 说明 |
-|------|------|------|
-| D1 | 运维硬化 | 多实例、熔断、Grafana/SLO、索引队列生产化 |
-| D2 | 身份与治理 | OIDC/RBAC、审计升级、密钥生产化 |
-| D3 | 控制台 MVP | 轻量 UI 消费 Phase C internal API |
-| D4 | 效果与工作流 | 真 rerank、自动回滚、MCP、Session 持久化、eval 门禁 |
-| D5 | 商业化 | 分价、账单、成本归因 |
-
-详见 [phase-d-future-evolution.md](./phase-d-future-evolution.md)（含验收草案、非目标、Issue 模板）。
+D 文档：[phase-d-ops.md](./phase-d-ops.md)  
+远期规划：[phase-d-future-evolution.md](./phase-d-future-evolution.md)
 
 ---
 

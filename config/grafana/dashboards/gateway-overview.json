@@ -1,0 +1,25 @@
+{
+  "title": "Gateway Overview",
+  "uid": "ai-platform-gateway",
+  "timezone": "browser",
+  "panels": [
+    {
+      "type": "timeseries",
+      "title": "HTTP Requests Rate",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "targets": [
+        { "expr": "sum(rate(http_requests_total[1m]))", "legendFormat": "rps" }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "429 Rate",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "targets": [
+        { "expr": "sum(rate(http_requests_total{status=\"429\"}[1m]))", "legendFormat": "429" }
+      ]
+    }
+  ],
+  "schemaVersion": 39,
+  "version": 1
+}

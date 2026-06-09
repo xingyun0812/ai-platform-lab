@@ -121,6 +121,16 @@ class Settings(BaseSettings):
     vault_token: str = Field(default="", validation_alias="VAULT_TOKEN")
     vault_mount: str = Field(default="secret", validation_alias="VAULT_MOUNT")
 
+    # Phase D — 身份与运维
+    auth_jwt_enabled: bool = Field(default=False, validation_alias="AUTH_JWT_ENABLED")
+    auth_jwt_secret: str = Field(default="", validation_alias="AUTH_JWT_SECRET")
+    audit_postgres_enabled: bool = Field(default=True, validation_alias="AUDIT_POSTGRES_ENABLED")
+    circuit_breaker_threshold: int = Field(default=5, validation_alias="CIRCUIT_BREAKER_THRESHOLD")
+    canary_auto_rollback_min_pass_rate: float = Field(
+        default=0.85,
+        validation_alias="CANARY_AUTO_ROLLBACK_MIN_PASS_RATE",
+    )
+
 
 def _load_yaml_defaults(path: Path) -> dict[str, Any]:
     if not path.is_file():

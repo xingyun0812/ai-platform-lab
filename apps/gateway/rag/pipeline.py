@@ -92,8 +92,26 @@ def _list_kb_versions(kb_id: str) -> list[int]:
 
 
 def _kb_routing_rules():
+    from packages.rag.canary_guard import apply_auto_rollback, get_kb_routing_override
+
+    settings = get_settings()
+    apply_auto_rollback(
+        kb_id="lab-demo",
+        min_pass_rate=settings.canary_auto_rollback_min_pass_rate,
+    )
     raw = _load_rag_yaml().get("kb_routing")
-    return parse_kb_routing(raw if isinstance(raw, dict) else None)
+    rules = parse_kb_routing(raw if isinstance(raw, dict) else None)
+    for kb_id, rule in list(rules.items()):
+        override = get_kb_routing_override(kb_id)
+        if override and "canary_percent" in override:
+            from packages.rag.routing import KbRoutingRule
+
+            rules[kb_id] = KbRoutingRule(
+                stable_version=rule.stable_version,
+                canary_version=rule.canary_version,
+                canary_percent=int(override["canary_percent"]),
+            )
+    return rules
 
 
 def _load_rag_yaml() -> dict:

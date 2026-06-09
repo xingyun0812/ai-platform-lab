@@ -66,7 +66,14 @@ def build_default_registry() -> dict[str, ToolDefinition]:
 def get_tool_registry() -> dict[str, ToolDefinition]:
     global _REGISTRY
     if _REGISTRY is None:
-        _REGISTRY = build_default_registry()
+        merged = build_default_registry()
+        try:
+            from packages.agent.mcp_stub import load_mcp_stub_tools
+
+            merged.update(load_mcp_stub_tools())
+        except Exception:
+            pass
+        _REGISTRY = merged
     return _REGISTRY
 
 

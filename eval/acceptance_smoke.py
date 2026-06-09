@@ -307,6 +307,92 @@ async def run_checks(*, with_llm: bool) -> list[Check]:
             out.append(Check("PC", "tools marketplace", False, str(e)))
 
         try:
+            from packages.router.circuit_breaker import CircuitBreaker
+
+            cb = CircuitBreaker(failure_threshold=2, recovery_seconds=60)
+            cb.record_failure("m")
+            cb.record_failure("m")
+            allowed, state = cb.allow("m")
+            out.append(Check("PD", "熔断器 open", not allowed and state == "open", state))
+        except Exception as e:
+            out.append(Check("PD", "熔断器", False, str(e)))
+
+        try:
+            import base64
+            import hashlib
+            import hmac
+            import json
+
+            from packages.auth.jwt_hs256 import decode_hs256
+
+            secret = "test-secret"
+            header = base64.urlsafe_b64encode(
+                json.dumps({"alg": "HS256"}).encode()
+            ).decode().rstrip("=")
+            payload = base64.urlsafe_b64encode(
+                json.dumps({"tenant_id": "admin", "role": "platform_admin"}).encode()
+            ).decode().rstrip("=")
+            sig = base64.urlsafe_b64encode(
+                hmac.new(
+                    secret.encode(),
+                    f"{header}.{payload}".encode(),
+                    hashlib.sha256,
+                ).digest()
+            ).decode().rstrip("=")
+            token = f"{header}.{payload}.{sig}"
+            claims = decode_hs256(token, secret)
+            out.append(
+                Check(
+                    "PD",
+                    "JWT HS256",
+                    claims is not None and claims.get("role") == "platform_admin",
+                    str(claims),
+                )
+            )
+        except Exception as e:
+            out.append(Check("PD", "JWT HS256", False, str(e)))
+
+        try:
+            from packages.auth.rbac import can_patch_tenant_limits
+
+            out.append(
+                Check(
+                    "PD",
+                    "RBAC platform_admin",
+                    can_patch_tenant_limits("platform_admin")
+                    and not can_patch_tenant_limits("viewer"),
+                    "ok",
+                )
+            )
+        except Exception as e:
+            out.append(Check("PD", "RBAC", False, str(e)))
+
+        try:
+            from packages.billing.cost import estimate_cost_usd
+
+            cost = estimate_cost_usd(model="gpt-4o-mini", input_tokens=1000, output_tokens=500)
+            out.append(Check("PD", "分价估算", cost > 0, f"usd={cost}"))
+        except Exception as e:
+            out.append(Check("PD", "分价估算", False, str(e)))
+
+        try:
+            from packages.agent.mcp_stub import load_mcp_stub_tools
+
+            tools = load_mcp_stub_tools()
+            out.append(Check("PD", "MCP stub 工具", "mcp_echo" in tools, list(tools.keys())))
+        except Exception as e:
+            out.append(Check("PD", "MCP stub", False, str(e)))
+
+        try:
+            from packages.rag.canary_guard import apply_auto_rollback
+
+            r = await c.get("/internal/providers/matrix", headers=ADMIN_HEADERS)
+            out.append(Check("PD", "GET providers matrix", r.status_code == 200, str(r.status_code)))
+            _ = apply_auto_rollback  # 函数可导入
+        except Exception as e:
+            out.append(Check("PD", "providers API", False, str(e)))
+
+        try:
             from apps.gateway.tenants import load_tenants
 
             demo_b = load_tenants()["demo-b"]

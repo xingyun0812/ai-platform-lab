@@ -1,0 +1,20 @@
+groups:
+  - name: gateway_alerts
+    rules:
+      - alert: GatewayHighErrorRate
+        expr: |
+          sum(rate(http_requests_total{status=~"5.."}[5m])) /
+          sum(rate(http_requests_total[5m])) > 0.05
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: Gateway 5xx 比例 > 5%
+
+      - alert: GatewayQuotaExhausted
+        expr: increase(http_requests_total{status="429"}[10m]) > 10
+        for: 1m
+        labels:
+          severity: info
+        annotations:
+          summary: 429 限流/配额触发频繁

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import replace
 from typing import Any
 
 from fastapi import HTTPException
@@ -51,6 +52,18 @@ def resolve_tenant(
     tenant = tenants.get(x_tenant_id.strip())
     if not tenant:
         raise HTTPException(status_code=401, detail="unknown tenant")
+
+    from apps.gateway.settings import get_settings
+
+    settings = get_settings()
+    if settings.auth_jwt_enabled and settings.auth_jwt_secret:
+        from packages.auth.jwt_hs256 import decode_hs256
+
+        claims = decode_hs256(token, settings.auth_jwt_secret)
+        if claims and str(claims.get("tenant_id", "")) == tenant.tenant_id:
+            jwt_role = claims.get("role")
+            if isinstance(jwt_role, str) and jwt_role:
+                return replace(tenant, role=jwt_role)
 
     if token != tenant.bearer_token:
         raise HTTPException(status_code=401, detail="invalid bearer token")

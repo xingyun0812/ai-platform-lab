@@ -1,0 +1,15 @@
+{
+  "tools": [
+    {
+      "name": "mcp_echo",
+      "description": "MCP stub：回显参数 JSON，用于演示可插拔工具",
+      "parameters_schema": {
+        "type": "object",
+        "properties": {
+          "message": { "type": "string", "description": "任意文本" }
+        },
+        "required": ["message"]
+      }
+    }
+  ]
+}

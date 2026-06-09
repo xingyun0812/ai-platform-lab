@@ -23,6 +23,7 @@ class TenantRecord:
     token_budget_monthly: int  # -1 表示不限（自然月）
     home_region: str | None = None  # Phase C：默认 region
     data_zone: str = "GLOBAL"  # Phase C：数据驻留区 CN/EU/GLOBAL
+    role: str = "developer"  # Phase D：viewer | developer | tenant_admin | platform_admin
 
 
 def _read_yaml(path: Path) -> dict[str, Any]:
@@ -134,6 +135,11 @@ def load_tenants(path: Path | None = None) -> dict[str, TenantRecord]:
         data_zone = cfg.get("data_zone", "GLOBAL")
         if not isinstance(data_zone, str):
             raise ValueError(f"租户 {tenant_id} data_zone 须为字符串")
+        role = cfg.get("role", "developer")
+        if not isinstance(role, str):
+            raise ValueError(f"租户 {tenant_id} role 须为字符串")
+        if tenant_id == "admin" and role == "developer":
+            role = "platform_admin"
         out[str(tenant_id)] = TenantRecord(
             tenant_id=str(tenant_id),
             bearer_token=token,
@@ -147,5 +153,6 @@ def load_tenants(path: Path | None = None) -> dict[str, TenantRecord]:
             token_budget_monthly=token_monthly,
             home_region=str(home_region) if home_region else None,
             data_zone=str(data_zone),
+            role=str(role),
         )
     return out

@@ -2,6 +2,8 @@ name: ai-platform-lab
 
 # Phase A/B：默认一键启动 postgres + redis + gateway + worker + Qdrant
 #   docker compose up -d --build
+# Phase D1 多实例（需 Redis）：
+#   docker compose up -d --scale gateway=2
 
 services:
   postgres:
@@ -139,10 +141,27 @@ services:
     image: prom/prometheus:v2.51.0
     volumes:
       - ./config/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./config/prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
     ports:
       - "9090:9090"
     depends_on:
       gateway:
+        condition: service_started
+
+  grafana:
+    profiles: ["observability"]
+    image: grafana/grafana:10.4.2
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+    volumes:
+      - ./config/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./config/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on:
+      prometheus:
         condition: service_started
 
 volumes:

@@ -2,10 +2,12 @@ from __future__ import annotations
 
 import logging
 import time
+from pathlib import Path
 from typing import Annotated
 
 from fastapi import FastAPI, Header, HTTPException, Request, Response
 from fastapi.responses import JSONResponse, PlainTextResponse
+from fastapi.staticfiles import StaticFiles
 
 from apps.gateway.agent.routes import router as agent_router
 from apps.gateway.audit_routes import router as audit_router
@@ -52,6 +54,9 @@ def create_app() -> FastAPI:
     app.include_router(audit_router)
     app.include_router(billing_router)
     app.include_router(platform_router)
+    console_dir = Path(__file__).resolve().parents[2] / "apps" / "console"
+    if console_dir.is_dir():
+        app.mount("/console", StaticFiles(directory=str(console_dir), html=True), name="console")
 
     @app.middleware("http")
     async def access_log(request: Request, call_next):
@@ -74,6 +79,7 @@ def create_app() -> FastAPI:
             },
         )
         if settings.audit_enabled and request.url.path not in ("/healthz", "/metrics"):
+            actor_role = getattr(request.state, "actor_role", None)
             try:
                 from packages.audit.store import get_audit_store
 
@@ -89,6 +95,26 @@ def create_app() -> FastAPI:
                 )
             except Exception:
                 logger.exception("audit insert failed path=%s", request.url.path)
+            if settings.audit_postgres_enabled:
+                try:
+                    from packages.audit.postgres_store import AuditPostgresStore
+                    from packages.billing.db import get_effective_database_url
+
+                    pg_url = get_effective_database_url(settings.database_url)
+                    if pg_url:
+                        AuditPostgresStore(pg_url).insert(
+                            tenant_id=tenant_id,
+                            actor_role=actor_role,
+                            method=request.method,
+                            path=request.url.path,
+                            status_code=response.status_code,
+                            latency_ms=elapsed_ms,
+                            trace_id=trace_id,
+                            model=model,
+                            error_code=error_code,
+                        )
+                except Exception:
+                    logger.exception("audit postgres insert failed path=%s", request.url.path)
         return response
 
     @app.middleware("http")
@@ -117,6 +143,7 @@ def create_app() -> FastAPI:
 
     @app.post("/v1/chat/completions")
     async def chat_completions(
+        request: Request,
         body: ChatCompletionRequest,
         x_tenant_id: Annotated[str | None, Header(alias="X-Tenant-Id")] = None,
         authorization: Annotated[str | None, Header()] = None,
@@ -126,6 +153,8 @@ def create_app() -> FastAPI:
             tenant = resolve_tenant(x_tenant_id, authorization, tenants)
         except HTTPException as e:
             return json_error(int(e.status_code), "UNAUTHORIZED", str(e.detail))
+
+        request.state.actor_role = tenant.role
 
         if body.stream:
             return json_error(
@@ -178,9 +207,10 @@ def create_app() -> FastAPI:
             )
 
         if routed.error and routed.body is None:
+            code = "CIRCUIT_OPEN" if "熔断" in (routed.error or "") else "UPSTREAM_ERROR"
             return json_error(
                 503,
-                "UPSTREAM_ERROR",
+                code,
                 routed.error,
                 detail={
                     "upstream_status": routed.status,

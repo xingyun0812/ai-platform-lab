@@ -10,6 +10,7 @@ from apps.gateway.http_utils import json_error, resolve_tenant
 from apps.gateway.settings import get_settings
 from apps.gateway.tenants import TenantRecord, load_tenants
 from packages.billing.budget import get_budget_snapshot
+from packages.billing.cost import estimate_cost_usd
 from packages.billing.db import get_billing_store
 
 router = APIRouter(prefix="/internal/billing", tags=["billing-internal"])
@@ -128,3 +129,72 @@ async def billing_export(
         media_type="text/csv; charset=utf-8",
         headers={"Content-Disposition": "attachment; filename=usage_export.csv"},
     )
+
+
+@router.get("/invoice")
+async def billing_invoice(
+    month: Annotated[str, Query(pattern=r"^\d{4}-\d{2}$")],
+    tenant_filter: Annotated[str | None, Query(alias="tenant_id")] = None,
+    x_tenant_id: Annotated[str | None, Header(alias="X-Tenant-Id")] = None,
+    authorization: Annotated[str | None, Header()] = None,
+) -> Any:
+    """按自然月汇总用量并估算 USD 成本（providers.yaml 单价）。"""
+    settings = get_settings()
+    store = get_billing_store(settings.database_url)
+    if store is None:
+        return json_error(503, "BILLING_DISABLED", "DATABASE_URL 未配置或不可达")
+
+    tenants = load_tenants()
+    tenant = _require_tenant(x_tenant_id, authorization, tenants)
+    if isinstance(tenant, JSONResponse):
+        return tenant
+
+    if tenant.tenant_id != "admin":
+        tenant_filter = tenant.tenant_id
+
+    year, mon = month.split("-")
+    since = datetime(int(year), int(mon), 1, tzinfo=UTC)
+    if int(mon) == 12:
+        until = datetime(int(year) + 1, 1, 1, tzinfo=UTC)
+    else:
+        until = datetime(int(year), int(mon) + 1, 1, tzinfo=UTC)
+
+    rows = store.recent_rows(limit=5000, tenant_id=tenant_filter)
+    items: list[dict[str, Any]] = []
+    total_usd = 0.0
+    total_tokens = 0
+    for row in rows:
+        try:
+            created_dt = datetime.fromisoformat(row.created_at.replace("Z", "+00:00"))
+        except ValueError:
+            continue
+        if not (since <= created_dt < until):
+            continue
+        cost = estimate_cost_usd(
+            model=row.model,
+            input_tokens=row.input_tokens,
+            output_tokens=row.output_tokens,
+        )
+        total_usd += cost
+        total_tokens += row.total_tokens
+        items.append(
+            {
+                "created_at": row.created_at,
+                "tenant_id": row.tenant_id,
+                "path": row.path,
+                "model": row.model,
+                "input_tokens": row.input_tokens,
+                "output_tokens": row.output_tokens,
+                "total_tokens": row.total_tokens,
+                "estimated_cost_usd": cost,
+            }
+        )
+
+    return {
+        "month": month,
+        "tenant_id": tenant_filter,
+        "total_tokens": total_tokens,
+        "estimated_cost_usd": round(total_usd, 4),
+        "line_items": items,
+        "note": "成本为 providers.yaml 示意单价估算，非正式发票",
+    }

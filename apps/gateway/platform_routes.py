@@ -15,6 +15,7 @@ from packages.agent.marketplace import (
     list_tool_requests,
     reject_tool_request,
 )
+from packages.auth.rbac import can_approve_tools, can_patch_tenant_limits, can_view_tenant_profile
 from packages.providers.registry import matrix_payload
 from packages.rag.vector_store import VectorStore
 from packages.region.resolver import regions_payload
@@ -38,9 +39,9 @@ def _require_tenant(
         return json_error(401, "UNAUTHORIZED", str(e))
 
 
-def _require_admin(tenant: TenantRecord) -> JSONResponse | None:
-    if tenant.tenant_id != "admin":
-        return json_error(403, "FORBIDDEN", "仅 admin 租户可执行该操作")
+def _require_platform_admin(tenant: TenantRecord) -> JSONResponse | None:
+    if not can_patch_tenant_limits(tenant.role):
+        return json_error(403, "FORBIDDEN", "需要 platform_admin 角色")
     return None
 
 
@@ -91,8 +92,8 @@ async def tenant_profile(
     caller = _require_tenant(x_tenant_id, authorization, tenants)
     if isinstance(caller, JSONResponse):
         return caller
-    if caller.tenant_id != "admin" and caller.tenant_id != tenant_id:
-        return json_error(403, "FORBIDDEN", "仅可查看本租户或 admin 查看全部")
+    if not can_view_tenant_profile(caller.role, caller.tenant_id, tenant_id):
+        return json_error(403, "FORBIDDEN", "无权查看该租户画像")
 
     record = tenants.get(tenant_id)
     if record is None:
@@ -136,7 +137,7 @@ async def patch_limits(
     caller = _require_tenant(x_tenant_id, authorization, tenants)
     if isinstance(caller, JSONResponse):
         return caller
-    denied = _require_admin(caller)
+    denied = _require_platform_admin(caller)
     if denied is not None:
         return denied
     if tenant_id not in tenants:
@@ -196,7 +197,9 @@ async def list_requests(
     caller = _require_tenant(x_tenant_id, authorization, tenants)
     if isinstance(caller, JSONResponse):
         return caller
-    tid = None if caller.tenant_id == "admin" else caller.tenant_id
+    from packages.auth.rbac import role_at_least
+
+    tid = None if role_at_least(caller.role, "platform_admin") else caller.tenant_id
     rows = list_tool_requests(tenant_id=tid)
     return {"requests": [r.__dict__ for r in rows]}
 
@@ -211,9 +214,8 @@ async def approve_request(
     caller = _require_tenant(x_tenant_id, authorization, tenants)
     if isinstance(caller, JSONResponse):
         return caller
-    denied = _require_admin(caller)
-    if denied is not None:
-        return denied
+    if not can_approve_tools(caller.role):
+        return json_error(403, "FORBIDDEN", "需要 platform_admin 审批工具")
     req = approve_tool_request(request_id, reviewer=caller.tenant_id)
     if req is None:
         return json_error(404, "NOT_FOUND", f"申请不存在: {request_id}")
@@ -230,9 +232,8 @@ async def reject_request(
     caller = _require_tenant(x_tenant_id, authorization, tenants)
     if isinstance(caller, JSONResponse):
         return caller
-    denied = _require_admin(caller)
-    if denied is not None:
-        return denied
+    if not can_approve_tools(caller.role):
+        return json_error(403, "FORBIDDEN", "需要 platform_admin 审批工具")
     req = reject_tool_request(request_id, reviewer=caller.tenant_id)
     if req is None:
         return json_error(404, "NOT_FOUND", f"申请不存在: {request_id}")
