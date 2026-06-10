@@ -3,7 +3,7 @@ tools:
   httpbin_delay:
     display_name: HTTP 延迟探测
     description: 调用 httpbin 模拟慢接口，用于超时与重试测试
-    risk_level: medium
+    risk_level: high
     requires_approval: true
   get_kb_snippet:
     display_name: 知识库片段

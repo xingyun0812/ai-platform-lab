@@ -81,6 +81,38 @@ class Settings(BaseSettings):
     )
     agent_tool_max_retries: int = Field(default=1, validation_alias="AGENT_TOOL_MAX_RETRIES")
     agent_model: str | None = Field(default=None, validation_alias="AGENT_MODEL")
+    agent_tool_routing_enabled: bool = Field(
+        default=True,
+        validation_alias="AGENT_TOOL_ROUTING_ENABLED",
+    )
+    agent_tool_rag_enabled: bool = Field(
+        default=False,
+        validation_alias="AGENT_TOOL_RAG_ENABLED",
+    )
+    agent_context_token_budget: int = Field(
+        default=8000,
+        validation_alias="AGENT_CONTEXT_TOKEN_BUDGET",
+    )
+    agent_summary_every_n_turns: int = Field(
+        default=6,
+        validation_alias="AGENT_SUMMARY_EVERY_N_TURNS",
+    )
+    agent_context_keep_recent_turns: int = Field(
+        default=4,
+        validation_alias="AGENT_CONTEXT_KEEP_RECENT_TURNS",
+    )
+    agent_tool_result_max_chars: int = Field(
+        default=2000,
+        validation_alias="AGENT_TOOL_RESULT_MAX_CHARS",
+    )
+    agent_quality_min_score: float = Field(
+        default=0.3,
+        validation_alias="AGENT_QUALITY_MIN_SCORE",
+    )
+    agent_reflect_max_retries: int = Field(
+        default=2,
+        validation_alias="AGENT_REFLECT_MAX_RETRIES",
+    )
 
     # 观测（第 5 周）
     otel_enabled: bool = Field(default=False, validation_alias="OTEL_ENABLED")
@@ -143,6 +175,7 @@ def _load_yaml_defaults(path: Path) -> dict[str, Any]:
 def get_settings() -> Settings:
     rag_defaults = _load_yaml_defaults(REPO_ROOT / "config" / "rag.yaml")
     agent_defaults = _load_yaml_defaults(REPO_ROOT / "config" / "agent.yaml")
+    routing_defaults = _load_yaml_defaults(REPO_ROOT / "config" / "agent_tool_routing.yaml")
     obs_defaults = _load_yaml_defaults(REPO_ROOT / "config" / "observability.yaml")
     overrides: dict[str, Any] = {}
     if isinstance(rag_defaults.get("chunk_size"), int):
@@ -161,6 +194,20 @@ def get_settings() -> Settings:
         overrides["agent_tool_max_retries"] = agent_defaults["tool_max_retries"]
     if isinstance(agent_defaults.get("agent_model"), str):
         overrides["agent_model"] = agent_defaults["agent_model"]
+    if isinstance(routing_defaults.get("enabled"), bool):
+        overrides["agent_tool_routing_enabled"] = routing_defaults["enabled"]
+    if isinstance(agent_defaults.get("context_token_budget"), int):
+        overrides["agent_context_token_budget"] = agent_defaults["context_token_budget"]
+    if isinstance(agent_defaults.get("summary_every_n_turns"), int):
+        overrides["agent_summary_every_n_turns"] = agent_defaults["summary_every_n_turns"]
+    if isinstance(agent_defaults.get("context_keep_recent_turns"), int):
+        overrides["agent_context_keep_recent_turns"] = agent_defaults["context_keep_recent_turns"]
+    if isinstance(agent_defaults.get("tool_result_max_chars"), int):
+        overrides["agent_tool_result_max_chars"] = agent_defaults["tool_result_max_chars"]
+    if isinstance(agent_defaults.get("quality_min_score"), (int, float)):
+        overrides["agent_quality_min_score"] = float(agent_defaults["quality_min_score"])
+    if isinstance(agent_defaults.get("reflect_max_retries"), int):
+        overrides["agent_reflect_max_retries"] = agent_defaults["reflect_max_retries"]
     if isinstance(obs_defaults.get("otel_enabled"), bool):
         overrides["otel_enabled"] = obs_defaults["otel_enabled"]
     if isinstance(obs_defaults.get("otel_console_export"), bool):

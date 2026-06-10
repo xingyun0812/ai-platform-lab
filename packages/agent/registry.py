@@ -5,6 +5,8 @@ from packages.agent.tools.builtin import (
     handle_calc,
     handle_get_kb_snippet,
     handle_httpbin_delay,
+    handle_math_llm_stub,
+    handle_search_web_stub,
 )
 
 _REGISTRY: dict[str, ToolDefinition] | None = None
@@ -60,6 +62,30 @@ def build_default_registry() -> dict[str, ToolDefinition]:
             },
             handler=handle_httpbin_delay,
         ),
+        "search_web_stub": ToolDefinition(
+            name="search_web_stub",
+            description="在互联网搜索公开网页（When NOT：查企业内部知识库请用 get_kb_snippet）",
+            parameters_schema={
+                "type": "object",
+                "properties": {
+                    "query": {"type": "string", "description": "搜索关键词"},
+                },
+                "required": ["query"],
+            },
+            handler=handle_search_web_stub,
+        ),
+        "math_llm_stub": ToolDefinition(
+            name="math_llm_stub",
+            description="用 LLM 粗略估算数学问题（When NOT：精确计算请用 calc）",
+            parameters_schema={
+                "type": "object",
+                "properties": {
+                    "problem": {"type": "string", "description": "数学问题描述"},
+                },
+                "required": ["problem"],
+            },
+            handler=handle_math_llm_stub,
+        ),
     }
 
 
@@ -91,6 +117,20 @@ class ToolRegistry:
 
     def openai_tools_spec(self, allowed_tools: tuple[str, ...]) -> list[dict]:
         return [t.openai_tool_spec() for t in self.list_for_tenant(allowed_tools)]
+
+    def openai_tools_spec_subset(
+        self,
+        tool_names: tuple[str, ...],
+        allowed_tools: tuple[str, ...],
+    ) -> list[dict]:
+        specs: list[dict] = []
+        for name in tool_names:
+            if not self.is_allowed(name, allowed_tools):
+                continue
+            tool = self.get(name)
+            if tool:
+                specs.append(tool.openai_tool_spec())
+        return specs
 
     def is_allowed(self, name: str, allowed_tools: tuple[str, ...]) -> bool:
         if not allowed_tools:

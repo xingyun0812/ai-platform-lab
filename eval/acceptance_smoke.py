@@ -507,6 +507,208 @@ async def run_checks(*, with_llm: bool) -> list[Check]:
     except Exception as e:
         out.append(Check("W4", "demo-a 工具白名单", False, str(e)))
 
+    # Phase E1 agent eval 结构 + 轨迹评估逻辑
+    try:
+        from pathlib import Path
+
+        from eval.agent_run import evaluate_agent_case, validate_agent_baseline
+
+        repo = Path(__file__).resolve().parents[1]
+        ok, errors = validate_agent_baseline(repo / "eval" / "agent_baseline.jsonl")
+        out.append(Check("PE", "agent_baseline 格式", ok, "; ".join(errors[:3]) if errors else "5 cases"))
+
+        passed, reason, _ = evaluate_agent_case(
+            {
+                "expect_tools": ["calc"],
+                "forbid_tools": ["get_kb_snippet"],
+                "expect_first_tool": "calc",
+            },
+            status=200,
+            body={
+                "final_message": "40",
+                "tool_calls": [{"tool_name": "calc", "status": "success", "arguments": {}}],
+            },
+        )
+        out.append(Check("PE", "轨迹评估 calc 命中", passed, reason))
+
+        passed2, reason2, _ = evaluate_agent_case(
+            {"forbid_tools": ["calc"], "expect_no_tools": True},
+            status=200,
+            body={"final_message": "hi", "tool_calls": [{"tool_name": "calc", "status": "success"}]},
+        )
+        out.append(Check("PE", "轨迹评估 禁止工具", not passed2, reason2))
+
+        passed3, reason3, _ = evaluate_agent_case(
+            {"expect": "error", "expect_error_code": "AGENT_TOOL_FORBIDDEN"},
+            status=403,
+            body={"error": {"code": "AGENT_TOOL_FORBIDDEN", "message": "forbidden"}},
+        )
+        out.append(Check("PE", "轨迹评估 403 错误码", passed3, reason3))
+    except Exception as e:
+        out.append(Check("PE", "agent eval 逻辑", False, str(e)))
+
+    # Phase E2 tool routing
+    try:
+        from packages.agent.registry import ToolRegistry
+        from packages.agent.tool_router import select_tools_for_query
+
+        reg = ToolRegistry()
+        kb = select_tools_for_query(
+            "请查知识库 RAG 管道",
+            registry=reg,
+            allowed_tools=(),
+            routing_enabled=True,
+        )
+        ok_kb = "get_kb_snippet" in kb.tool_names and "search_web_stub" not in kb.tool_names
+        out.append(
+            Check(
+                "PE",
+                "Tool 路由 kb_query",
+                ok_kb,
+                f"tools={list(kb.tool_names)} intent={kb.intent}",
+            )
+        )
+        calc = select_tools_for_query(
+            "用 calc 计算 1+2",
+            registry=reg,
+            allowed_tools=(),
+            routing_enabled=True,
+        )
+        ok_calc = "calc" in calc.tool_names and "math_llm_stub" not in calc.tool_names
+        out.append(
+            Check(
+                "PE",
+                "Tool 路由 calc",
+                ok_calc,
+                f"tools={list(calc.tool_names)} intent={calc.intent}",
+            )
+        )
+    except Exception as e:
+        out.append(Check("PE", "Tool 路由", False, str(e)))
+
+    # Phase E3 context budget + session compact
+    try:
+        from packages.agent.context_budget import (
+            assemble_llm_messages,
+            maybe_compact_session,
+            truncate_tool_content,
+        )
+        from packages.agent.session import SessionStore
+        from packages.agent.session_state import SessionState, parse_session_raw, serialize_session
+
+        long_tool = "x" * 5000
+        trimmed, did = truncate_tool_content(long_tool, 2000)
+        out.append(Check("PE", "tool 结果截断", did and len(trimmed) < len(long_tool), f"len={len(trimmed)}"))
+
+        state = SessionState(
+            messages=[{"role": "user", "content": "a"}],
+            summary=None,
+            turn_count=6,
+        )
+        turns = []
+        for i in range(8):
+            turns.append({"role": "user", "content": f"turn-{i}"})
+            turns.append({"role": "assistant", "content": f"reply-{i}"})
+        compacted = maybe_compact_session(
+            SessionState(messages=turns, summary=None, turn_count=6),
+            every_n_turns=6,
+            keep_recent_turns=2,
+        )
+        out.append(
+            Check(
+                "PE",
+                "滚动摘要 compact",
+                len(compacted.messages) < len(turns) and compacted.summary,
+                f"msgs={len(compacted.messages)} summary={bool(compacted.summary)}",
+            )
+        )
+
+        assembled, meta = assemble_llm_messages(
+            SessionState(messages=[{"role": "user", "content": "y" * 20000}], summary="old"),
+            [{"role": "user", "content": "new"}],
+            budget=500,
+            keep_recent_turns=2,
+            tool_result_max_chars=1000,
+        )
+        out.append(
+            Check(
+                "PE",
+                "Token 预算裁剪",
+                meta.truncated_messages > 0 or meta.estimated_tokens <= 500,
+                f"tokens={meta.estimated_tokens} dropped={meta.truncated_messages}",
+            )
+        )
+
+        store = SessionStore()
+        store.save_session_state("t1", "s1", SessionState(messages=[{"role": "user", "content": "hi"}], turn_count=2))
+        loaded = store.get_session_state("t1", "s1")
+        out.append(Check("PE", "SessionState 读写", loaded.turn_count == 2, f"turns={loaded.turn_count}"))
+
+        roundtrip = parse_session_raw(json.loads(serialize_session(loaded)))
+        out.append(Check("PE", "Session 序列化", roundtrip.turn_count == 2, "ok"))
+    except Exception as e:
+        out.append(Check("PE", "context budget", False, str(e)))
+
+    # Phase E4 quality gate
+    try:
+        from packages.agent.quality_gate import assess_tool_output
+        from packages.agent.tool_envelope import failure_envelope, parse_tool_result, success_envelope
+
+        env = parse_tool_result(success_envelope({"result": 2}, quality_score=1.0))
+        out.append(Check("PE", "tool envelope 解析", env.ok and env.quality_score == 1.0, "ok"))
+
+        _, gate_low = assess_tool_output(
+            "get_kb_snippet",
+            success_envelope({"snippets": []}, quality_score=0.0),
+            min_score=0.3,
+        )
+        out.append(Check("PE", "KB 空结果 low_quality", gate_low == "low_quality", gate_low))
+
+        _, gate_fail = assess_tool_output(
+            "calc",
+            failure_envelope(error_code="ERR", message="bad"),
+            min_score=0.3,
+        )
+        out.append(Check("PE", "envelope failed", gate_fail == "failed", gate_fail))
+    except Exception as e:
+        out.append(Check("PE", "quality gate", False, str(e)))
+
+    # Phase E5 HITL + shadow
+    try:
+        from packages.agent.hitl import confirm_execution, create_pending_execution
+        from packages.agent.risk import tool_requires_hitl
+        from packages.agent.shadow import shadow_tool_record
+
+        out.append(Check("PE", "httpbin HITL", tool_requires_hitl("httpbin_delay"), "high risk"))
+
+        pending = create_pending_execution(
+            tenant_id="admin",
+            session_id="smoke-hitl",
+            tool_name="httpbin_delay",
+            arguments={"seconds": 1},
+        )
+        confirmed = confirm_execution(approval_id=pending.approval_id, reviewer="admin")
+        out.append(
+            Check(
+                "PE",
+                "HITL confirm",
+                confirmed.status.value == "confirmed",
+                confirmed.approval_id[:8],
+            )
+        )
+
+        payload, rec = shadow_tool_record(tool_name="calc", arguments={"expression": "1+1"})
+        out.append(
+            Check(
+                "PE",
+                "Shadow 工具记录",
+                rec.status == "success" and "shadow" in payload,
+                rec.tool_name,
+            )
+        )
+    except Exception as e:
+        out.append(Check("PE", "HITL/shadow", False, str(e)))
+
     # W6 model alias
     try:
         from apps.gateway.model_router import resolve_model_name

@@ -9,6 +9,7 @@ from fastapi import FastAPI, Header, HTTPException, Request, Response
 from fastapi.responses import JSONResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 
+from apps.gateway.agent.approval_routes import router as agent_approval_router
 from apps.gateway.agent.routes import router as agent_router
 from apps.gateway.audit_routes import router as audit_router
 from apps.gateway.billing_routes import router as billing_router
@@ -51,6 +52,7 @@ def create_app() -> FastAPI:
     app.include_router(rag_router)
     app.include_router(rag_query_router)
     app.include_router(agent_router)
+    app.include_router(agent_approval_router)
     app.include_router(audit_router)
     app.include_router(billing_router)
     app.include_router(platform_router)

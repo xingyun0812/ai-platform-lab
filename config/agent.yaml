@@ -4,3 +4,11 @@ tool_timeout_seconds: 10
 tool_max_retries: 1
 # 默认对话模型（省略时用 DEFAULT_MODEL）
 # agent_model: gpt-4o-mini
+
+# Phase E3 — 长上下文
+context_token_budget: 8000
+summary_every_n_turns: 6
+context_keep_recent_turns: 4
+tool_result_max_chars: 2000
+quality_min_score: 0.3
+reflect_max_retries: 2

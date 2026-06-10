@@ -234,6 +234,14 @@ ai-platform-lab/
 
 ---
 
+## 大厂实践对照（面试 / 上岗）
+
+按本仓库 **周次 + Phase** 整理的大厂 AI 中台 **SOP、设计方法、注意事项与踩坑**：
+
+→ [enterprise-ai-platform-sop.md](./enterprise-ai-platform-sop.md)（含 **§ Agent 效果进阶**：选工具准确性、长上下文，按 Phase E 规划对照）
+
+---
+
 ## 附录：技术选型锁定（避免中途换栈）
 
 | 类别       | 建议锁定（8 周内不改）        |

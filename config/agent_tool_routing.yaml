@@ -1,0 +1,42 @@
+# Phase E2：Agent 工具路由（意图关键词 + 可选 Tool-RAG）
+enabled: true
+strategy: intent  # intent | rag | both
+top_k: 5
+
+intents:
+  kb_query:
+    tools:
+      - get_kb_snippet
+    keywords:
+      - 知识库
+      - 检索
+      - 查询
+      - kb
+      - rag
+      - 文档
+      - 片段
+      - snippet
+      - 索引
+  calc:
+    tools:
+      - calc
+    keywords:
+      - 计算
+      - 算
+      - calc
+      - 加减
+      - 乘除
+      - 表达式
+      - 算术
+  network_test:
+    tools:
+      - httpbin_delay
+    keywords:
+      - 延迟
+      - delay
+      - httpbin
+      - 超时测试
+
+default_tools:
+  - calc
+  - get_kb_snippet

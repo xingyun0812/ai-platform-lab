@@ -123,6 +123,20 @@ C 文档：[phase-c-platform.md](./phase-c-platform.md)
 D 文档：[phase-d-ops.md](./phase-d-ops.md)  
 远期规划：[phase-d-future-evolution.md](./phase-d-future-evolution.md)
 
+### Phase E — Agent 效果深化 ✅
+
+> 炫技层：选工具准确性、长上下文、轨迹评测。按 Phase 对照见 [enterprise-ai-platform-sop.md § Agent 效果进阶](./enterprise-ai-platform-sop.md#agent-效果进阶选工具准确性--长上下文按-phase-对照)。
+
+| 波次 | Issue | 内容 |
+|------|-------|------|
+| E1 ✅ | [#24](https://github.com/xingyun0812/ai-platform-lab/issues/24) | Agent 轨迹评测：`expect_tools` + 轨迹指标 |
+| E2 ✅ | [#25](https://github.com/xingyun0812/ai-platform-lab/issues/25) | 意图路由 + Tool-RAG（Top-K 工具暴露） |
+| E3 ✅ | [#26](https://github.com/xingyun0812/ai-platform-lab/issues/26) | Session 滚动摘要 + Token 预算分配 |
+| E4 ✅ | [#27](https://github.com/xingyun0812/ai-platform-lab/issues/27) | 工具结果质量门 + 反思重规划（依赖 #25） |
+| E5 ✅ | [#28](https://github.com/xingyun0812/ai-platform-lab/issues/28) | HITL + Shadow Agent 发布 |
+
+E 文档：[phase-e-agent-quality.md](./phase-e-agent-quality.md)。建议 tag：`phase-e-agent-quality`。
+
 ---
 
 ## 非目标（本 repo 刻意不做）
@@ -145,3 +159,5 @@ D 文档：[phase-d-ops.md](./phase-d-ops.md)
 5. **诚实边界**：引用本文「已知限制」，说明下一阶段的 Redis/计费/Worker。
 
 详见 [architecture.md](./architecture.md) 与 [week6-hardening.md](./week6-hardening.md)。
+
+大厂 SOP / 踩坑对照（按周次与 Phase）：[enterprise-ai-platform-sop.md](./enterprise-ai-platform-sop.md)

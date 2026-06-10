@@ -4,6 +4,8 @@ import json
 import logging
 from typing import Any
 
+from packages.agent.session_state import SessionState, parse_session_raw, serialize_session
+
 logger = logging.getLogger("ai_platform.agent.session_redis")
 
 
@@ -18,16 +20,31 @@ class RedisSessionStore:
     def _key(self, tenant_id: str, session_id: str) -> str:
         return f"{self._prefix}{tenant_id}:{session_id}"
 
-    def get_messages(self, tenant_id: str, session_id: str) -> list[dict[str, Any]]:
+    def get_session_state(self, tenant_id: str, session_id: str) -> SessionState:
         raw = self._client.get(self._key(tenant_id, session_id))
         if not raw:
-            return []
+            return SessionState(messages=[])
         try:
             data = json.loads(raw)
-            return data if isinstance(data, list) else []
         except json.JSONDecodeError:
-            return []
+            return SessionState(messages=[])
+        return parse_session_raw(data)
+
+    def save_session_state(self, tenant_id: str, session_id: str, state: SessionState) -> None:
+        key = self._key(tenant_id, session_id)
+        self._client.setex(key, self._ttl, serialize_session(state))
+
+    def get_messages(self, tenant_id: str, session_id: str) -> list[dict[str, Any]]:
+        return self.get_session_state(tenant_id, session_id).messages
 
     def save_messages(self, tenant_id: str, session_id: str, messages: list[dict[str, Any]]) -> None:
-        key = self._key(tenant_id, session_id)
-        self._client.setex(key, self._ttl, json.dumps(messages, ensure_ascii=False))
+        prev = self.get_session_state(tenant_id, session_id)
+        self.save_session_state(
+            tenant_id,
+            session_id,
+            SessionState(
+                messages=list(messages),
+                summary=prev.summary,
+                turn_count=prev.turn_count,
+            ),
+        )

@@ -13,4 +13,6 @@ config/tenants.local.yaml
 data/rag/uploads/
 data/audit.db
 data/audit.db-*
+data/agent_approvals.json
 eval/runs/*.json
+eval/runs/agent/*.json

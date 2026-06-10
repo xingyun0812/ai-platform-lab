@@ -1,13 +1,13 @@
 from __future__ import annotations
 
 import ast
-import json
 import operator
 from typing import Any
 
 import httpx
 
 from apps.gateway.rag.pipeline import resolve_retrieve_version
+from packages.agent.tool_envelope import success_envelope
 from packages.rag.retrieval import retrieve_chunks
 
 _BIN_OPS: dict[type, Any] = {
@@ -41,7 +41,7 @@ async def handle_calc(arguments: dict[str, Any]) -> str:
     if not isinstance(expr, str) or not expr.strip():
         raise ValueError("缺少 expression")
     result = _safe_eval_expr(expr)
-    return json.dumps({"expression": expr, "result": result}, ensure_ascii=False)
+    return success_envelope({"expression": expr, "result": result}, quality_score=1.0)
 
 
 async def handle_get_kb_snippet(arguments: dict[str, Any]) -> str:
@@ -73,7 +73,11 @@ async def handle_get_kb_snippet(arguments: dict[str, Any]) -> str:
         }
         for c in chunks
     ]
-    return json.dumps({"query": query, "snippets": snippets}, ensure_ascii=False)
+    quality = max((float(c.score) for c in chunks), default=0.0) if chunks else 0.0
+    return success_envelope(
+        {"query": query, "snippets": snippets},
+        quality_score=quality,
+    )
 
 
 async def handle_httpbin_delay(arguments: dict[str, Any]) -> str:
@@ -86,5 +90,26 @@ async def handle_httpbin_delay(arguments: dict[str, Any]) -> str:
         r = await client.get(url)
         r.raise_for_status()
         body = r.json() if r.headers.get("content-type", "").startswith("application/json") else r.text[:500]
-    return json.dumps({"seconds": delay, "status": r.status_code, "body": body}, ensure_ascii=False)
+    return success_envelope(
+        {"seconds": delay, "status": r.status_code, "body": body},
+        quality_score=1.0,
+    )
+
+
+async def handle_search_web_stub(arguments: dict[str, Any]) -> str:
+    """Decoy：演示 Tool-RAG 应优先 get_kb_snippet 而非网页搜索。"""
+    query = arguments.get("query", "")
+    return success_envelope(
+        {"stub": True, "tool": "search_web_stub", "query": query, "results": []},
+        quality_score=0.2,
+    )
+
+
+async def handle_math_llm_stub(arguments: dict[str, Any]) -> str:
+    """Decoy：演示路由应优先 calc 而非 LLM 估算。"""
+    problem = arguments.get("problem", "")
+    return success_envelope(
+        {"stub": True, "tool": "math_llm_stub", "problem": problem, "estimate": None},
+        quality_score=0.2,
+    )
 

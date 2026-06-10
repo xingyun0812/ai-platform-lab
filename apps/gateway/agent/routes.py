@@ -38,6 +38,7 @@ async def agent_run(
     body: AgentRunRequest,
     x_tenant_id: Annotated[str | None, Header(alias="X-Tenant-Id")] = None,
     authorization: Annotated[str | None, Header()] = None,
+    x_agent_shadow: Annotated[str | None, Header(alias="X-Agent-Shadow")] = None,
 ) -> Any:
     tenants = load_tenants()
     tenant = _require_tenant(x_tenant_id, authorization, tenants)
@@ -59,7 +60,10 @@ async def agent_run(
     if not quota_tracker.has_quota(tenant.tenant_id, tenant.daily_request_quota):
         return json_error(429, "QUOTA_EXCEEDED", "租户日配额已用尽")
 
-    if not (settings.llm_api_key or "").strip():
+    if not body.approval_id and not body.messages:
+        return json_error(400, "INVALID_REQUEST", "messages 与 approval_id 不能同时为空")
+
+    if not body.approval_id and not (settings.llm_api_key or "").strip():
         return json_error(503, "UPSTREAM_NOT_CONFIGURED", "LLM_API_KEY 未配置")
 
     new_messages: list[dict[str, Any]] = [
@@ -96,8 +100,30 @@ async def agent_run(
                 session_store=get_session_store(),
                 token_budget_daily=tenant.token_budget_daily,
                 token_budget_monthly=tenant.token_budget_monthly,
+                shadow_mode=(x_agent_shadow or "").lower() == "true",
+                approval_id=body.approval_id,
             )
     except AgentRunError as e:
+        if e.code == "AGENT_PENDING_APPROVAL":
+            detail = e.detail or {}
+            return JSONResponse(
+                status_code=202,
+                content={
+                    "status": "pending_approval",
+                    "approval_id": detail.get("approval_id"),
+                    "tool_name": detail.get("tool_name"),
+                    "arguments": detail.get("arguments"),
+                    "tenant_id": tenant.tenant_id,
+                    "session_id": body.session_id.strip(),
+                    "final_message": "",
+                    "tool_calls": [],
+                    "steps": 0,
+                    "model": body.model or settings.default_model or settings.agent_model,
+                    "trace_id": None,
+                },
+            )
+        if e.code == "AGENT_APPROVAL_INVALID":
+            return json_error(422, e.code, e.message, detail=e.detail)
         if e.code == "AGENT_TOOL_FORBIDDEN":
             return json_error(403, e.code, e.message, detail=e.detail)
         if e.code in ("AGENT_MAX_STEPS", "MODEL_NOT_ALLOWED"):

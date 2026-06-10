@@ -19,7 +19,9 @@ jobs:
       - name: Ruff
         run: ruff check .
       - name: Validate baseline JSONL
-        run: python eval/run.py validate-baseline
+        run: |
+          python eval/run.py validate-baseline
+          python eval/agent_run.py validate-baseline
 
   smoke:
     runs-on: ubuntu-latest
