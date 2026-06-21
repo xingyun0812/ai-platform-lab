@@ -1,6 +1,9 @@
 # ai-platform-lab
 
-最小 **AI 中台** 实验仓库（与 [《AI中台学习执行手册》](docs/AI中台学习执行手册.md) 配套）。当前完成 **第 1～6 周** + **Phase A 可内测**：Gateway、RAG、Agent、观测评测、硬化，以及 Redis 共享状态、Worker 队列、SQLite 审计、CI 门禁。
+最小 **AI 中台** 实验仓库（与 [《AI中台学习执行手册》](docs/AI中台学习执行手册.md) 配套）。当前完成 **Phase A-K 全部能力**：模型网关、RAG、Agent、观测评测、硬化、Prompt 版本化、长记忆、MCP、上下文压缩、语义缓存、Embedding 服务、控制流编排、Multi-Agent、HITL、沙箱、分级审计、PII 脱敏、OAuth2/mTLS、Python SDK、Console V2、评测 Pipeline、反馈飞轮、对象存储、K8s Helm、多 AZ、GPU 调度。
+
+> 📊 **当前状态**：484 单测全通过 · 13 个 Phase Tag · 8 个 GitHub Issue 全部关闭
+> 📋 **完整状态报告**：[docs/PROJECT_STATUS.md](docs/PROJECT_STATUS.md)
 
 ## 15 分钟快速跑通
 
