@@ -30,5 +30,11 @@ data/tool_classifications_overrides.json
 data/pii_patterns_overrides.json
 data/audit_actions.db
 data/hitl.db
+data/storage/
+eval/reports/
+console-v2/node_modules/
+console-v2/dist/
+sdk/python/build/
+*.egg-info/
 eval/runs/*.json
 eval/runs/agent/*.json

@@ -1,0 +1,124 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "ai-platform-lab.fullname" . }}-gateway
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "ai-platform-lab.labels" . | nindent 4 }}
+    app.kubernetes.io/component: gateway
+spec:
+  replicas: {{ .Values.gateway.replicas }}
+  selector:
+    matchLabels:
+      {{- include "ai-platform-lab.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: gateway
+  template:
+    metadata:
+      labels:
+        {{- include "ai-platform-lab.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: gateway
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
+    spec:
+      {{- include "ai-platform-lab.imagePullSecrets" . | nindent 6 }}
+      serviceAccountName: {{ include "ai-platform-lab.gateway-serviceAccountName" . }}
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+      containers:
+        - name: gateway
+          image: {{ include "ai-platform-lab.gateway-image" . }}
+          imagePullPolicy: {{ .Values.gateway.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.gateway.service.targetPort }}
+              protocol: TCP
+          env:
+            - name: LLM_API_KEY
+              {{- if .Values.secrets.llmApiKeySecretRef.name }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secrets.llmApiKeySecretRef.name }}
+                  key: {{ .Values.secrets.llmApiKeySecretRef.key }}
+              {{- else }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "ai-platform-lab.fullname" . }}-secrets
+                  key: llm-api-key
+              {{- end }}
+            - name: REDIS_PASSWORD
+              {{- if .Values.redis.auth.existingSecret }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.redis.auth.existingSecret }}
+                  key: {{ .Values.redis.auth.existingSecretPasswordKey }}
+              {{- else }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "ai-platform-lab.fullname" . }}-secrets
+                  key: redis-password
+              {{- end }}
+            - name: POSTGRES_PASSWORD
+              {{- if .Values.postgres.auth.existingSecret }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.postgres.auth.existingSecret }}
+                  key: {{ .Values.postgres.auth.existingSecretPasswordKey }}
+              {{- else }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "ai-platform-lab.fullname" . }}-secrets
+                  key: postgres-password
+              {{- end }}
+            - name: JWT_SECRET
+              {{- if .Values.secrets.jwtSecretRef.name }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secrets.jwtSecretRef.name }}
+                  key: {{ .Values.secrets.jwtSecretRef.key }}
+              {{- else }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "ai-platform-lab.fullname" . }}-secrets
+                  key: jwt-secret
+              {{- end }}
+            - name: TIER
+              value: "gateway"
+            {{- with .Values.gateway.env }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          envFrom:
+            - configMapRef:
+                name: {{ include "ai-platform-lab.fullname" . }}-config
+          readinessProbe:
+            {{- toYaml .Values.gateway.readinessProbe | nindent 12 }}
+          livenessProbe:
+            {{- toYaml .Values.gateway.livenessProbe | nindent 12 }}
+          resources:
+            {{- toYaml .Values.gateway.resources | nindent 12 }}
+          volumeMounts:
+            - name: data
+              mountPath: /app/data
+            {{- with .Values.gateway.volumeMounts }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+      volumes:
+        - name: data
+          emptyDir: {}
+        {{- with .Values.gateway.volumes }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      {{- with .Values.gateway.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.gateway.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.gateway.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

@@ -359,6 +359,62 @@ curl -s -X POST http://127.0.0.1:8000/internal/agents/rag_specialist/delegate \
 
 详见 [docs/phase-i-auth.md](docs/phase-i-auth.md)。
 
+## Phase J — Python SDK（#29）
+
+- **OpenAI SDK 风格**：`client.chat.completions.create(...)`
+- **6 个资源类**：chat / rag / agent / embedding / memory / orchestrator
+- **同步 + 异步**：`Client` + `AsyncClient`
+- **类型注解完整**：py.typed marker
+- **独立包**：`pip install -e sdk/python`
+
+```python
+from ai_platform_lab import Client
+c = Client("http://localhost:8000", api_key="sk-...")
+r = c.chat.completions.create(model="gpt-4o-mini", messages=[{"role":"user","content":"hi"}])
+```
+
+详见 [docs/phase-j-python-sdk.md](docs/phase-j-python-sdk.md)。
+
+## Phase J — Console V2（#30）
+
+- **React + Vite + TypeScript**：替换 HTML stub
+- **8 个页面**：Dashboard / Tenants / Agents / RAG / Memory / Orchestrator / Audit / Settings
+- **Ant Design 5**：企业级 UI 组件
+- **JWT 登录**：token 存 localStorage
+- **构建产物**：`apps/console/static/`，由 FastAPI 托管
+
+详见 [docs/phase-j-console-v2.md](docs/phase-j-console-v2.md)。
+
+## Phase J — 评测 Pipeline（#31）
+
+- **三类基准**：RAG ≥100 / Agent ≥50 / Safety ≥50（共 ≥200 条）
+- **CI 评测门禁**：PR 时自动跑，回退 >5% 则 block
+- **双格式报告**：Markdown + JSON
+- **无 LLM 降级**：无 `EVAL_API_KEY` 时跳过 live 用例
+- **CLI**：`python eval/run.py run-eval` + `gate`
+
+详见 [docs/phase-j-eval-pipeline.md](docs/phase-j-eval-pipeline.md)。
+
+## Phase K — 对象存储接入（#33）
+
+- **3 种后端**：`local`（回退）/ `s3`（boto3）/ `oss`（oss2）
+- **统一接口**：`StorageBackend` ABC — put/get/delete/list/exists
+- **预签名 URL**：S3/OSS 支持临时下载链接
+- **REST API**：`POST /internal/storage/upload` + 下载 + 列表
+- **配置切换**：`STORAGE_BACKEND=local|s3|oss`
+
+详见 [docs/phase-k-object-storage.md](docs/phase-k-object-storage.md)。
+
+## Phase K — K8s Helm Chart（#34）
+
+- **一键部署**：`helm install ai-platform-lab deploy/helm/ai-platform-lab/`
+- **5 个服务**：Gateway / Worker / Qdrant / Redis / Postgres
+- **HPA 自动伸缩**：Gateway 2-10 / Worker 1-5（CPU 70%/80%）
+- **Ingress + TLS**：可选 cert-manager
+- **生产配置**：`values-prod.yaml`（3 replicas + 50Gi + 外部 DB）
+
+详见 [docs/phase-k-helm.md](docs/phase-k-helm.md)。
+
 ## 文档与代码导读
 
 | 周次 | 接口 / 演示 | 构建思路与代码导读 |
@@ -380,6 +436,9 @@ curl -s -X POST http://127.0.0.1:8000/internal/agents/rag_specialist/delegate \
 | Phase H Agent 生命周期 | [phase-h-agent-lifecycle.md](docs/phase-h-agent-lifecycle.md) | [phase-h-hitl.md](docs/phase-h-hitl.md) |
 | Phase I 安全合规 | [phase-i-sandbox.md](docs/phase-i-sandbox.md) | [phase-i-audit-actions.md](docs/phase-i-audit-actions.md) |
 | Phase I PII + 鉴权 | [phase-i-pii.md](docs/phase-i-pii.md) | [phase-i-auth.md](docs/phase-i-auth.md) |
+| Phase J SDK + Console | [phase-j-python-sdk.md](docs/phase-j-python-sdk.md) | [phase-j-console-v2.md](docs/phase-j-console-v2.md) |
+| Phase J 评测 + 存储 | [phase-j-eval-pipeline.md](docs/phase-j-eval-pipeline.md) | [phase-k-object-storage.md](docs/phase-k-object-storage.md) |
+| Phase K Helm | [phase-k-helm.md](docs/phase-k-helm.md) | — |
 | 大厂 SOP 对照 | [enterprise-ai-platform-sop.md](docs/enterprise-ai-platform-sop.md) | 按周次/Phase 的踩坑与 SOP |
 | 第 1 周 Gateway | [week1-gateway.md](docs/week1-gateway.md) | [gateway-build-and-code-guide.md](docs/gateway-build-and-code-guide.md) |
 | 第 2 周 RAG 管道 | [week2-rag-pipeline.md](docs/week2-rag-pipeline.md) | [rag-build-and-code-guide.md](docs/rag-build-and-code-guide.md) |

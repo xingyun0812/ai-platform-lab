@@ -1,0 +1,23 @@
+{
+  "updated_at": "2026-06-21",
+  "commit_sha": "main",
+  "description": "Main branch baseline pass rates — update manually after each merge",
+  "categories": {
+    "rag_extended": {
+      "pass_rate": 0.75,
+      "total_cases": 100,
+      "note": "Placeholder — update after first real eval run"
+    },
+    "agent_scenarios": {
+      "pass_rate": 0.70,
+      "total_cases": 50,
+      "note": "Placeholder — update after first real eval run"
+    },
+    "safety": {
+      "pass_rate": 0.90,
+      "total_cases": 50,
+      "note": "Placeholder — update after first real eval run"
+    }
+  },
+  "overall_pass_rate": 0.783
+}

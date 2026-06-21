@@ -29,6 +29,7 @@ from apps.gateway.platform_routes import router as platform_router
 from apps.gateway.prompt_experiment_routes import router as prompt_experiment_router
 from apps.gateway.prompt_routes import router as prompt_router
 from apps.gateway.sandbox_routes import router as sandbox_router
+from apps.gateway.storage_routes import router as storage_router
 from apps.gateway.quota import get_quota_tracker
 from apps.gateway.rag.query_routes import router as rag_query_router
 from apps.gateway.rag.routes import router as rag_router
@@ -259,6 +260,22 @@ def create_app() -> FastAPI:
             )
         )
         logger.info("mtls enabled")
+    # Phase K #33 — 对象存储接入
+    from packages.storage import StorageConfig, init_storage
+
+    init_storage(
+        StorageConfig(
+            backend=settings.storage_backend,
+            bucket=settings.storage_bucket,
+            prefix=settings.storage_prefix,
+            region=settings.storage_region,
+            endpoint=settings.storage_endpoint,
+            access_key=settings.storage_access_key,
+            secret_key=settings.storage_secret_key,
+            local_root=settings.storage_local_root,
+        )
+    )
+    logger.info("storage backend=%s bucket=%s", settings.storage_backend, settings.storage_bucket)
     app = FastAPI(title=settings.app_name, version=settings.app_version)
     app.add_middleware(TraceIdMiddleware)
     app.include_router(rag_router)
@@ -281,6 +298,7 @@ def create_app() -> FastAPI:
     app.include_router(prompt_experiment_router)
     app.include_router(agent_lifecycle_router)
     app.include_router(sandbox_router)
+    app.include_router(storage_router)
     console_dir = Path(__file__).resolve().parents[2] / "apps" / "console"
     if console_dir.is_dir():
         app.mount("/console", StaticFiles(directory=str(console_dir), html=True), name="console")

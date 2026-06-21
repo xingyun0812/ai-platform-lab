@@ -142,14 +142,14 @@
 > **目标**：让外部开发者可以真正使用这个平台。
 > **GitHub Issues**: [#29](https://github.com/xingyun0812/ai-platform-lab/issues/29) · [#30](https://github.com/xingyun0812/ai-platform-lab/issues/30) · [#31](https://github.com/xingyun0812/ai-platform-lab/issues/31) · [#32](https://github.com/xingyun0812/ai-platform-lab/issues/32)
 
-| Issue | 内容 | 依赖 | 工期 |
-|-------|------|------|------|
-| #45 (GH #29) | **Python SDK**：封装 Gateway/Agent/RAG API，参考 OpenAI SDK 风格 | — | 3w |
-| #46 (GH #30) | **Console V2**：真正的管理 UI（React），替换 HTML stub | — | 4w |
-| #47 (GH #31) | **评测数据集 + 离线 Pipeline**：基准数据集扩充 + CI 评测门禁 | — | 2w |
-| #48 (GH #32) | **在线质量监控 + 反馈飞轮**：实时 Bad Case 捕获 → Eval → Prompt 迭代 | #46 + #47 | 3w |
+| Issue | 内容 | 依赖 | 工期 | 状态 |
+|-------|------|------|------|------|
+| #45 (GH #29) ✅ | **Python SDK**：封装 Gateway/Agent/RAG API，参考 OpenAI SDK 风格 | — | 3w | 完成 |
+| #46 (GH #30) ✅ | **Console V2**：真正的管理 UI（React），替换 HTML stub | — | 4w | 完成 |
+| #47 (GH #31) ✅ | **评测数据集 + 离线 Pipeline**：基准数据集扩充 + CI 评测门禁 | — | 2w | 完成 |
+| #48 (GH #32) ⏳ | **在线质量监控 + 反馈飞轮**：实时 Bad Case 捕获 → Eval → Prompt 迭代 | #30 + #31 | 3w | 依赖就绪，待启动 |
 
-文档：[phase-j-python-sdk.md](./phase-j-python-sdk.md)（待创建）
+文档：[phase-j-python-sdk.md](./phase-j-python-sdk.md) · [phase-j-console-v2.md](./phase-j-console-v2.md) · [phase-j-eval-pipeline.md](./phase-j-eval-pipeline.md)
 
 ---
 
@@ -158,12 +158,12 @@
 > **目标**：云原生化，支撑真实生产流量。
 > **GitHub Issues**: [#33](https://github.com/xingyun0812/ai-platform-lab/issues/33) · [#34](https://github.com/xingyun0812/ai-platform-lab/issues/34) · [#35](https://github.com/xingyun0812/ai-platform-lab/issues/35) · [#36](https://github.com/xingyun0812/ai-platform-lab/issues/36)
 
-| Issue | 内容 | 依赖 | 工期 |
-|-------|------|------|------|
-| #49 (GH #33) | **对象存储接入**：S3/OSS 集成，替换本地文件存储 | — | 1w |
-| #50 (GH #34) | **K8s Helm Chart**：Gateway/Worker/Qdrant Chart + HPA | — | 4w |
-| #51 (GH #35) | **多 AZ 高可用**：跨 AZ 部署 + Qdrant 副本 + Redis Sentinel | #50 | 3w |
-| #52 (GH #36) | **GPU 弹性调度**：Embedding/Rerank 服务 GPU 节点 + 自动伸缩 | #50 | 3w |
+| Issue | 内容 | 依赖 | 工期 | 状态 |
+|-------|------|------|------|------|
+| #49 (GH #33) ✅ | **对象存储接入**：S3/OSS 集成，替换本地文件存储 | — | 1w | 完成 |
+| #50 (GH #34) ✅ | **K8s Helm Chart**：Gateway/Worker/Qdrant Chart + HPA | — | 4w | 完成 |
+| #51 (GH #35) ⏳ | **多 AZ 高可用**：跨 AZ 部署 + Qdrant 副本 + Redis Sentinel | #34 | 3w | 依赖就绪，待启动 |
+| #52 (GH #36) ⏳ | **GPU 弹性调度**：Embedding/Rerank 服务 GPU 节点 + 自动伸缩 | #34 | 3w | 依赖就绪，待启动 |
 
 ---
 

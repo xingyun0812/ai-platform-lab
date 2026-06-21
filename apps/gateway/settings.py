@@ -614,6 +614,80 @@ class Settings(BaseSettings):
         validation_alias="MTLS_CLIENT_CERT_REQUIRED",
     )
 
+    # Phase K #33 — 对象存储接入
+    storage_backend: str = Field(
+        default="local",
+        validation_alias="STORAGE_BACKEND",
+        description="存储后端: local|s3|oss",
+    )
+    storage_bucket: str = Field(
+        default="ai-platform-lab",
+        validation_alias="STORAGE_BUCKET",
+        description="存储桶名",
+    )
+    storage_prefix: str = Field(
+        default="",
+        validation_alias="STORAGE_PREFIX",
+        description="对象 key 前缀",
+    )
+    storage_region: str = Field(
+        default="us-east-1",
+        validation_alias="STORAGE_REGION",
+        description="S3 区域",
+    )
+    storage_endpoint: str | None = Field(
+        default=None,
+        validation_alias="STORAGE_ENDPOINT",
+        description="自定义 endpoint（OSS/MinIO）",
+    )
+    storage_access_key: str | None = Field(
+        default=None,
+        validation_alias="STORAGE_ACCESS_KEY",
+        description="访问密钥 ID",
+    )
+    storage_secret_key: str | None = Field(
+        default=None,
+        validation_alias="STORAGE_SECRET_KEY",
+        description="访问密钥 Secret",
+    )
+    storage_local_root: Path = Field(
+        default=REPO_ROOT / "data" / "storage",
+        validation_alias="STORAGE_LOCAL_ROOT",
+        description="local 后端根目录",
+    )
+    storage_presign_expiry_seconds: int = Field(
+        default=3600,
+        validation_alias="STORAGE_PRESIGN_EXPIRY_SECONDS",
+        description="预签名 URL 有效期（秒）",
+    )
+
+    # Phase J #31 — 评测 Pipeline
+    eval_pipeline_enabled: bool = Field(
+        default=True,
+        validation_alias="EVAL_PIPELINE_ENABLED",
+        description="启用评测 Pipeline",
+    )
+    eval_gateway_url: str = Field(
+        default="http://127.0.0.1:8000",
+        validation_alias="EVAL_GATEWAY_URL",
+        description="评测调用的 gateway URL",
+    )
+    eval_api_key: str | None = Field(
+        default=None,
+        validation_alias="EVAL_API_KEY",
+        description="评测用 API key（无则跳过 live 用例）",
+    )
+    eval_gate_threshold_pct: float = Field(
+        default=5.0,
+        validation_alias="EVAL_GATE_THRESHOLD_PCT",
+        description="门禁阈值：相对 main 回退超过此百分比则 fail",
+    )
+    eval_baseline_path: Path = Field(
+        default=REPO_ROOT / "eval" / "baselines" / "main_baseline.json",
+        validation_alias="EVAL_BASELINE_PATH",
+        description="main 分支基线路径",
+    )
+
 
 def _load_yaml_defaults(path: Path) -> dict[str, Any]:
     if not path.is_file():

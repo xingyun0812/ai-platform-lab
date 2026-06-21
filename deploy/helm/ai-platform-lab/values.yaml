@@ -1,0 +1,347 @@
+# ============================================================
+# Global settings
+# ============================================================
+global:
+  imageRegistry: ""
+  imagePullSecrets: []
+  # Common labels applied to all resources
+  commonLabels: {}
+  # Common annotations applied to all resources
+  commonAnnotations: {}
+
+# ============================================================
+# Gateway (FastAPI service)
+# ============================================================
+gateway:
+  image:
+    repository: ai-platform-lab/gateway
+    tag: "latest"
+    pullPolicy: IfNotPresent
+
+  replicas: 2
+
+  resources:
+    requests:
+      cpu: "250m"
+      memory: "512Mi"
+    limits:
+      cpu: "1000m"
+      memory: "2Gi"
+
+  # Extra environment variables (non-sensitive)
+  env: []
+  # - name: EXTRA_VAR
+  #   value: "value"
+
+  service:
+    type: ClusterIP
+    port: 8000
+    targetPort: 8000
+    annotations: {}
+
+  # Ingress for gateway
+  ingress:
+    enabled: false
+    className: "nginx"
+    annotations: {}
+    hosts:
+      - host: ai-platform-lab.local
+        paths:
+          - path: /
+            pathType: Prefix
+    tls: []
+    # - secretName: ai-platform-lab-tls
+    #   hosts:
+    #     - ai-platform-lab.local
+
+  # Readiness probe
+  readinessProbe:
+    httpGet:
+      path: /healthz
+      port: 8000
+    initialDelaySeconds: 10
+    periodSeconds: 10
+    failureThreshold: 3
+
+  # Liveness probe
+  livenessProbe:
+    httpGet:
+      path: /healthz
+      port: 8000
+    initialDelaySeconds: 30
+    periodSeconds: 30
+    failureThreshold: 5
+
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+  # Volume mounts for data persistence
+  volumeMounts: []
+  volumes: []
+
+  serviceAccount:
+    create: true
+    name: ""
+    annotations: {}
+
+# ============================================================
+# Worker (background task processor)
+# ============================================================
+worker:
+  image:
+    repository: ai-platform-lab/gateway
+    tag: "latest"
+    pullPolicy: IfNotPresent
+
+  replicas: 1
+
+  resources:
+    requests:
+      cpu: "250m"
+      memory: "512Mi"
+    limits:
+      cpu: "1000m"
+      memory: "2Gi"
+
+  # Extra environment variables
+  env:
+    - name: TIER
+      value: "worker"
+
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+  serviceAccount:
+    create: true
+    name: ""
+    annotations: {}
+
+# ============================================================
+# Qdrant (vector database)
+# ============================================================
+qdrant:
+  enabled: true
+
+  image:
+    repository: qdrant/qdrant
+    tag: "v1.8.0"
+    pullPolicy: IfNotPresent
+
+  replicas: 1
+
+  resources:
+    requests:
+      cpu: "500m"
+      memory: "1Gi"
+    limits:
+      cpu: "2000m"
+      memory: "4Gi"
+
+  persistence:
+    enabled: true
+    storageClass: ""
+    size: 10Gi
+    accessMode: ReadWriteOnce
+
+  service:
+    type: ClusterIP
+    httpPort: 6333
+    grpcPort: 6334
+
+  # External Qdrant (disables built-in StatefulSet)
+  external:
+    url: ""
+
+  autoscaling:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 3
+    targetCPUUtilizationPercentage: 70
+
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+# ============================================================
+# Redis
+# ============================================================
+redis:
+  enabled: true
+
+  image:
+    repository: redis
+    tag: "7.2-alpine"
+    pullPolicy: IfNotPresent
+
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "256Mi"
+    limits:
+      cpu: "500m"
+      memory: "1Gi"
+
+  persistence:
+    enabled: true
+    storageClass: ""
+    size: 5Gi
+    accessMode: ReadWriteOnce
+
+  service:
+    type: ClusterIP
+    port: 6379
+
+  # Password — use secret ref (recommended) or inline (insecure)
+  auth:
+    enabled: false
+    password: ""
+    existingSecret: ""
+    existingSecretPasswordKey: "redis-password"
+
+  # External Redis (disables built-in Deployment)
+  external:
+    url: ""
+
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+# ============================================================
+# PostgreSQL
+# ============================================================
+postgres:
+  enabled: true
+
+  image:
+    repository: postgres
+    tag: "16-alpine"
+    pullPolicy: IfNotPresent
+
+  resources:
+    requests:
+      cpu: "250m"
+      memory: "512Mi"
+    limits:
+      cpu: "1000m"
+      memory: "2Gi"
+
+  persistence:
+    enabled: true
+    storageClass: ""
+    size: 10Gi
+    accessMode: ReadWriteOnce
+
+  service:
+    type: ClusterIP
+    port: 5432
+
+  auth:
+    database: "aiplatform"
+    username: "aiplatform"
+    password: "changeme"
+    existingSecret: ""
+    existingSecretPasswordKey: "postgres-password"
+
+  # External Postgres (disables built-in StatefulSet)
+  external:
+    url: ""
+
+  # Init SQL scripts (mounted as configmap)
+  initScripts: {}
+  # create_tables.sql: |
+  #   CREATE TABLE IF NOT EXISTS ...
+
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+# ============================================================
+# Ingress (top-level, shared)
+# ============================================================
+ingress:
+  enabled: false
+  className: "nginx"
+  annotations: {}
+  # kubernetes.io/ingress.class: nginx
+  # cert-manager.io/cluster-issuer: letsencrypt-prod
+  hosts:
+    - host: ai-platform-lab.local
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+  # - secretName: ai-platform-lab-tls
+  #   hosts:
+  #     - ai-platform-lab.example.com
+
+# ============================================================
+# HPA — Horizontal Pod Autoscaler
+# ============================================================
+hpa:
+  gateway:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: ""
+
+  worker:
+    enabled: true
+    minReplicas: 1
+    maxReplicas: 5
+    targetCPUUtilizationPercentage: 80
+    targetMemoryUtilizationPercentage: ""
+
+# ============================================================
+# Application config (injected as ConfigMap env vars)
+# ============================================================
+config:
+  LOG_LEVEL: "INFO"
+  DEFAULT_MODEL: "gpt-4o-mini"
+  MAX_TOKENS: "4096"
+  ENABLE_CACHE: "true"
+  CACHE_TTL_SECONDS: "300"
+  VECTOR_STORE_TYPE: "qdrant"
+  EMBEDDING_MODEL: "text-embedding-ada-002"
+  ENABLE_AUDIT: "true"
+  CORS_ORIGINS: "*"
+  API_VERSION: "v1"
+
+# ============================================================
+# Secrets (sensitive values — prefer secretKeyRef in production)
+# ============================================================
+secrets:
+  # LLM API key
+  llmApiKey: ""
+  llmApiKeySecretRef:
+    name: ""
+    key: "llm-api-key"
+
+  # Redis password (overrides redis.auth.password)
+  redisPassword: ""
+  redisPasswordSecretRef:
+    name: ""
+    key: "redis-password"
+
+  # Postgres password (overrides postgres.auth.password)
+  postgresPassword: ""
+  postgresPasswordSecretRef:
+    name: ""
+    key: "postgres-password"
+
+  # JWT secret for auth
+  jwtSecret: ""
+  jwtSecretRef:
+    name: ""
+    key: "jwt-secret"
+
+# ============================================================
+# Node selectors, tolerations, affinity (global defaults)
+# ============================================================
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}

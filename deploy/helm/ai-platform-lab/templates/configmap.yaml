@@ -1,0 +1,26 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "ai-platform-lab.fullname" . }}-config
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "ai-platform-lab.labels" . | nindent 4 }}
+data:
+  {{- range $key, $value := .Values.config }}
+  {{ $key }}: {{ $value | quote }}
+  {{- end }}
+  {{- if .Values.qdrant.enabled }}
+  QDRANT_URL: "http://{{ include "ai-platform-lab.fullname" . }}-qdrant:{{ .Values.qdrant.service.httpPort }}"
+  {{- else if .Values.qdrant.external.url }}
+  QDRANT_URL: {{ .Values.qdrant.external.url | quote }}
+  {{- end }}
+  {{- if .Values.redis.enabled }}
+  REDIS_URL: "redis://{{ include "ai-platform-lab.fullname" . }}-redis:{{ .Values.redis.service.port }}"
+  {{- else if .Values.redis.external.url }}
+  REDIS_URL: {{ .Values.redis.external.url | quote }}
+  {{- end }}
+  {{- if .Values.postgres.enabled }}
+  POSTGRES_URL: "postgresql://{{ .Values.postgres.auth.username }}:$(POSTGRES_PASSWORD)@{{ include "ai-platform-lab.fullname" . }}-postgres:{{ .Values.postgres.service.port }}/{{ .Values.postgres.auth.database }}"
+  {{- else if .Values.postgres.external.url }}
+  POSTGRES_URL: {{ .Values.postgres.external.url | quote }}
+  {{- end }}

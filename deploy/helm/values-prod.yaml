@@ -1,0 +1,129 @@
+# =============================================================
+# Production override values for ai-platform-lab Helm chart
+# Usage: helm upgrade --install ai-platform-lab deploy/helm/ai-platform-lab/ -f deploy/helm/values-prod.yaml
+# =============================================================
+
+global:
+  imageRegistry: "your-registry.example.com"
+  imagePullSecrets:
+    - name: registry-credentials
+
+gateway:
+  image:
+    repository: ai-platform-lab/gateway
+    tag: "v1.0.0"
+    pullPolicy: Always
+  replicas: 3
+  resources:
+    requests:
+      cpu: "500m"
+      memory: "1Gi"
+    limits:
+      cpu: "2000m"
+      memory: "4Gi"
+
+worker:
+  image:
+    repository: ai-platform-lab/gateway
+    tag: "v1.0.0"
+    pullPolicy: Always
+  replicas: 2
+  resources:
+    requests:
+      cpu: "500m"
+      memory: "1Gi"
+    limits:
+      cpu: "2000m"
+      memory: "4Gi"
+
+# Use external Qdrant cluster
+qdrant:
+  enabled: false
+  external:
+    url: "http://qdrant-cluster.internal:6333"
+  persistence:
+    size: 50Gi
+
+# Use external Redis cluster (e.g., ElastiCache, Redis Cloud)
+redis:
+  enabled: false
+  external:
+    url: "redis://redis-cluster.internal:6379"
+
+# Use external Postgres (e.g., RDS, Cloud SQL)
+postgres:
+  enabled: false
+  external:
+    url: "postgresql://aiplatform:${POSTGRES_PASSWORD}@postgres-cluster.internal:5432/aiplatform"
+
+# Production ingress with TLS
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/proxy-body-size: "50m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
+  hosts:
+    - host: api.ai-platform.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: ai-platform-lab-tls
+      hosts:
+        - api.ai-platform.example.com
+
+# Production HPA — scale higher
+hpa:
+  gateway:
+    enabled: true
+    minReplicas: 3
+    maxReplicas: 20
+    targetCPUUtilizationPercentage: 70
+  worker:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 80
+
+# Sensitive values — use Kubernetes External Secrets or Vault in production
+# DO NOT commit real secrets to version control
+secrets:
+  llmApiKeySecretRef:
+    name: "ai-platform-lab-external-secrets"
+    key: "llm-api-key"
+  redisPasswordSecretRef:
+    name: "ai-platform-lab-external-secrets"
+    key: "redis-password"
+  postgresPasswordSecretRef:
+    name: "ai-platform-lab-external-secrets"
+    key: "postgres-password"
+  jwtSecretRef:
+    name: "ai-platform-lab-external-secrets"
+    key: "jwt-secret"
+
+# Production config
+config:
+  LOG_LEVEL: "WARNING"
+  DEFAULT_MODEL: "gpt-4o"
+  MAX_TOKENS: "8192"
+  ENABLE_CACHE: "true"
+  CACHE_TTL_SECONDS: "600"
+  VECTOR_STORE_TYPE: "qdrant"
+  EMBEDDING_MODEL: "text-embedding-3-large"
+  ENABLE_AUDIT: "true"
+  CORS_ORIGINS: "https://app.ai-platform.example.com"
+  API_VERSION: "v1"
+
+# Node affinity — schedule on AI/GPU nodes if available
+gateway:
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          podAffinityTerm:
+            labelSelector:
+              matchLabels:
+                app.kubernetes.io/component: gateway
+            topologyKey: kubernetes.io/hostname

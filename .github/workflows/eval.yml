@@ -1,0 +1,75 @@
+name: Eval Gate
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  eval-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -e ".[dev]"
+
+      - name: Validate extended baselines
+        run: |
+          python -c "
+          import json, sys
+          from pathlib import Path
+          errors = []
+          for f in Path('eval/baselines').glob('*.jsonl'):
+              for i, line in enumerate(f.read_text().splitlines(), 1):
+                  line = line.strip()
+                  if not line:
+                      continue
+                  try:
+                      json.loads(line)
+                  except Exception as e:
+                      errors.append(f'{f.name}:{i}: {e}')
+          if errors:
+              print('JSONL validation errors:')
+              for e in errors:
+                  print(e)
+              sys.exit(1)
+          total = sum(
+              sum(1 for l in Path(f).read_text().splitlines() if l.strip())
+              for f in Path('eval/baselines').glob('*.jsonl')
+          )
+          print(f'Total baseline cases: {total}')
+          assert total >= 200, f'Expected >= 200 cases, got {total}'
+          print('Baseline validation passed')
+          "
+
+      - name: Run eval pipeline (no live calls)
+        env:
+          EVAL_GATEWAY_URL: http://127.0.0.1:8000
+          # EVAL_API_KEY not set — all live cases will be skipped
+        run: |
+          python eval/run.py run-eval \
+            --categories rag_extended,agent_scenarios,safety \
+            --sample-limit 20
+
+      - name: Run CI gate check
+        env:
+          EVAL_GATEWAY_URL: http://127.0.0.1:8000
+          # EVAL_API_KEY not set — skipped cases do not count toward regression
+        run: |
+          python eval/run.py gate \
+            --threshold 5 \
+            --baseline-path eval/baselines/main_baseline.json \
+            --categories rag_extended,agent_scenarios,safety \
+            --sample-limit 20
+
+      - name: Upload eval report artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-report-${{ github.run_id }}
+          path: eval/runs/
+          retention-days: 30
