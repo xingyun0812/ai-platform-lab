@@ -1,0 +1,43 @@
+# Kustomize overlay pointing to Helm chart rendered templates
+# Usage:
+#   helm template ai-platform-lab deploy/helm/ai-platform-lab/ > /tmp/helm-rendered.yaml
+#   kubectl apply -k deploy/k8s/
+#
+# Or use kustomize with helm support (kustomize v5+):
+#   kustomize build --enable-helm deploy/k8s/
+
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: ai-platform-lab
+
+# Helm chart rendering (kustomize v5+ with --enable-helm flag)
+helmCharts:
+  - name: ai-platform-lab
+    releaseName: ai-platform-lab
+    namespace: ai-platform-lab
+    version: 0.1.0
+    repo: ""
+    # Local chart path (relative to this kustomization.yaml)
+    # Use: kustomize build --enable-helm --load-restrictor LoadRestrictionsNone .
+    valuesFile: ../helm/ai-platform-lab/values.yaml
+
+# Common labels applied to all resources
+commonLabels:
+  managed-by: kustomize
+  environment: production
+
+# Common annotations
+commonAnnotations:
+  deploy-time: "placeholder"
+
+# Resource patches (optional overrides)
+patches: []
+# Example patch:
+# - target:
+#     kind: Deployment
+#     name: ai-platform-lab-gateway
+#   patch: |
+#     - op: replace
+#       path: /spec/replicas
+#       value: 5

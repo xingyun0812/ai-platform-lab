@@ -1,13 +1,16 @@
 #!/usr/bin/env python3
-"""第 5 周：读取 baseline.jsonl，调用 RAG 问答 API，输出 pass/fail 报告。"""
+"""第 5 周：读取 baseline.jsonl，调用 RAG 问答 API，输出 pass/fail 报告。
+Phase J 扩展：run-eval 子命令运行完整评测 Pipeline，gate 子命令运行 CI 门禁。
+"""
 
 from __future__ import annotations
 
 import argparse
 import json
+import os
 import uuid
 from dataclasses import asdict, dataclass
-from datetime import UTC, datetime
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -77,7 +80,7 @@ async def run_baseline(
     timeout: float,
 ) -> dict[str, Any]:
     cases = load_cases(baseline_path)
-    run_id = run_id or datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
+    run_id = run_id or datetime.utcnow().strftime("%Y%m%dT%H%M%SZ")
     headers = {
         "Content-Type": "application/json",
         "X-Tenant-Id": tenant_id,
@@ -135,7 +138,7 @@ async def run_baseline(
     total = len(results)
     report = {
         "run_id": run_id,
-        "created_at": datetime.now(UTC).isoformat(),
+        "created_at": datetime.utcnow().isoformat(),
         "base_url": base_url,
         "tenant_id": tenant_id,
         "baseline": str(baseline_path),
@@ -269,6 +272,115 @@ async def _async_main(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_run_eval(args: argparse.Namespace) -> int:
+    """run-eval subcommand: 运行完整 Pipeline 并输出报告。"""
+    import importlib.util
+
+    EVAL_DIR = REPO_ROOT / "eval"
+
+    def _load(name, path):
+        spec = importlib.util.spec_from_file_location(name, path)
+        mod = importlib.util.module_from_spec(spec)
+        sys.modules[name] = mod
+        spec.loader.exec_module(mod)
+        return mod
+
+    import sys as _sys
+    _load("eval.pipeline", EVAL_DIR / "pipeline.py")
+    _load("eval.report", EVAL_DIR / "report.py")
+
+    from eval.pipeline import EvalPipeline  # noqa: F401
+    from eval.report import save_report as save_eval_report  # noqa: F401
+
+    gateway_url = getattr(args, "gateway_url", None) or os.environ.get(
+        "EVAL_GATEWAY_URL", "http://127.0.0.1:8000"
+    )
+    api_key = getattr(args, "api_key", None) or os.environ.get("EVAL_API_KEY")
+    categories_arg = getattr(args, "categories", None)
+    cats = categories_arg.split(",") if categories_arg else None
+    sample_limit = getattr(args, "sample_limit", None)
+
+    pipeline = EvalPipeline(gateway_url=gateway_url, api_key=api_key)
+    report = pipeline.run_all(categories=cats, sample_limit=sample_limit)
+
+    RUNS_DIR.mkdir(parents=True, exist_ok=True)
+    ts = datetime.utcnow().strftime("%Y%m%dT%H%M%SZ")
+    out_path = RUNS_DIR / f"eval_{ts}"
+    md_path, json_path = save_eval_report(report, out_path)
+
+    summary = {
+        "total_cases": report.total_cases,
+        "passed": report.passed,
+        "failed": report.failed,
+        "skipped": report.skipped,
+        "pass_rate": report.pass_rate,
+    }
+    print(json.dumps(summary, ensure_ascii=False, indent=2))
+    print(f"报告已写入: {json_path}")
+    print(f"Markdown 报告: {md_path}")
+
+    return 1 if report.failed > 0 else 0
+
+
+def _cmd_gate(args: argparse.Namespace) -> int:
+    """gate subcommand: 与 main baseline 对比，超过阈值则 exit 1。"""
+    import importlib.util
+    import sys as _sys
+
+    EVAL_DIR = REPO_ROOT / "eval"
+
+    def _load(name, path):
+        spec = importlib.util.spec_from_file_location(name, path)
+        mod = importlib.util.module_from_spec(spec)
+        _sys.modules[name] = mod
+        spec.loader.exec_module(mod)
+        return mod
+
+    _load("eval.pipeline", EVAL_DIR / "pipeline.py")
+    _load("eval.gate", EVAL_DIR / "gate.py")
+
+    from eval.pipeline import EvalPipeline  # noqa: F401
+    from eval.gate import check_gate  # noqa: F401
+
+    gateway_url = getattr(args, "gateway_url", None) or os.environ.get(
+        "EVAL_GATEWAY_URL", "http://127.0.0.1:8000"
+    )
+    api_key = getattr(args, "api_key", None) or os.environ.get("EVAL_API_KEY")
+    threshold = float(getattr(args, "threshold", 5.0))
+    baseline_path = Path(
+        getattr(args, "baseline_path", None)
+        or REPO_ROOT / "eval" / "baselines" / "main_baseline.json"
+    )
+    categories_arg = getattr(args, "categories", None)
+    cats = categories_arg.split(",") if categories_arg else None
+    sample_limit = getattr(args, "sample_limit", None)
+
+    pipeline = EvalPipeline(gateway_url=gateway_url, api_key=api_key)
+    report = pipeline.run_all(categories=cats, sample_limit=sample_limit)
+
+    gate = check_gate(report, baseline_path=baseline_path, threshold_pct=threshold)
+
+    output = {
+        "gate_passed": gate.passed,
+        "reason": gate.reason,
+        "delta_pct": gate.delta,
+        "threshold_pct": gate.threshold,
+        "current_pass_rate": gate.current_pass_rate,
+        "baseline_pass_rate": gate.baseline_pass_rate,
+        "report_summary": {
+            "total_cases": report.total_cases,
+            "passed": report.passed,
+            "failed": report.failed,
+            "skipped": report.skipped,
+            "pass_rate": report.pass_rate,
+        },
+        "by_category": gate.by_category,
+    }
+    print(json.dumps(output, ensure_ascii=False, indent=2))
+
+    return 0 if gate.passed else 1
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="RAG baseline 评测")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -294,6 +406,22 @@ def main() -> None:
     cmp_p.add_argument("report_a")
     cmp_p.add_argument("report_b")
 
+    # Phase J: run-eval subcommand
+    reval_p = sub.add_parser("run-eval", help="运行完整 Eval Pipeline（RAG/Agent/Safety）")
+    reval_p.add_argument("--gateway-url", default=None, help="Gateway URL（默认 http://127.0.0.1:8000）")
+    reval_p.add_argument("--api-key", default=None, help="API key（无则跳过 live 用例）")
+    reval_p.add_argument("--categories", default=None, help="逗号分隔类别（默认全部）")
+    reval_p.add_argument("--sample-limit", type=int, default=None, help="每类别最多用例数")
+
+    # Phase J: gate subcommand
+    gate_p = sub.add_parser("gate", help="运行 CI 门禁对比（超过阈值则 exit 1）")
+    gate_p.add_argument("--threshold", type=float, default=5.0, help="回退阈值百分点（默认 5）")
+    gate_p.add_argument("--baseline-path", default=None, help="main baseline JSON 路径")
+    gate_p.add_argument("--gateway-url", default=None)
+    gate_p.add_argument("--api-key", default=None)
+    gate_p.add_argument("--categories", default=None)
+    gate_p.add_argument("--sample-limit", type=int, default=None)
+
     args = parser.parse_args()
     if args.command == "run":
         import asyncio
@@ -311,6 +439,12 @@ def main() -> None:
         diff = compare_reports(Path(args.report_a), Path(args.report_b))
         print(json.dumps(diff, ensure_ascii=False, indent=2))
         raise SystemExit(0)
+
+    if args.command == "run-eval":
+        raise SystemExit(_cmd_run_eval(args))
+
+    if args.command == "gate":
+        raise SystemExit(_cmd_gate(args))
 
 
 if __name__ == "__main__":
