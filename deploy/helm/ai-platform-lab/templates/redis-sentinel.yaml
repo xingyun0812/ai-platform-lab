@@ -1,0 +1,164 @@
+{{- if .Values.redis.enabled }}
+{{- if .Values.redis.sentinel.enabled }}
+---
+# Redis Sentinel Deployment — 3 sentinels across AZs
+# Monitors the Redis primary and manages automatic failover.
+# Quorum: 2 (majority of 3 sentinels must agree for failover).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "ai-platform-lab.fullname" . }}-redis-sentinel
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "ai-platform-lab.labels" . | nindent 4 }}
+    app.kubernetes.io/component: redis-sentinel
+    multi-az/role: sentinel
+spec:
+  replicas: {{ .Values.redis.sentinel.replicas | default 3 }}
+  selector:
+    matchLabels:
+      {{- include "ai-platform-lab.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: redis-sentinel
+  template:
+    metadata:
+      labels:
+        {{- include "ai-platform-lab.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: redis-sentinel
+        multi-az/role: sentinel
+      annotations:
+        checksum/sentinel-config: {{ include (print $.Template.BasePath "/redis-sentinel.yaml") . | sha256sum }}
+    spec:
+      {{- include "ai-platform-lab.imagePullSecrets" . | nindent 6 }}
+      # Spread sentinels across AZs — no two sentinels in same zone
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: DoNotSchedule
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/component: redis-sentinel
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchLabels:
+                  app.kubernetes.io/component: redis-sentinel
+              topologyKey: topology.kubernetes.io/zone
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    app.kubernetes.io/component: redis-sentinel
+                topologyKey: kubernetes.io/hostname
+      initContainers:
+        - name: sentinel-config-init
+          image: "{{ .Values.redis.image.repository }}:{{ .Values.redis.image.tag }}"
+          imagePullPolicy: {{ .Values.redis.image.pullPolicy }}
+          command:
+            - sh
+            - -c
+            - |
+              # Build sentinel.conf at startup (primary host resolved via DNS)
+              SENTINEL_CONF=/etc/redis/sentinel.conf
+              REDIS_PRIMARY_HOST="{{ include "ai-platform-lab.fullname" . }}-redis"
+              REDIS_PRIMARY_PORT="6379"
+              PRIMARY_NAME="{{ .Values.redis.sentinel.primaryName | default "mymaster" }}"
+              QUORUM="{{ .Values.redis.sentinel.quorum | default 2 }}"
+
+              cat > ${SENTINEL_CONF} <<EOF
+              port 26379
+              sentinel monitor ${PRIMARY_NAME} ${REDIS_PRIMARY_HOST} ${REDIS_PRIMARY_PORT} ${QUORUM}
+              sentinel down-after-milliseconds ${PRIMARY_NAME} 5000
+              sentinel failover-timeout ${PRIMARY_NAME} 60000
+              sentinel parallel-syncs ${PRIMARY_NAME} 1
+              sentinel resolve-hostnames yes
+              sentinel announce-hostnames yes
+              EOF
+
+              echo "Sentinel config written to ${SENTINEL_CONF}"
+              cat ${SENTINEL_CONF}
+          volumeMounts:
+            - name: sentinel-config
+              mountPath: /etc/redis
+      containers:
+        - name: redis-sentinel
+          image: "{{ .Values.redis.image.repository }}:{{ .Values.redis.image.tag }}"
+          imagePullPolicy: {{ .Values.redis.image.pullPolicy }}
+          command:
+            - redis-sentinel
+            - /etc/redis/sentinel.conf
+          ports:
+            - name: sentinel
+              containerPort: {{ .Values.redis.sentinel.port | default 26379 }}
+              protocol: TCP
+          readinessProbe:
+            exec:
+              command:
+                - redis-cli
+                - -p
+                - "26379"
+                - ping
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            failureThreshold: 3
+          livenessProbe:
+            exec:
+              command:
+                - redis-cli
+                - -p
+                - "26379"
+                - ping
+            initialDelaySeconds: 20
+            periodSeconds: 30
+            failureThreshold: 5
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "64Mi"
+            limits:
+              cpu: "200m"
+              memory: "256Mi"
+          volumeMounts:
+            - name: sentinel-config
+              mountPath: /etc/redis
+      volumes:
+        - name: sentinel-config
+          emptyDir: {}
+      {{- with .Values.redis.sentinel.affinity }}
+      # Note: topologySpreadConstraints above takes precedence for AZ spreading
+      {{- end }}
+      {{- with .Values.redis.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.redis.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+---
+# Redis Sentinel Service (port 26379)
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "ai-platform-lab.fullname" . }}-redis-sentinel
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "ai-platform-lab.labels" . | nindent 4 }}
+    app.kubernetes.io/component: redis-sentinel
+    multi-az/role: sentinel
+  annotations:
+    # Clients connect here to discover primary/replica topology
+    service.kubernetes.io/topology-aware-hints: auto
+spec:
+  type: ClusterIP
+  selector:
+    {{- include "ai-platform-lab.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: redis-sentinel
+  ports:
+    - name: sentinel
+      port: {{ .Values.redis.sentinel.port | default 26379 }}
+      targetPort: sentinel
+      protocol: TCP
+{{- end }}
+{{- end }}

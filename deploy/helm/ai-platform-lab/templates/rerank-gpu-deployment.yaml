@@ -1,0 +1,127 @@
+{{- if .Values.rerank.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "ai-platform-lab.fullname" . }}-rerank
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "ai-platform-lab.labels" . | nindent 4 }}
+    app.kubernetes.io/component: rerank
+  annotations:
+    # GPU scheduling issue #36 — dedicated GPU node pool for rerank
+    ai-platform-lab.io/gpu-accelerated: "true"
+    ai-platform-lab.io/service-type: "rerank"
+spec:
+  replicas: {{ .Values.rerank.replicas }}
+  selector:
+    matchLabels:
+      {{- include "ai-platform-lab.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: rerank
+  template:
+    metadata:
+      labels:
+        {{- include "ai-platform-lab.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: rerank
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+    spec:
+      {{- include "ai-platform-lab.imagePullSecrets" . | nindent 6 }}
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+      # initContainer: warm rerank model cache to avoid cold-start latency
+      initContainers:
+        - name: model-warmup
+          image: {{ .Values.rerank.image.repository }}:{{ .Values.rerank.image.tag | default "latest-gpu" }}
+          imagePullPolicy: {{ .Values.rerank.image.pullPolicy }}
+          command:
+            - /bin/sh
+            - -c
+            - |
+              echo "[warmup] pre-loading rerank model to /model-cache ..."
+              python3 -c "
+              import os
+              cache_dir = '/model-cache'
+              os.makedirs(cache_dir, exist_ok=True)
+              try:
+                  from sentence_transformers import CrossEncoder
+                  model_name = os.getenv('RERANK_MODEL', 'cross-encoder/ms-marco-MiniLM-L-6-v2')
+                  print(f'[warmup] downloading {model_name} ...')
+                  CrossEncoder(model_name, max_length=512)
+                  print('[warmup] rerank model cached successfully')
+              except ImportError:
+                  print('[warmup] sentence_transformers not installed, skipping cache warmup')
+              except Exception as e:
+                  print(f'[warmup] warning: {e} — continuing anyway')
+              "
+          env:
+            - name: RERANK_MODEL
+              value: "cross-encoder/ms-marco-MiniLM-L-6-v2"
+            - name: TRANSFORMERS_CACHE
+              value: "/model-cache"
+            - name: HF_HOME
+              value: "/model-cache"
+          resources:
+            limits:
+              nvidia.com/gpu: "1"
+            requests:
+              cpu: "250m"
+              memory: "1Gi"
+          volumeMounts:
+            - name: model-cache
+              mountPath: /model-cache
+      containers:
+        - name: rerank
+          image: {{ .Values.rerank.image.repository }}:{{ .Values.rerank.image.tag | default "latest-gpu" }}
+          imagePullPolicy: {{ .Values.rerank.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.rerank.port | default 8000 }}
+              protocol: TCP
+          env:
+            - name: RERANK_MODEL
+              value: "cross-encoder/ms-marco-MiniLM-L-6-v2"
+            - name: TRANSFORMERS_CACHE
+              value: "/model-cache"
+            - name: HF_HOME
+              value: "/model-cache"
+            - name: PORT
+              value: {{ .Values.rerank.port | default 8000 | quote }}
+            {{- with .Values.rerank.env }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: {{ .Values.rerank.port | default 8000 }}
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            failureThreshold: 5
+            successThreshold: 1
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: {{ .Values.rerank.port | default 8000 }}
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            failureThreshold: 3
+          resources:
+            {{- toYaml .Values.rerank.resources | nindent 12 }}
+          volumeMounts:
+            - name: model-cache
+              mountPath: /model-cache
+      volumes:
+        - name: model-cache
+          emptyDir: {}
+      # Schedule on GPU nodes — see deploy/k8s/gpu-node-pool.yaml for setup
+      # Default nodeSelector from values-gpu.yaml: accelerator: nvidia
+      nodeSelector:
+        {{- toYaml .Values.rerank.nodeSelector | nindent 8 }}
+      tolerations:
+        {{- toYaml .Values.rerank.tolerations | nindent 8 }}
+      {{- with .Values.rerank.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}

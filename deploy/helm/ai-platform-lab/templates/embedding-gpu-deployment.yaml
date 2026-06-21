@@ -1,0 +1,130 @@
+{{- if .Values.embedding.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "ai-platform-lab.fullname" . }}-embedding
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "ai-platform-lab.labels" . | nindent 4 }}
+    app.kubernetes.io/component: embedding
+  annotations:
+    # GPU scheduling issue #36 — dedicated GPU node pool for embedding
+    ai-platform-lab.io/gpu-accelerated: "true"
+    ai-platform-lab.io/service-type: "embedding"
+spec:
+  replicas: {{ .Values.embedding.replicas }}
+  selector:
+    matchLabels:
+      {{- include "ai-platform-lab.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: embedding
+  template:
+    metadata:
+      labels:
+        {{- include "ai-platform-lab.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: embedding
+      annotations:
+        # Force pod restart on config change
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+    spec:
+      {{- include "ai-platform-lab.imagePullSecrets" . | nindent 6 }}
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+      # initContainer: warm model cache to /model-cache shared volume
+      # Avoids cold-start latency (~30s+) on first inference request
+      initContainers:
+        - name: model-warmup
+          image: {{ .Values.embedding.image.repository }}:{{ .Values.embedding.image.tag | default "latest-gpu" }}
+          imagePullPolicy: {{ .Values.embedding.image.pullPolicy }}
+          command:
+            - /bin/sh
+            - -c
+            - |
+              echo "[warmup] pre-loading embedding model to /model-cache ..."
+              python3 -c "
+              import os, sys
+              cache_dir = '/model-cache'
+              os.makedirs(cache_dir, exist_ok=True)
+              try:
+                  from sentence_transformers import SentenceTransformer
+                  model_name = os.getenv('EMBEDDING_MODEL', 'BAAI/bge-small-en-v1.5')
+                  print(f'[warmup] downloading {model_name} ...')
+                  SentenceTransformer(model_name, cache_folder=cache_dir)
+                  print('[warmup] model cached successfully')
+              except ImportError:
+                  print('[warmup] sentence_transformers not installed, skipping cache warmup')
+              except Exception as e:
+                  print(f'[warmup] warning: {e} — continuing anyway')
+              "
+          env:
+            - name: EMBEDDING_MODEL
+              value: "BAAI/bge-small-en-v1.5"
+            - name: TRANSFORMERS_CACHE
+              value: "/model-cache"
+            - name: HF_HOME
+              value: "/model-cache"
+          resources:
+            limits:
+              nvidia.com/gpu: "1"
+            requests:
+              cpu: "250m"
+              memory: "1Gi"
+          volumeMounts:
+            - name: model-cache
+              mountPath: /model-cache
+      containers:
+        - name: embedding
+          image: {{ .Values.embedding.image.repository }}:{{ .Values.embedding.image.tag | default "latest-gpu" }}
+          imagePullPolicy: {{ .Values.embedding.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.embedding.port | default 8000 }}
+              protocol: TCP
+          env:
+            - name: EMBEDDING_MODEL
+              value: "BAAI/bge-small-en-v1.5"
+            - name: TRANSFORMERS_CACHE
+              value: "/model-cache"
+            - name: HF_HOME
+              value: "/model-cache"
+            - name: PORT
+              value: {{ .Values.embedding.port | default 8000 | quote }}
+            {{- with .Values.embedding.env }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: {{ .Values.embedding.port | default 8000 }}
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            failureThreshold: 5
+            successThreshold: 1
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: {{ .Values.embedding.port | default 8000 }}
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            failureThreshold: 3
+          resources:
+            {{- toYaml .Values.embedding.resources | nindent 12 }}
+          volumeMounts:
+            - name: model-cache
+              mountPath: /model-cache
+      volumes:
+        - name: model-cache
+          emptyDir: {}
+      # Schedule on GPU nodes — requires cluster admin to create GPU node pool
+      # See deploy/k8s/gpu-node-pool.yaml for node pool setup instructions
+      # Default nodeSelector from values-gpu.yaml: accelerator: nvidia
+      nodeSelector:
+        {{- toYaml .Values.embedding.nodeSelector | nindent 8 }}
+      tolerations:
+        {{- toYaml .Values.embedding.tolerations | nindent 8 }}
+      {{- with .Values.embedding.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}

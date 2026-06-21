@@ -1,0 +1,225 @@
+# ============================================================
+# GPU Node Pool Reference Configuration
+# Issue #36: GPU 弹性调度
+#
+# PURPOSE: This file is a REFERENCE document, NOT deployed by Helm chart.
+# Cluster admins use these definitions to create GPU node pools in their
+# managed Kubernetes cluster (GKE / EKS / AKS).
+#
+# HOW TO USE:
+#   GKE:  gcloud container node-pools create gpu-t4-pool --cluster=... [flags]
+#   EKS:  eksctl create nodegroup --config-file=gpu-node-pool.yaml
+#   Kind: minikube addons enable nvidia-gpu (dev only)
+# ============================================================
+
+---
+# ============================================================
+# T4 GPU Node Pool — Development / Staging (cost-effective)
+# GPU: NVIDIA T4 (16GB VRAM, FP16 optimised for inference)
+# Cost: ~$0.35/hour per GPU (GKE preemptible)
+# Best for: embedding, small rerank models
+# ============================================================
+# GKE Node Pool definition (reference — run with gcloud CLI):
+#
+#   gcloud container node-pools create gpu-t4-dev \
+#     --cluster=ai-platform-dev \
+#     --zone=us-central1-a \
+#     --machine-type=n1-standard-4 \
+#     --accelerator=type=nvidia-tesla-t4,count=1 \
+#     --num-nodes=2 \
+#     --min-nodes=1 \
+#     --max-nodes=4 \
+#     --enable-autoscaling \
+#     --node-labels="accelerator=nvidia,gpu-type=t4,env=dev" \
+#     --node-taints="nvidia=:NoSchedule"
+#
+# Equivalent Kubernetes Node labels (applied by cloud provider):
+apiVersion: v1
+kind: Node
+metadata:
+  name: gpu-t4-node-example
+  labels:
+    # Required: matches embedding/rerank nodeSelector in values-gpu.yaml
+    accelerator: nvidia
+    # Informational labels
+    gpu-type: t4
+    gpu-memory: 16gi
+    env: dev
+    cloud.google.com/gke-accelerator: nvidia-tesla-t4
+  annotations:
+    ai-platform-lab.io/gpu-hourly-cost: "0.35"
+    ai-platform-lab.io/gpu-type: "t4"
+spec:
+  taints:
+    # Taint: only GPU-aware pods (with matching toleration) are scheduled here
+    # Matches tolerations in values-gpu.yaml: {key: nvidia, operator: Exists}
+    - key: nvidia
+      effect: NoSchedule
+  # Node capacity (illustrative — set by kubelet from hardware):
+  # capacity:
+  #   nvidia.com/gpu: "1"
+
+---
+# ============================================================
+# A100 GPU Node Pool — Production (high throughput)
+# GPU: NVIDIA A100 (40GB or 80GB VRAM, bfloat16, NVLink)
+# Cost: ~$2.93/hour per GPU (GKE on-demand)
+# Best for: large embedding batches, heavy rerank workloads, fine-tuning
+# ============================================================
+# GKE Node Pool definition (reference — run with gcloud CLI):
+#
+#   gcloud container node-pools create gpu-a100-prod \
+#     --cluster=ai-platform-prod \
+#     --zone=us-central1-a \
+#     --machine-type=a2-highgpu-1g \
+#     --accelerator=type=nvidia-tesla-a100,count=1 \
+#     --num-nodes=2 \
+#     --min-nodes=1 \
+#     --max-nodes=8 \
+#     --enable-autoscaling \
+#     --node-labels="accelerator=nvidia,gpu-type=a100,env=prod" \
+#     --node-taints="nvidia=:NoSchedule" \
+#     --disk-size=200GB \
+#     --disk-type=pd-ssd
+#
+# EKS Managed Node Group (eksctl config excerpt):
+#   managedNodeGroups:
+#     - name: gpu-a100-prod
+#       instanceType: p4d.24xlarge
+#       minSize: 1
+#       maxSize: 8
+#       labels:
+#         accelerator: nvidia
+#         gpu-type: a100
+#       taints:
+#         - key: nvidia
+#           effect: NoSchedule
+#       tags:
+#         ai-platform-lab.io/gpu-type: a100
+apiVersion: v1
+kind: Node
+metadata:
+  name: gpu-a100-node-example
+  labels:
+    accelerator: nvidia
+    gpu-type: a100
+    gpu-memory: 40gi
+    env: prod
+    cloud.google.com/gke-accelerator: nvidia-tesla-a100
+  annotations:
+    ai-platform-lab.io/gpu-hourly-cost: "2.93"
+    ai-platform-lab.io/gpu-type: "a100"
+spec:
+  taints:
+    - key: nvidia
+      effect: NoSchedule
+
+---
+# ============================================================
+# NVIDIA Device Plugin DaemonSet (required for nvidia.com/gpu resource)
+# Deploy ONCE per cluster — not per namespace
+# ============================================================
+# kubectl apply -f https://raw.githubusercontent.com/NVIDIA/k8s-device-plugin/v0.14.1/nvidia-device-plugin.yml
+#
+# Or via Helm:
+#   helm repo add nvdp https://nvidia.github.io/k8s-device-plugin
+#   helm repo update
+#   helm upgrade --install nvdp nvdp/nvidia-device-plugin \
+#     --namespace kube-system \
+#     --version 0.14.1 \
+#     --set failOnInitError=false
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: nvidia-device-plugin-daemonset
+  namespace: kube-system
+  labels:
+    app: nvidia-device-plugin
+    ai-platform-lab.io/purpose: gpu-device-plugin
+spec:
+  selector:
+    matchLabels:
+      app: nvidia-device-plugin
+  updateStrategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: nvidia-device-plugin
+    spec:
+      tolerations:
+        # Must tolerate the GPU node taint to run on GPU nodes
+        - key: nvidia
+          operator: Exists
+          effect: NoSchedule
+      priorityClassName: "system-node-critical"
+      containers:
+        - name: nvidia-device-plugin
+          image: nvcr.io/nvidia/k8s-device-plugin:v0.14.1
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: device-plugin
+              mountPath: /var/lib/kubelet/device-plugins
+      volumes:
+        - name: device-plugin
+          hostPath:
+            path: /var/lib/kubelet/device-plugins
+
+---
+# ============================================================
+# DCGM Exporter DaemonSet (required for GPU utilization metrics → HPA)
+# Exposes: DCGM_FI_DEV_GPU_UTIL, DCGM_FI_DEV_GPU_TEMP, etc.
+# ============================================================
+# kubectl apply -f https://raw.githubusercontent.com/NVIDIA/dcgm-exporter/main/deployment/dcgm-exporter.yaml
+#
+# Or via Helm:
+#   helm repo add gpu-helm-charts https://nvidia.github.io/dcgm-exporter/helm-charts
+#   helm install --generate-name gpu-helm-charts/dcgm-exporter
+#
+# Prometheus scrape config (add to prometheus.yml):
+#   - job_name: dcgm-exporter
+#     static_configs:
+#       - targets: ['dcgm-exporter.monitoring.svc.cluster.local:9400']
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: dcgm-exporter
+  namespace: monitoring
+  labels:
+    app: dcgm-exporter
+    ai-platform-lab.io/purpose: gpu-metrics
+spec:
+  selector:
+    matchLabels:
+      app: dcgm-exporter
+  template:
+    metadata:
+      labels:
+        app: dcgm-exporter
+    spec:
+      tolerations:
+        - key: nvidia
+          operator: Exists
+          effect: NoSchedule
+      nodeSelector:
+        accelerator: nvidia
+      containers:
+        - name: dcgm-exporter
+          image: nvcr.io/nvidia/k8s-dcgm-exporter:3.1.8-3.1.5-ubuntu20.04
+          ports:
+            - containerPort: 9400
+              name: metrics
+          securityContext:
+            runAsNonRoot: false
+            runAsUser: 0
+          volumeMounts:
+            - name: pod-gpu-resources
+              readOnly: true
+              mountPath: /var/lib/kubelet/pod-resources
+      volumes:
+        - name: pod-gpu-resources
+          hostPath:
+            path: /var/lib/kubelet/pod-resources

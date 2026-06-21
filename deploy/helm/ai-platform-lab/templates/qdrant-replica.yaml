@@ -1,0 +1,168 @@
+{{- if .Values.qdrant.enabled }}
+{{- if not .Values.qdrant.external.url }}
+{{- if .Values.qdrant.replica.enabled }}
+---
+# Qdrant read-only replica StatefulSet (multi-AZ)
+# Provides read replicas spread across AZs for HA.
+# Primary Qdrant StatefulSet is in qdrant-statefulset.yaml.
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "ai-platform-lab.fullname" . }}-qdrant-replica
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "ai-platform-lab.labels" . | nindent 4 }}
+    app.kubernetes.io/component: qdrant-replica
+    multi-az/role: read-replica
+spec:
+  serviceName: {{ include "ai-platform-lab.fullname" . }}-qdrant-replica-headless
+  replicas: {{ .Values.qdrant.replica.replicas | default 2 }}
+  selector:
+    matchLabels:
+      {{- include "ai-platform-lab.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: qdrant-replica
+  template:
+    metadata:
+      labels:
+        {{- include "ai-platform-lab.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: qdrant-replica
+        multi-az/role: read-replica
+    spec:
+      {{- include "ai-platform-lab.imagePullSecrets" . | nindent 6 }}
+      securityContext:
+        runAsUser: 1000
+        fsGroup: 1000
+      # Spread replicas across AZs
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: DoNotSchedule
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/component: qdrant-replica
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchLabels:
+                  app.kubernetes.io/component: qdrant-replica
+              topologyKey: topology.kubernetes.io/zone
+      containers:
+        - name: qdrant-replica
+          image: "{{ .Values.qdrant.image.repository }}:{{ .Values.qdrant.image.tag }}"
+          imagePullPolicy: {{ .Values.qdrant.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.qdrant.service.httpPort }}
+              protocol: TCP
+            - name: grpc
+              containerPort: {{ .Values.qdrant.service.grpcPort }}
+              protocol: TCP
+          env:
+            - name: QDRANT__CLUSTER__ENABLED
+              value: "true"
+            - name: QDRANT__CLUSTER__CONSENSUS__TICK_PERIOD_MS
+              value: "100"
+            # Peer URI points to the primary headless service
+            - name: QDRANT__CLUSTER__P2P__PORT
+              value: "6335"
+          # Readiness probe checks read-only mode via /readyz endpoint
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: {{ .Values.qdrant.service.httpPort }}
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: {{ .Values.qdrant.service.httpPort }}
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            failureThreshold: 5
+          resources:
+            {{- toYaml .Values.qdrant.resources | nindent 12 }}
+          volumeMounts:
+            - name: qdrant-replica-data
+              mountPath: /qdrant/storage
+      {{- with .Values.qdrant.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.qdrant.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+  {{- if .Values.qdrant.replica.persistence.enabled }}
+  volumeClaimTemplates:
+    - metadata:
+        name: qdrant-replica-data
+        labels:
+          {{- include "ai-platform-lab.labels" . | nindent 10 }}
+          app.kubernetes.io/component: qdrant-replica
+      spec:
+        accessModes:
+          - {{ .Values.qdrant.replica.persistence.accessMode }}
+        {{- if .Values.qdrant.replica.persistence.storageClass }}
+        storageClassName: {{ .Values.qdrant.replica.persistence.storageClass }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ .Values.qdrant.replica.persistence.size }}
+  {{- end }}
+---
+# Headless service for Qdrant replica StatefulSet
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "ai-platform-lab.fullname" . }}-qdrant-replica-headless
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "ai-platform-lab.labels" . | nindent 4 }}
+    app.kubernetes.io/component: qdrant-replica
+spec:
+  clusterIP: None
+  selector:
+    {{- include "ai-platform-lab.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: qdrant-replica
+  ports:
+    - name: http
+      port: {{ .Values.qdrant.service.httpPort }}
+      targetPort: http
+      protocol: TCP
+    - name: grpc
+      port: {{ .Values.qdrant.service.grpcPort }}
+      targetPort: grpc
+      protocol: TCP
+---
+# Read-only ClusterIP service for Qdrant replicas
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "ai-platform-lab.fullname" . }}-qdrant-replica
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "ai-platform-lab.labels" . | nindent 4 }}
+    app.kubernetes.io/component: qdrant-replica
+    multi-az/role: read-replica
+  annotations:
+    # Route read-only queries to replicas
+    service.kubernetes.io/topology-aware-hints: auto
+spec:
+  type: ClusterIP
+  selector:
+    {{- include "ai-platform-lab.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: qdrant-replica
+  ports:
+    - name: http
+      port: {{ .Values.qdrant.service.httpPort }}
+      targetPort: http
+      protocol: TCP
+    - name: grpc
+      port: {{ .Values.qdrant.service.grpcPort }}
+      targetPort: grpc
+      protocol: TCP
+{{- end }}
+{{- end }}
+{{- end }}

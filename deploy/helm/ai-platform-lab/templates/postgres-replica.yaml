@@ -1,0 +1,260 @@
+{{- if .Values.postgres.enabled }}
+{{- if not .Values.postgres.external.url }}
+{{- if .Values.postgres.replica.enabled }}
+---
+# Postgres Replica StatefulSet — streaming replication from primary
+# Replica placed in different AZ from primary for HA.
+# NOTE: Failover to replica is MANUAL — run pg_promote on the replica pod.
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "ai-platform-lab.fullname" . }}-postgres-replica
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "ai-platform-lab.labels" . | nindent 4 }}
+    app.kubernetes.io/component: postgres-replica
+    multi-az/role: standby
+spec:
+  serviceName: {{ include "ai-platform-lab.fullname" . }}-postgres-replica-headless
+  replicas: {{ .Values.postgres.replica.replicas | default 1 }}
+  selector:
+    matchLabels:
+      {{- include "ai-platform-lab.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: postgres-replica
+  template:
+    metadata:
+      labels:
+        {{- include "ai-platform-lab.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: postgres-replica
+        multi-az/role: standby
+    spec:
+      {{- include "ai-platform-lab.imagePullSecrets" . | nindent 6 }}
+      securityContext:
+        runAsUser: 999
+        fsGroup: 999
+      # Schedule replica in a different AZ from the primary
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchLabels:
+                  app.kubernetes.io/component: postgres
+              topologyKey: topology.kubernetes.io/zone
+      initContainers:
+        - name: pg-basebackup
+          image: "{{ .Values.postgres.image.repository }}:{{ .Values.postgres.image.tag }}"
+          imagePullPolicy: {{ .Values.postgres.image.pullPolicy }}
+          env:
+            - name: PGPASSWORD
+              {{- if .Values.postgres.auth.existingSecret }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.postgres.auth.existingSecret }}
+                  key: {{ .Values.postgres.auth.existingSecretPasswordKey }}
+              {{- else }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "ai-platform-lab.fullname" . }}-secrets
+                  key: postgres-password
+              {{- end }}
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+            - name: PRIMARY_HOST
+              value: {{ .Values.postgres.replica.primary_host | default (printf "%s-postgres" (include "ai-platform-lab.fullname" .)) | quote }}
+            - name: PRIMARY_PORT
+              value: {{ .Values.postgres.replica.primary_port | default 5432 | quote }}
+            - name: POSTGRES_USER
+              value: {{ .Values.postgres.auth.username | quote }}
+          command:
+            - sh
+            - -c
+            - |
+              # Only run pg_basebackup if the data directory is empty
+              if [ ! -f "${PGDATA}/PG_VERSION" ]; then
+                echo "Running pg_basebackup from ${PRIMARY_HOST}:${PRIMARY_PORT}..."
+                pg_basebackup \
+                  -h "${PRIMARY_HOST}" \
+                  -p "${PRIMARY_PORT}" \
+                  -U "${POSTGRES_USER}" \
+                  -D "${PGDATA}" \
+                  -Fp \
+                  -Xs \
+                  -P \
+                  -R
+                echo "pg_basebackup complete."
+              else
+                echo "Data directory exists, skipping pg_basebackup."
+              fi
+          volumeMounts:
+            - name: postgres-replica-data
+              mountPath: /var/lib/postgresql/data
+        - name: write-recovery-conf
+          image: "{{ .Values.postgres.image.repository }}:{{ .Values.postgres.image.tag }}"
+          imagePullPolicy: {{ .Values.postgres.image.pullPolicy }}
+          env:
+            - name: PGPASSWORD
+              {{- if .Values.postgres.auth.existingSecret }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.postgres.auth.existingSecret }}
+                  key: {{ .Values.postgres.auth.existingSecretPasswordKey }}
+              {{- else }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "ai-platform-lab.fullname" . }}-secrets
+                  key: postgres-password
+              {{- end }}
+            - name: PRIMARY_HOST
+              value: {{ .Values.postgres.replica.primary_host | default (printf "%s-postgres" (include "ai-platform-lab.fullname" .)) | quote }}
+            - name: PRIMARY_PORT
+              value: {{ .Values.postgres.replica.primary_port | default 5432 | quote }}
+            - name: POSTGRES_USER
+              value: {{ .Values.postgres.auth.username | quote }}
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+          command:
+            - sh
+            - -c
+            - |
+              # Write recovery configuration (PostgreSQL 12+ uses standby.signal + primary_conninfo)
+              STANDBY_SIGNAL="${PGDATA}/standby.signal"
+              POSTGRES_CONF="${PGDATA}/postgresql.auto.conf"
+
+              touch "${STANDBY_SIGNAL}"
+
+              PRIMARY_CONNINFO="host=${PRIMARY_HOST} port=${PRIMARY_PORT} user=${POSTGRES_USER} password=${PGPASSWORD} application_name=replica"
+
+              # Append primary_conninfo to postgresql.auto.conf
+              grep -v "primary_conninfo" "${POSTGRES_CONF}" > /tmp/pg_conf_tmp || true
+              echo "primary_conninfo = '${PRIMARY_CONNINFO}'" >> /tmp/pg_conf_tmp
+              echo "hot_standby = on" >> /tmp/pg_conf_tmp
+              mv /tmp/pg_conf_tmp "${POSTGRES_CONF}"
+
+              echo "Replica recovery config written."
+              echo "primary_conninfo: ${PRIMARY_CONNINFO}"
+          volumeMounts:
+            - name: postgres-replica-data
+              mountPath: /var/lib/postgresql/data
+      containers:
+        - name: postgres-replica
+          image: "{{ .Values.postgres.image.repository }}:{{ .Values.postgres.image.tag }}"
+          imagePullPolicy: {{ .Values.postgres.image.pullPolicy }}
+          ports:
+            - name: postgres
+              containerPort: {{ .Values.postgres.service.port }}
+              protocol: TCP
+          env:
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+            - name: POSTGRES_USER
+              value: {{ .Values.postgres.auth.username | quote }}
+            - name: POSTGRES_DB
+              value: {{ .Values.postgres.auth.database | quote }}
+            - name: POSTGRES_PASSWORD
+              {{- if .Values.postgres.auth.existingSecret }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.postgres.auth.existingSecret }}
+                  key: {{ .Values.postgres.auth.existingSecretPasswordKey }}
+              {{- else }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "ai-platform-lab.fullname" . }}-secrets
+                  key: postgres-password
+              {{- end }}
+          readinessProbe:
+            exec:
+              command:
+                - sh
+                - -c
+                # Replica is ready if pg_is_in_recovery() returns true (standby mode)
+                - "pg_isready -U {{ .Values.postgres.auth.username }} && psql -U {{ .Values.postgres.auth.username }} -c 'SELECT pg_is_in_recovery()' | grep -q t"
+            initialDelaySeconds: 20
+            periodSeconds: 10
+            failureThreshold: 3
+          livenessProbe:
+            exec:
+              command:
+                - pg_isready
+                - -U
+                - {{ .Values.postgres.auth.username }}
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            failureThreshold: 5
+          resources:
+            {{- toYaml .Values.postgres.resources | nindent 12 }}
+          volumeMounts:
+            - name: postgres-replica-data
+              mountPath: /var/lib/postgresql/data
+      {{- with .Values.postgres.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.postgres.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+  {{- if .Values.postgres.replica.persistence.enabled }}
+  volumeClaimTemplates:
+    - metadata:
+        name: postgres-replica-data
+        labels:
+          {{- include "ai-platform-lab.labels" . | nindent 10 }}
+          app.kubernetes.io/component: postgres-replica
+      spec:
+        accessModes:
+          - {{ .Values.postgres.replica.persistence.accessMode }}
+        {{- if .Values.postgres.replica.persistence.storageClass }}
+        storageClassName: {{ .Values.postgres.replica.persistence.storageClass }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ .Values.postgres.replica.persistence.size }}
+  {{- end }}
+---
+# Headless service for Postgres replica StatefulSet
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "ai-platform-lab.fullname" . }}-postgres-replica-headless
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "ai-platform-lab.labels" . | nindent 4 }}
+    app.kubernetes.io/component: postgres-replica
+spec:
+  clusterIP: None
+  selector:
+    {{- include "ai-platform-lab.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: postgres-replica
+  ports:
+    - name: postgres
+      port: {{ .Values.postgres.service.port }}
+      targetPort: postgres
+      protocol: TCP
+---
+# Read-only ClusterIP service for Postgres replica
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "ai-platform-lab.fullname" . }}-postgres-replica
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "ai-platform-lab.labels" . | nindent 4 }}
+    app.kubernetes.io/component: postgres-replica
+    multi-az/role: standby
+  annotations:
+    # Route read-only queries here
+    service.kubernetes.io/topology-aware-hints: auto
+spec:
+  type: ClusterIP
+  selector:
+    {{- include "ai-platform-lab.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: postgres-replica
+  ports:
+    - name: postgres
+      port: {{ .Values.postgres.service.port }}
+      targetPort: postgres
+      protocol: TCP
+{{- end }}
+{{- end }}
+{{- end }}

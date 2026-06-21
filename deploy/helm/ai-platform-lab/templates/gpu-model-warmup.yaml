@@ -1,0 +1,110 @@
+{{- if or .Values.embedding.enabled .Values.rerank.enabled }}
+# ============================================================
+# GPU Model Warmup ConfigMap
+# Purpose: Pre-load model weights into shared volume on pod start
+# Avoids cold-start latency (30s+) when GPU pod initialises
+# Used by initContainers in embedding-gpu-deployment.yaml
+#         and rerank-gpu-deployment.yaml
+# ============================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "ai-platform-lab.fullname" . }}-gpu-model-warmup
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "ai-platform-lab.labels" . | nindent 4 }}
+    app.kubernetes.io/component: gpu-warmup
+  annotations:
+    ai-platform-lab.io/gpu-accelerated: "true"
+    ai-platform-lab.io/purpose: "model-cache-warmup"
+data:
+  warmup-embedding.sh: |
+    #!/bin/sh
+    # Embedding model warmup script
+    # Runs as initContainer before the main embedding container starts
+    set -e
+    CACHE_DIR="${MODEL_CACHE_DIR:-/model-cache}"
+    EMBEDDING_MODEL="${EMBEDDING_MODEL:-BAAI/bge-small-en-v1.5}"
+    echo "[warmup] ============================================"
+    echo "[warmup] Embedding model warmup starting ..."
+    echo "[warmup] Model: ${EMBEDDING_MODEL}"
+    echo "[warmup] Cache: ${CACHE_DIR}"
+    echo "[warmup] ============================================"
+    mkdir -p "${CACHE_DIR}"
+    python3 - <<'PYEOF'
+    import os, sys, time
+    cache_dir = os.getenv("MODEL_CACHE_DIR", "/model-cache")
+    model_name = os.getenv("EMBEDDING_MODEL", "BAAI/bge-small-en-v1.5")
+    os.makedirs(cache_dir, exist_ok=True)
+    t0 = time.time()
+    try:
+        from sentence_transformers import SentenceTransformer
+        print(f"[warmup] Downloading {model_name} to {cache_dir} ...")
+        model = SentenceTransformer(model_name, cache_folder=cache_dir)
+        # Run a dummy inference to force CUDA kernel compilation
+        _ = model.encode(["warmup"], convert_to_numpy=True)
+        elapsed = time.time() - t0
+        print(f"[warmup] OK — model loaded in {elapsed:.1f}s")
+    except ImportError as e:
+        print(f"[warmup] SKIP — sentence_transformers not available: {e}")
+        sys.exit(0)
+    except Exception as e:
+        print(f"[warmup] WARN — {e}")
+        sys.exit(0)  # Non-fatal: main container will still start
+    PYEOF
+    echo "[warmup] Embedding warmup complete."
+
+  warmup-rerank.sh: |
+    #!/bin/sh
+    # Rerank model warmup script
+    # Runs as initContainer before the main rerank container starts
+    set -e
+    CACHE_DIR="${MODEL_CACHE_DIR:-/model-cache}"
+    RERANK_MODEL="${RERANK_MODEL:-cross-encoder/ms-marco-MiniLM-L-6-v2}"
+    echo "[warmup] ============================================"
+    echo "[warmup] Rerank model warmup starting ..."
+    echo "[warmup] Model: ${RERANK_MODEL}"
+    echo "[warmup] Cache: ${CACHE_DIR}"
+    echo "[warmup] ============================================"
+    mkdir -p "${CACHE_DIR}"
+    python3 - <<'PYEOF'
+    import os, sys, time
+    cache_dir = os.getenv("MODEL_CACHE_DIR", "/model-cache")
+    model_name = os.getenv("RERANK_MODEL", "cross-encoder/ms-marco-MiniLM-L-6-v2")
+    os.makedirs(cache_dir, exist_ok=True)
+    t0 = time.time()
+    try:
+        from sentence_transformers import CrossEncoder
+        print(f"[warmup] Downloading {model_name} to {cache_dir} ...")
+        model = CrossEncoder(model_name, max_length=512)
+        # Dummy inference to force CUDA kernel init
+        _ = model.predict([("query", "document")])
+        elapsed = time.time() - t0
+        print(f"[warmup] OK — rerank model loaded in {elapsed:.1f}s")
+    except ImportError as e:
+        print(f"[warmup] SKIP — sentence_transformers not available: {e}")
+        sys.exit(0)
+    except Exception as e:
+        print(f"[warmup] WARN — {e}")
+        sys.exit(0)  # Non-fatal: main container will still start
+    PYEOF
+    echo "[warmup] Rerank warmup complete."
+
+  warmup-healthcheck.py: |
+    """
+    Lightweight healthcheck script — used by readinessProbe (optional).
+    Can be mounted and called via: python3 /scripts/warmup-healthcheck.py
+    Returns exit code 0 if model cache exists, 1 otherwise.
+    """
+    import os, sys
+    cache_dir = os.getenv("MODEL_CACHE_DIR", "/model-cache")
+    if not os.path.isdir(cache_dir):
+        print(f"[healthcheck] FAIL — cache dir {cache_dir} does not exist")
+        sys.exit(1)
+    files = list(os.listdir(cache_dir))
+    if not files:
+        print(f"[healthcheck] WARN — cache dir {cache_dir} is empty (warmup may still be running)")
+        sys.exit(1)
+    print(f"[healthcheck] OK — {len(files)} entries in {cache_dir}")
+    sys.exit(0)
+{{- end }}

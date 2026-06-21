@@ -1,0 +1,60 @@
+{{- if .Values.podDisruptionBudget }}
+{{- if .Values.podDisruptionBudget.gateway.enabled }}
+---
+# PodDisruptionBudget for Gateway
+# Ensures at least 2 gateway pods are always available during voluntary disruptions
+# (e.g., node drain, rolling update, AZ maintenance).
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "ai-platform-lab.fullname" . }}-gateway-pdb
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "ai-platform-lab.labels" . | nindent 4 }}
+    app.kubernetes.io/component: gateway
+spec:
+  minAvailable: {{ .Values.podDisruptionBudget.gateway.minAvailable | default 2 }}
+  selector:
+    matchLabels:
+      {{- include "ai-platform-lab.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: gateway
+{{- end }}
+{{- if .Values.podDisruptionBudget.worker.enabled }}
+---
+# PodDisruptionBudget for Worker
+# Ensures at least 1 worker pod is always available during voluntary disruptions.
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "ai-platform-lab.fullname" . }}-worker-pdb
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "ai-platform-lab.labels" . | nindent 4 }}
+    app.kubernetes.io/component: worker
+spec:
+  minAvailable: {{ .Values.podDisruptionBudget.worker.minAvailable | default 1 }}
+  selector:
+    matchLabels:
+      {{- include "ai-platform-lab.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: worker
+{{- end }}
+{{- if .Values.podDisruptionBudget.qdrant.enabled }}
+---
+# PodDisruptionBudget for Qdrant
+# Ensures at least 1 qdrant pod is always available during voluntary disruptions.
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "ai-platform-lab.fullname" . }}-qdrant-pdb
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "ai-platform-lab.labels" . | nindent 4 }}
+    app.kubernetes.io/component: qdrant
+spec:
+  minAvailable: {{ .Values.podDisruptionBudget.qdrant.minAvailable | default 1 }}
+  selector:
+    matchLabels:
+      {{- include "ai-platform-lab.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: qdrant
+{{- end }}
+{{- end }}

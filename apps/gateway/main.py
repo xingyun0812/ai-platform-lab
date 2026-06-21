@@ -30,6 +30,9 @@ from apps.gateway.prompt_experiment_routes import router as prompt_experiment_ro
 from apps.gateway.prompt_routes import router as prompt_router
 from apps.gateway.sandbox_routes import router as sandbox_router
 from apps.gateway.storage_routes import router as storage_router
+from apps.gateway.feedback_routes import router as feedback_router
+from apps.gateway.quality_routes import router as quality_router
+from apps.gateway.feedback_loop_routes import router as feedback_loop_router
 from apps.gateway.quota import get_quota_tracker
 from apps.gateway.rag.query_routes import router as rag_query_router
 from apps.gateway.rag.routes import router as rag_router
@@ -276,6 +279,22 @@ def create_app() -> FastAPI:
         )
     )
     logger.info("storage backend=%s bucket=%s", settings.storage_backend, settings.storage_bucket)
+    # Phase J #32 — 反馈飞轮
+    if settings.feedback_enabled:
+        from packages.feedback import init_feedback_store
+
+        init_feedback_store(database_url=settings.feedback_store_database_url)
+        logger.info("feedback enabled database_url=%s", "configured" if settings.feedback_store_database_url else "memory")
+    if settings.quality_monitor_enabled:
+        from packages.quality_monitor import init_quality_monitor
+
+        init_quality_monitor()
+        logger.info("quality_monitor enabled window=%ss", settings.quality_monitor_window_seconds)
+    if settings.feedback_loop_enabled:
+        from packages.feedback_loop import init_feedback_loop
+
+        init_feedback_loop()
+        logger.info("feedback_loop enabled")
     app = FastAPI(title=settings.app_name, version=settings.app_version)
     app.add_middleware(TraceIdMiddleware)
     app.include_router(rag_router)
@@ -299,6 +318,9 @@ def create_app() -> FastAPI:
     app.include_router(agent_lifecycle_router)
     app.include_router(sandbox_router)
     app.include_router(storage_router)
+    app.include_router(feedback_router)
+    app.include_router(quality_router)
+    app.include_router(feedback_loop_router)
     console_dir = Path(__file__).resolve().parents[2] / "apps" / "console"
     if console_dir.is_dir():
         app.mount("/console", StaticFiles(directory=str(console_dir), html=True), name="console")

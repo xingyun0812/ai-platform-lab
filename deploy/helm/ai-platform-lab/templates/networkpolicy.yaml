@@ -1,0 +1,165 @@
+{{- if .Values.networkPolicy }}
+{{- if .Values.networkPolicy.enabled }}
+---
+# NetworkPolicy: Gateway — only allow ingress from ingress controller
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "ai-platform-lab.fullname" . }}-gateway-netpol
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "ai-platform-lab.labels" . | nindent 4 }}
+    app.kubernetes.io/component: gateway
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "ai-platform-lab.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: gateway
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Allow traffic from ingress controller namespace
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: ingress-nginx
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: ingress-nginx
+      ports:
+        - protocol: TCP
+          port: {{ .Values.gateway.service.targetPort | default 8000 }}
+    # Allow intra-namespace traffic (e.g., health checks from same namespace)
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ .Release.Namespace }}
+      ports:
+        - protocol: TCP
+          port: {{ .Values.gateway.service.targetPort | default 8000 }}
+  egress:
+    # Allow gateway to talk to Qdrant
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/component: qdrant
+      ports:
+        - protocol: TCP
+          port: {{ .Values.qdrant.service.httpPort | default 6333 }}
+        - protocol: TCP
+          port: {{ .Values.qdrant.service.grpcPort | default 6334 }}
+    # Allow gateway to talk to Qdrant replicas
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/component: qdrant-replica
+      ports:
+        - protocol: TCP
+          port: {{ .Values.qdrant.service.httpPort | default 6333 }}
+        - protocol: TCP
+          port: {{ .Values.qdrant.service.grpcPort | default 6334 }}
+    # Allow gateway to talk to Postgres primary
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/component: postgres
+      ports:
+        - protocol: TCP
+          port: {{ .Values.postgres.service.port | default 5432 }}
+    # Allow gateway to talk to Redis
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/component: redis
+      ports:
+        - protocol: TCP
+          port: {{ .Values.redis.service.port | default 6379 }}
+    # Allow gateway to talk to Redis Sentinel
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/component: redis-sentinel
+      ports:
+        - protocol: TCP
+          port: {{ .Values.redis.sentinel.port | default 26379 }}
+    # Allow DNS resolution
+    - to: []
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    # Allow outbound HTTPS for external LLM API calls
+    - to: []
+      ports:
+        - protocol: TCP
+          port: 443
+---
+# NetworkPolicy: Qdrant — only allow traffic from gateway and qdrant-replica
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "ai-platform-lab.fullname" . }}-qdrant-netpol
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "ai-platform-lab.labels" . | nindent 4 }}
+    app.kubernetes.io/component: qdrant
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "ai-platform-lab.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: qdrant
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/component: gateway
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/component: qdrant-replica
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/component: qdrant
+      ports:
+        - protocol: TCP
+          port: {{ .Values.qdrant.service.httpPort | default 6333 }}
+        - protocol: TCP
+          port: {{ .Values.qdrant.service.grpcPort | default 6334 }}
+        - protocol: TCP
+          port: 6335
+---
+# NetworkPolicy: Postgres — only allow traffic from gateway and postgres-replica
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "ai-platform-lab.fullname" . }}-postgres-netpol
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "ai-platform-lab.labels" . | nindent 4 }}
+    app.kubernetes.io/component: postgres
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "ai-platform-lab.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: postgres
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/component: gateway
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/component: worker
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/component: postgres-replica
+      ports:
+        - protocol: TCP
+          port: {{ .Values.postgres.service.port | default 5432 }}
+{{- end }}
+{{- end }}

@@ -1,0 +1,62 @@
+{{/*
+topology-spread-constraints.yaml — Helper partial template for topologySpreadConstraints.
+
+This is a named template snippet that can be included in gateway/worker Deployments
+to ensure pods are spread across topology.kubernetes.io/zone labels.
+
+Usage in a Deployment spec:
+  spec:
+    {{- include "ai-platform-lab.topologySpreadConstraints" (dict "component" "gateway" "maxSkew" 1) }}
+
+NOTE: This file itself does not emit any Kubernetes resources — it only defines
+a reusable named template. The actual topologySpreadConstraints are rendered
+when {{- include "ai-platform-lab.topologySpreadConstraints" ... }} is called
+from gateway-deployment.yaml or worker-deployment.yaml.
+*/}}
+
+{{/*
+Renders topologySpreadConstraints for AZ spreading.
+Parameters:
+  .component — the app.kubernetes.io/component label value (e.g., "gateway")
+  .maxSkew   — maximum allowed skew between zones (default: 1)
+*/}}
+{{- define "ai-platform-lab.topologySpreadConstraints" -}}
+{{- $component := .component | default "app" -}}
+{{- $maxSkew := .maxSkew | default 1 -}}
+topologySpreadConstraints:
+  - maxSkew: {{ $maxSkew }}
+    topologyKey: topology.kubernetes.io/zone
+    whenUnsatisfiable: DoNotSchedule
+    labelSelector:
+      matchLabels:
+        app.kubernetes.io/component: {{ $component }}
+  - maxSkew: {{ $maxSkew }}
+    topologyKey: kubernetes.io/hostname
+    whenUnsatisfiable: ScheduleAnyway
+    labelSelector:
+      matchLabels:
+        app.kubernetes.io/component: {{ $component }}
+{{- end -}}
+
+{{/*
+Renders podAntiAffinity rules for AZ anti-co-location.
+Parameters:
+  .component — the app.kubernetes.io/component label value
+*/}}
+{{- define "ai-platform-lab.podAntiAffinityAZ" -}}
+{{- $component := .component | default "app" -}}
+affinity:
+  podAntiAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+      - labelSelector:
+          matchLabels:
+            app.kubernetes.io/component: {{ $component }}
+        topologyKey: topology.kubernetes.io/zone
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/component: {{ $component }}
+          topologyKey: kubernetes.io/hostname
+{{- end -}}

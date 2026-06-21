@@ -395,6 +395,18 @@ r = c.chat.completions.create(model="gpt-4o-mini", messages=[{"role":"user","con
 
 详见 [docs/phase-j-eval-pipeline.md](docs/phase-j-eval-pipeline.md)。
 
+## Phase J — 反馈飞轮（#32）
+
+- **反馈采集**：点赞/点踩 + 1-5 星评分 + 评论
+- **质量监控**：滑动窗口聚合（满意度 + 差评数 + 平均分）
+- **异常告警**：满意度骤降 / 差评激增 / 评分下滑
+- **Bad Case → Eval**：自动入库到 `eval/baselines/bad_cases.jsonl`
+- **Prompt 优化建议**：LLM 分析 Bad Case 生成建议
+- **A/B 实验自动创建**：`FEEDBACK_LOOP_AUTO_EXPERIMENT=true` 时启用
+- **REST API**：`/internal/feedback` + `/internal/quality` + `/internal/feedback-loop`
+
+详见 [docs/phase-j-feedback-loop.md](docs/phase-j-feedback-loop.md)。
+
 ## Phase K — 对象存储接入（#33）
 
 - **3 种后端**：`local`（回退）/ `s3`（boto3）/ `oss`（oss2）
@@ -414,6 +426,28 @@ r = c.chat.completions.create(model="gpt-4o-mini", messages=[{"role":"user","con
 - **生产配置**：`values-prod.yaml`（3 replicas + 50Gi + 外部 DB）
 
 详见 [docs/phase-k-helm.md](docs/phase-k-helm.md)。
+
+## Phase K — 多 AZ 高可用（#35）
+
+- **跨 AZ 部署**：`values-multi-az.yaml` overlay
+- **Qdrant 读副本**：跨 AZ 分布，读请求分流
+- **Redis Sentinel**：3 节点 quorum 故障转移
+- **Postgres streaming replication**：主从复制 + 跨 AZ standby
+- **PDB + NetworkPolicy**：自愿中断保护 + 网络隔离
+- **Chaos 测试**：`deploy/k8s/chaos-test.yaml`（ChaosMesh 杀单 AZ 验证）
+
+详见 [docs/phase-k-multi-az.md](docs/phase-k-multi-az.md)。
+
+## Phase K — GPU 弹性调度（#36）
+
+- **GPU 节点池**：nodeSelector `accelerator: nvidia` + taints
+- **独立服务**：Embedding (8100) + Rerank (8200) GPU Deployment
+- **多指标 HPA**：CPU 70% + GPU 70% + QPS
+- **模型预热**：initContainer 预加载避免冷启动
+- **成本看板**：Grafana JSON（GPU 小时费 + 节省率）
+- **Dev/Prod 分层**：T4（便宜）+ A100（生产）
+
+详见 [docs/phase-k-gpu-scheduling.md](docs/phase-k-gpu-scheduling.md)。
 
 ## 文档与代码导读
 
@@ -438,7 +472,9 @@ r = c.chat.completions.create(model="gpt-4o-mini", messages=[{"role":"user","con
 | Phase I PII + 鉴权 | [phase-i-pii.md](docs/phase-i-pii.md) | [phase-i-auth.md](docs/phase-i-auth.md) |
 | Phase J SDK + Console | [phase-j-python-sdk.md](docs/phase-j-python-sdk.md) | [phase-j-console-v2.md](docs/phase-j-console-v2.md) |
 | Phase J 评测 + 存储 | [phase-j-eval-pipeline.md](docs/phase-j-eval-pipeline.md) | [phase-k-object-storage.md](docs/phase-k-object-storage.md) |
-| Phase K Helm | [phase-k-helm.md](docs/phase-k-helm.md) | — |
+| Phase J 反馈飞轮 | [phase-j-feedback-loop.md](docs/phase-j-feedback-loop.md) | — |
+| Phase K Helm | [phase-k-helm.md](docs/phase-k-helm.md) | [phase-k-multi-az.md](docs/phase-k-multi-az.md) |
+| Phase K GPU 调度 | [phase-k-gpu-scheduling.md](docs/phase-k-gpu-scheduling.md) | — |
 | 大厂 SOP 对照 | [enterprise-ai-platform-sop.md](docs/enterprise-ai-platform-sop.md) | 按周次/Phase 的踩坑与 SOP |
 | 第 1 周 Gateway | [week1-gateway.md](docs/week1-gateway.md) | [gateway-build-and-code-guide.md](docs/gateway-build-and-code-guide.md) |
 | 第 2 周 RAG 管道 | [week2-rag-pipeline.md](docs/week2-rag-pipeline.md) | [rag-build-and-code-guide.md](docs/rag-build-and-code-guide.md) |

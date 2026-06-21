@@ -1,0 +1,75 @@
+# deploy/k8s/chaos-test.yaml
+# ChaosMesh PodChaos experiment: kill all pods in AZ us-east-1a
+# Verifies that service continues to operate when one AZ fails.
+#
+# Prerequisites:
+#   - ChaosMesh installed: https://chaos-mesh.org/docs/quick-start/
+#   - Pods labeled with topology.kubernetes.io/zone=us-east-1a
+#
+# Usage:
+#   kubectl apply -f deploy/k8s/chaos-test.yaml
+#   # Monitor service health during 30s chaos window
+#   kubectl delete -f deploy/k8s/chaos-test.yaml   # Stop experiment
+#
+---
+apiVersion: chaos-mesh.org/v1alpha1
+kind: PodChaos
+metadata:
+  name: az-failure-simulation
+  namespace: default
+  labels:
+    experiment: multi-az-ha
+    phase: chaos-test
+  annotations:
+    # Human-readable description of the experiment
+    description: "Simulate AZ us-east-1a failure by killing all pods in that zone"
+    # Expected outcome: service remains available from us-east-1b pods
+    expected-outcome: "Gateway responds within 5s after chaos begins; error rate < 1%"
+spec:
+  # Action: kill all selected pods
+  action: pod-kill
+
+  # Mode: kill all pods matching the selector (simulates complete AZ loss)
+  mode: all
+
+  # Target pod selector — only pods in AZ us-east-1a
+  selector:
+    # Target the application namespace
+    namespaces:
+      - default
+    # Select pods running in the failed AZ
+    nodeSelectors:
+      topology.kubernetes.io/zone: us-east-1a
+    # Only chaos-test pods with our app label (prevent killing unrelated pods)
+    labelSelectors:
+      app.kubernetes.io/name: ai-platform-lab
+
+  # Duration of the chaos experiment
+  duration: "30s"
+
+  # Scheduling: run once (no repeat)
+  # To schedule recurring chaos, use:
+  # scheduler:
+  #   cron: "@every 1h"
+
+---
+# Optional: NetworkChaos to simulate AZ network partition
+# Uncomment to test network-level AZ isolation instead of pod kill.
+#
+# apiVersion: chaos-mesh.org/v1alpha1
+# kind: NetworkChaos
+# metadata:
+#   name: az-network-partition
+#   namespace: default
+# spec:
+#   action: partition
+#   mode: all
+#   selector:
+#     namespaces:
+#       - default
+#     nodeSelectors:
+#       topology.kubernetes.io/zone: us-east-1a
+#     labelSelectors:
+#       app.kubernetes.io/name: ai-platform-lab
+#   direction: both
+#   duration: "30s"

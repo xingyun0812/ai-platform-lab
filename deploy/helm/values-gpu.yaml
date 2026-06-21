@@ -1,0 +1,100 @@
+# ============================================================
+# GPU Production Overlay — values-gpu.yaml
+# Usage: helm upgrade --install ai-platform-lab ./deploy/helm/ai-platform-lab \
+#          -f deploy/helm/ai-platform-lab/values.yaml \
+#          -f deploy/helm/values-gpu.yaml
+# ============================================================
+
+# ============================================================
+# Gateway — CPU-only front-end (scale out for higher QPS)
+# ============================================================
+gateway:
+  replicas: 4
+
+# ============================================================
+# Worker — CPU-only background processor
+# ============================================================
+worker:
+  replicas: 3
+
+# ============================================================
+# Embedding service — GPU-accelerated (separate K8s Deployment)
+# ============================================================
+embedding:
+  enabled: true
+  image:
+    repository: ai-platform-lab/embedding
+    tag: "latest-gpu"
+    pullPolicy: IfNotPresent
+  replicas: 2
+  resources:
+    requests:
+      cpu: "500m"
+      memory: "2Gi"
+    limits:
+      cpu: "2000m"
+      memory: "8Gi"
+      nvidia.com/gpu: "1"
+  nodeSelector:
+    accelerator: nvidia
+  tolerations:
+    - key: nvidia
+      operator: Exists
+      effect: NoSchedule
+  affinity: {}
+  # Port the embedding service listens on inside the pod
+  port: 8000
+  # ClusterIP service port (external)
+  servicePort: 8100
+  env: []
+
+# ============================================================
+# Rerank service — GPU-accelerated (separate K8s Deployment)
+# ============================================================
+rerank:
+  enabled: true
+  image:
+    repository: ai-platform-lab/rerank
+    tag: "latest-gpu"
+    pullPolicy: IfNotPresent
+  replicas: 1
+  resources:
+    requests:
+      cpu: "500m"
+      memory: "2Gi"
+    limits:
+      cpu: "2000m"
+      memory: "8Gi"
+      nvidia.com/gpu: "1"
+  nodeSelector:
+    accelerator: nvidia
+  tolerations:
+    - key: nvidia
+      operator: Exists
+      effect: NoSchedule
+  affinity: {}
+  # Port the rerank service listens on inside the pod
+  port: 8000
+  # ClusterIP service port (external)
+  servicePort: 8200
+  env: []
+
+# ============================================================
+# GPU HPA — Horizontal Pod Autoscaler for GPU workloads
+# Requires: DCGM Exporter + Prometheus Adapter installed in cluster
+# ============================================================
+gpu_hpa:
+  enabled: true
+  # Target GPU utilization (%) — primary scaling trigger
+  target_gpu_utilization: 70
+  # Target QPS per replica from gateway (external metric via Prometheus adapter)
+  target_qps: 100
+  # Cost saving: scale to 1 during idle periods
+  min_replicas: 1
+  max_replicas: 8
+  # CPU utilization fallback metric (%)
+  target_cpu_utilization: 70
+  # Scale-down stabilisation window (seconds) — avoid flapping
+  scale_down_stabilization_seconds: 300
+  # Scale-up stabilisation window (seconds) — react quickly
+  scale_up_stabilization_seconds: 60

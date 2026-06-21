@@ -1,0 +1,290 @@
+{{- if or .Values.embedding.enabled .Values.rerank.enabled }}
+# ============================================================
+# GPU Cost Dashboard — Grafana Dashboard ConfigMap
+# Issue #36: GPU 弹性调度 — cost visibility
+#
+# Usage:
+#   1. Deploy Grafana with dashboards from ConfigMap sidecar
+#      (k8s-sidecar or grafana-dashboards-configmap-reload)
+#   2. Label this ConfigMap: grafana_dashboard=1
+#   3. Grafana auto-imports JSON from data key 'gpu-cost-dashboard.json'
+#
+# Prometheus queries use DCGM Exporter metrics:
+#   - DCGM_FI_DEV_GPU_UTIL: GPU utilization per GPU (0-100)
+#   - DCGM_FI_DEV_FB_USED:  GPU memory used (MiB)
+#   - DCGM_FI_DEV_FB_FREE:  GPU memory free (MiB)
+# ============================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "ai-platform-lab.fullname" . }}-gpu-cost-dashboard
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "ai-platform-lab.labels" . | nindent 4 }}
+    app.kubernetes.io/component: monitoring
+    # Enable this label for Grafana sidecar auto-import:
+    grafana_dashboard: "1"
+  annotations:
+    ai-platform-lab.io/purpose: "gpu-cost-dashboard"
+    ai-platform-lab.io/grafana-folder: "AI Platform GPU"
+data:
+  # --------------------------------------------------------
+  # Prometheus query reference for GPU metrics (DCGM Exporter)
+  # --------------------------------------------------------
+  prometheus-queries.yaml: |
+    # ---- GPU Utilization (%) per pod ----
+    # Avg GPU util across all GPU pods (embedding)
+    avg_gpu_util_embedding: |
+      avg by (pod) (
+        DCGM_FI_DEV_GPU_UTIL{
+          namespace="{{ .Release.Namespace }}",
+          pod=~".*-embedding-.*"
+        }
+      )
+
+    # Avg GPU util across all GPU pods (rerank)
+    avg_gpu_util_rerank: |
+      avg by (pod) (
+        DCGM_FI_DEV_GPU_UTIL{
+          namespace="{{ .Release.Namespace }}",
+          pod=~".*-rerank-.*"
+        }
+      )
+
+    # ---- GPU Memory Usage (MiB) ----
+    gpu_memory_used_embedding: |
+      avg by (pod) (
+        DCGM_FI_DEV_FB_USED{
+          namespace="{{ .Release.Namespace }}",
+          pod=~".*-embedding-.*"
+        }
+      )
+
+    # ---- Replica count over time ----
+    embedding_replicas: |
+      kube_deployment_status_replicas_available{
+        namespace="{{ .Release.Namespace }}",
+        deployment=~".*-embedding"
+      }
+
+    rerank_replicas: |
+      kube_deployment_status_replicas_available{
+        namespace="{{ .Release.Namespace }}",
+        deployment=~".*-rerank"
+      }
+
+    # ---- QPS from gateway ----
+    embedding_qps: |
+      sum(rate(http_requests_total{
+        namespace="{{ .Release.Namespace }}",
+        service=~".*-embedding",
+        path="/v1/embeddings"
+      }[1m]))
+
+    # ---- Cost estimate ----
+    # Formula: gpu_hours * hourly_rate * replica_count
+    # T4 GPU: $0.35/hour | A100 GPU: $2.93/hour
+    # Adjust GPU_HOURLY_RATE_USD below for your cluster tier
+    #
+    # Embedding cost (T4 tier example):
+    embedding_cost_per_hour_usd: |
+      (
+        kube_deployment_status_replicas_available{
+          namespace="{{ .Release.Namespace }}",
+          deployment=~".*-embedding"
+        } * 0.35
+      )
+
+    # Rerank cost (T4 tier example):
+    rerank_cost_per_hour_usd: |
+      (
+        kube_deployment_status_replicas_available{
+          namespace="{{ .Release.Namespace }}",
+          deployment=~".*-rerank"
+        } * 0.35
+      )
+
+    # Total GPU cost per hour:
+    total_gpu_cost_per_hour_usd: |
+      (
+        (kube_deployment_status_replicas_available{deployment=~".*-embedding"} * 0.35)
+        +
+        (kube_deployment_status_replicas_available{deployment=~".*-rerank"} * 0.35)
+      )
+
+  gpu-cost-dashboard.json: |
+    {
+      "__inputs": [],
+      "__requires": [
+        {"type": "grafana", "id": "grafana", "name": "Grafana", "version": "9.0.0"}
+      ],
+      "annotations": {"list": []},
+      "description": "AI Platform Lab — GPU Elastic Scheduling Cost Dashboard (Issue #36)",
+      "editable": true,
+      "fiscalYearStartMonth": 0,
+      "graphTooltip": 1,
+      "id": null,
+      "links": [],
+      "liveNow": false,
+      "panels": [
+        {
+          "id": 1,
+          "title": "GPU Utilization (%) — Embedding Pods",
+          "type": "timeseries",
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+          "targets": [
+            {
+              "expr": "avg by (pod) (DCGM_FI_DEV_GPU_UTIL{namespace=\"$namespace\", pod=~\".*-embedding-.*\"})",
+              "legendFormat": "{{pod}}",
+              "refId": "A"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent",
+              "min": 0,
+              "max": 100,
+              "thresholds": {
+                "steps": [
+                  {"color": "green", "value": 0},
+                  {"color": "yellow", "value": 60},
+                  {"color": "red", "value": 85}
+                ]
+              }
+            }
+          }
+        },
+        {
+          "id": 2,
+          "title": "GPU Utilization (%) — Rerank Pods",
+          "type": "timeseries",
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+          "targets": [
+            {
+              "expr": "avg by (pod) (DCGM_FI_DEV_GPU_UTIL{namespace=\"$namespace\", pod=~\".*-rerank-.*\"})",
+              "legendFormat": "{{pod}}",
+              "refId": "A"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {"unit": "percent", "min": 0, "max": 100}
+          }
+        },
+        {
+          "id": 3,
+          "title": "GPU Memory Used (MiB)",
+          "type": "timeseries",
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
+          "targets": [
+            {
+              "expr": "avg by (pod) (DCGM_FI_DEV_FB_USED{namespace=\"$namespace\", pod=~\".*-embedding-.*\"})",
+              "legendFormat": "embed-{{pod}}",
+              "refId": "A"
+            },
+            {
+              "expr": "avg by (pod) (DCGM_FI_DEV_FB_USED{namespace=\"$namespace\", pod=~\".*-rerank-.*\"})",
+              "legendFormat": "rerank-{{pod}}",
+              "refId": "B"
+            }
+          ],
+          "fieldConfig": {"defaults": {"unit": "decmbytes"}}
+        },
+        {
+          "id": 4,
+          "title": "Replica Count Over Time",
+          "type": "timeseries",
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
+          "targets": [
+            {
+              "expr": "kube_deployment_status_replicas_available{namespace=\"$namespace\", deployment=~\".*-embedding\"}",
+              "legendFormat": "embedding",
+              "refId": "A"
+            },
+            {
+              "expr": "kube_deployment_status_replicas_available{namespace=\"$namespace\", deployment=~\".*-rerank\"}",
+              "legendFormat": "rerank",
+              "refId": "B"
+            }
+          ],
+          "fieldConfig": {"defaults": {"unit": "short"}}
+        },
+        {
+          "id": 5,
+          "title": "Estimated GPU Cost (USD/hour)",
+          "description": "Formula: gpu_replicas × hourly_rate_per_gpu. Adjust rate in query for A100 ($2.93) vs T4 ($0.35).",
+          "type": "stat",
+          "gridPos": {"h": 6, "w": 8, "x": 0, "y": 16},
+          "targets": [
+            {
+              "expr": "(kube_deployment_status_replicas_available{namespace=\"$namespace\", deployment=~\".*-embedding\"} * 0.35) + (kube_deployment_status_replicas_available{namespace=\"$namespace\", deployment=~\".*-rerank\"} * 0.35)",
+              "legendFormat": "Total GPU Cost/hr",
+              "refId": "A"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "currencyUSD",
+              "thresholds": {
+                "steps": [
+                  {"color": "green", "value": 0},
+                  {"color": "yellow", "value": 2},
+                  {"color": "red", "value": 5}
+                ]
+              }
+            }
+          }
+        },
+        {
+          "id": 6,
+          "title": "Embedding QPS",
+          "type": "timeseries",
+          "gridPos": {"h": 6, "w": 8, "x": 8, "y": 16},
+          "targets": [
+            {
+              "expr": "sum(rate(http_requests_total{namespace=\"$namespace\", service=~\".*-embedding\"}[1m]))",
+              "legendFormat": "embedding qps",
+              "refId": "A"
+            }
+          ],
+          "fieldConfig": {"defaults": {"unit": "reqps"}}
+        },
+        {
+          "id": 7,
+          "title": "GPU Temperature (°C)",
+          "type": "timeseries",
+          "gridPos": {"h": 6, "w": 8, "x": 16, "y": 16},
+          "targets": [
+            {
+              "expr": "avg by (pod) (DCGM_FI_DEV_GPU_TEMP{namespace=\"$namespace\"})",
+              "legendFormat": "{{pod}}",
+              "refId": "A"
+            }
+          ],
+          "fieldConfig": {"defaults": {"unit": "celsius"}}
+        }
+      ],
+      "refresh": "30s",
+      "schemaVersion": 38,
+      "style": "dark",
+      "tags": ["gpu", "ai-platform-lab", "cost"],
+      "templating": {
+        "list": [
+          {
+            "name": "namespace",
+            "label": "Namespace",
+            "type": "query",
+            "query": "label_values(kube_pod_info, namespace)",
+            "current": {"text": "default", "value": "default"},
+            "hide": 0,
+            "refresh": 2
+          }
+        ]
+      },
+      "time": {"from": "now-1h", "to": "now"},
+      "timepicker": {},
+      "timezone": "browser",
+      "title": "AI Platform Lab — GPU Cost Dashboard",
+      "uid": "apl-gpu-cost-001",
+      "version": 1
+    }
+{{- end }}

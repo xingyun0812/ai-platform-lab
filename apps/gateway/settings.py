@@ -688,6 +688,53 @@ class Settings(BaseSettings):
         description="main 分支基线路径",
     )
 
+    # Phase J #32 — 反馈飞轮
+    feedback_enabled: bool = Field(
+        default=True,
+        validation_alias="FEEDBACK_ENABLED",
+        description="启用反馈采集",
+    )
+    feedback_store_database_url: str | None = Field(
+        default=None,
+        validation_alias="FEEDBACK_STORE_DATABASE_URL",
+        description="反馈存储；None=内存，sqlite:///path=SQLite",
+    )
+    quality_monitor_enabled: bool = Field(
+        default=True,
+        validation_alias="QUALITY_MONITOR_ENABLED",
+        description="启用质量监控聚合",
+    )
+    quality_monitor_window_seconds: int = Field(
+        default=300,
+        validation_alias="QUALITY_MONITOR_WINDOW_SECONDS",
+        description="聚合窗口（秒）",
+    )
+    quality_alert_satisfaction_threshold: float = Field(
+        default=0.7,
+        validation_alias="QUALITY_ALERT_SATISFACTION_THRESHOLD",
+        description="满意度告警阈值",
+    )
+    quality_alert_bad_case_threshold: int = Field(
+        default=10,
+        validation_alias="QUALITY_ALERT_BAD_CASE_THRESHOLD",
+        description="差评数告警阈值",
+    )
+    feedback_loop_enabled: bool = Field(
+        default=True,
+        validation_alias="FEEDBACK_LOOP_ENABLED",
+        description="启用反馈飞轮",
+    )
+    feedback_loop_bad_cases_path: Path = Field(
+        default=REPO_ROOT / "eval" / "baselines" / "bad_cases.jsonl",
+        validation_alias="FEEDBACK_LOOP_BAD_CASES_PATH",
+        description="bad cases JSONL 路径",
+    )
+    feedback_loop_auto_experiment: bool = Field(
+        default=False,
+        validation_alias="FEEDBACK_LOOP_AUTO_EXPERIMENT",
+        description="自动创建 A/B 实验（默认关闭，需人工审核）",
+    )
+
 
 def _load_yaml_defaults(path: Path) -> dict[str, Any]:
     if not path.is_file():

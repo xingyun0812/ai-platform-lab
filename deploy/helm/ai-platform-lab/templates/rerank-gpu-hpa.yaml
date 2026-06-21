@@ -1,0 +1,50 @@
+{{- if and .Values.rerank.enabled .Values.gpu_hpa.enabled }}
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "ai-platform-lab.fullname" . }}-rerank
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "ai-platform-lab.labels" . | nindent 4 }}
+    app.kubernetes.io/component: rerank
+  annotations:
+    # GPU HPA for rerank — issue #36
+    # Requires DCGM Exporter + Prometheus Adapter
+    ai-platform-lab.io/gpu-accelerated: "true"
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "ai-platform-lab.fullname" . }}-rerank
+  minReplicas: {{ .Values.gpu_hpa.min_replicas }}
+  maxReplicas: 4
+  metrics:
+    # Metric 1: CPU utilization
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.gpu_hpa.target_cpu_utilization }}
+    # Metric 2: GPU utilization via DCGM Exporter
+    - type: ContainerResource
+      containerResource:
+        name: "nvidia.com/gpu"
+        container: rerank
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.gpu_hpa.target_gpu_utilization }}
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: {{ .Values.gpu_hpa.scale_down_stabilization_seconds | default 300 }}
+      policies:
+        - type: Pods
+          value: 1
+          periodSeconds: 120
+    scaleUp:
+      stabilizationWindowSeconds: {{ .Values.gpu_hpa.scale_up_stabilization_seconds | default 60 }}
+      policies:
+        - type: Percent
+          value: 100
+          periodSeconds: 60
+{{- end }}

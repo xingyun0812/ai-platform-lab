@@ -1,0 +1,69 @@
+{{- if and .Values.embedding.enabled .Values.gpu_hpa.enabled }}
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "ai-platform-lab.fullname" . }}-embedding
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "ai-platform-lab.labels" . | nindent 4 }}
+    app.kubernetes.io/component: embedding
+  annotations:
+    # GPU HPA — issue #36: multi-metric scaling (CPU + GPU utilization + QPS)
+    # Requires:
+    #   1. NVIDIA DCGM Exporter: https://github.com/NVIDIA/dcgm-exporter
+    #   2. Prometheus Adapter with custom metrics API
+    #   3. External metric: gateway_embedding_qps_per_replica
+    ai-platform-lab.io/gpu-accelerated: "true"
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "ai-platform-lab.fullname" . }}-embedding
+  minReplicas: {{ .Values.gpu_hpa.min_replicas }}
+  maxReplicas: {{ .Values.gpu_hpa.max_replicas }}
+  metrics:
+    # Metric 1: CPU utilization — baseline resource pressure
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.gpu_hpa.target_cpu_utilization }}
+    # Metric 2: GPU utilization via DCGM Exporter
+    # Prometheus query: DCGM_FI_DEV_GPU_UTIL (per pod, averaged)
+    # Requires nvidia.com/gpu resource limit set on container
+    - type: ContainerResource
+      containerResource:
+        name: "nvidia.com/gpu"
+        container: embedding
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.gpu_hpa.target_gpu_utilization }}
+    # Metric 3: QPS from gateway (external metric via Prometheus Adapter)
+    # Prometheus query stub: sum(rate(gateway_embedding_requests_total[1m])) / count(up{job="embedding"})
+    # Register as external metric: gateway_embedding_qps_per_replica
+    - type: External
+      external:
+        metric:
+          name: gateway_embedding_qps_per_replica
+          selector:
+            matchLabels:
+              app: {{ include "ai-platform-lab.name" . }}
+        target:
+          type: AverageValue
+          averageValue: {{ .Values.gpu_hpa.target_qps }}
+  behavior:
+    scaleDown:
+      # Stabilize 5 min before scaling down — avoid GPU cold-start thrashing
+      stabilizationWindowSeconds: {{ .Values.gpu_hpa.scale_down_stabilization_seconds | default 300 }}
+      policies:
+        - type: Pods
+          value: 1
+          periodSeconds: 120
+    scaleUp:
+      stabilizationWindowSeconds: {{ .Values.gpu_hpa.scale_up_stabilization_seconds | default 60 }}
+      policies:
+        - type: Percent
+          value: 100
+          periodSeconds: 60
+{{- end }}

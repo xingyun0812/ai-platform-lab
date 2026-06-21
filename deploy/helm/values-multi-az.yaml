@@ -1,0 +1,169 @@
+# ============================================================
+# values-multi-az.yaml — Multi-AZ High Availability Overlay
+# ============================================================
+# Usage:
+#   helm install ai-platform-lab ./deploy/helm/ai-platform-lab \
+#     -f ./deploy/helm/values-prod.yaml \
+#     -f ./deploy/helm/values-multi-az.yaml
+#
+# This overlay extends the base values.yaml with multi-AZ HA settings.
+# It does NOT duplicate base values — only overrides what differs.
+# ============================================================
+
+# ---- Global multi-AZ feature flag ----------------------------------
+global:
+  multi_az:
+    enabled: true
+    zones:
+      - us-east-1a
+      - us-east-1b
+
+# ---- Gateway: 6 replicas (3 per AZ × 2 AZs) --------------------
+gateway:
+  replicas: 6
+
+  # Spread pods evenly across AZs
+  topologySpreadConstraints:
+    - maxSkew: 1
+      topologyKey: topology.kubernetes.io/zone
+      whenUnsatisfiable: DoNotSchedule
+      labelSelector:
+        matchLabels:
+          app.kubernetes.io/component: gateway
+
+  # Prevent multiple gateway pods on the same node
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          podAffinityTerm:
+            labelSelector:
+              matchLabels:
+                app.kubernetes.io/component: gateway
+            topologyKey: kubernetes.io/hostname
+      requiredDuringSchedulingIgnoredDuringExecution:
+        - labelSelector:
+            matchLabels:
+              app.kubernetes.io/component: gateway
+          topologyKey: topology.kubernetes.io/zone
+          # Max 3 gateway pods per zone (6 replicas / 2 zones)
+
+# ---- Worker: 4 replicas (2 per AZ) ---------------------------------
+worker:
+  replicas: 4
+
+  topologySpreadConstraints:
+    - maxSkew: 1
+      topologyKey: topology.kubernetes.io/zone
+      whenUnsatisfiable: DoNotSchedule
+      labelSelector:
+        matchLabels:
+          app.kubernetes.io/component: worker
+
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          podAffinityTerm:
+            labelSelector:
+              matchLabels:
+                app.kubernetes.io/component: worker
+            topologyKey: kubernetes.io/hostname
+
+# ---- Qdrant: 3 replicas (primary + 2 read replicas across AZs) -----
+qdrant:
+  replicas: 3
+
+  # Multi-AZ spread for Qdrant StatefulSet
+  affinity:
+    podAntiAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        - labelSelector:
+            matchLabels:
+              app.kubernetes.io/component: qdrant
+          topologyKey: topology.kubernetes.io/zone
+
+  # Multi-AZ replica config (additional StatefulSet via qdrant-replica.yaml)
+  replica:
+    enabled: true
+    replicas: 2
+    persistence:
+      enabled: true
+      storageClass: ""
+      size: 10Gi
+      accessMode: ReadWriteOnce
+
+# ---- Redis: Sentinel mode for HA failover ---------------------------
+redis:
+  sentinel:
+    enabled: true
+    replicas: 3
+    quorum: 2
+    primaryName: "mymaster"
+    port: 26379
+    affinity:
+      podAntiAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchLabels:
+                app.kubernetes.io/component: redis-sentinel
+            topologyKey: topology.kubernetes.io/zone
+
+# ---- Postgres: primary + 1 streaming replica in different AZ --------
+postgres:
+  replicas: 2
+  standby_zones:
+    - us-east-1a
+    - us-east-1b
+
+  # Streaming replication config (additional StatefulSet via postgres-replica.yaml)
+  replica:
+    enabled: true
+    replicas: 1
+    primary_host: ""        # auto-resolved via headless service
+    primary_port: 5432
+    persistence:
+      enabled: true
+      storageClass: ""
+      size: 10Gi
+      accessMode: ReadWriteOnce
+
+  # Primary stays in AZ-a
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          podAffinityTerm:
+            labelSelector:
+              matchLabels:
+                app.kubernetes.io/component: postgres
+            topologyKey: topology.kubernetes.io/zone
+
+# ---- NetworkPolicy: restrict traffic between components -------------
+networkPolicy:
+  enabled: true
+
+# ---- PodDisruptionBudgets -------------------------------------------
+podDisruptionBudget:
+  gateway:
+    enabled: true
+    minAvailable: 2
+  worker:
+    enabled: true
+    minAvailable: 1
+  qdrant:
+    enabled: true
+    minAvailable: 1
+
+# ---- HPA: higher ceiling for multi-AZ --------------------------------
+hpa:
+  gateway:
+    enabled: true
+    minReplicas: 6
+    maxReplicas: 20
+    targetCPUUtilizationPercentage: 70
+  worker:
+    enabled: true
+    minReplicas: 4
+    maxReplicas: 12
+    targetCPUUtilizationPercentage: 80
