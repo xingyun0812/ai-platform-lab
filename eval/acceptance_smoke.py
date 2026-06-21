@@ -383,6 +383,1020 @@ async def run_checks(*, with_llm: bool) -> list[Check]:
         except Exception as e:
             out.append(Check("PD", "MCP stub", False, str(e)))
 
+        # Phase G — 语义缓存
+        try:
+            from packages.semantic_cache import (
+                InMemorySemanticCache,
+                SemanticCacheConfig,
+                get_semantic_cache_metrics,
+            )
+            from packages.semantic_cache.metrics import reset_metrics_for_tests
+            from packages.semantic_cache.store import reset_semantic_cache_for_tests
+
+            reset_metrics_for_tests()
+            reset_semantic_cache_for_tests()
+            cfg = SemanticCacheConfig(
+                enabled=True,
+                mode="exact",
+                similarity_threshold=0.9,
+                ttl_seconds=60,
+                max_entries_per_tenant=8,
+            )
+            cache = InMemorySemanticCache(cfg)
+            msgs = [{"role": "user", "content": "hello"}]
+
+            async def _cache_test():
+                r1 = await cache.lookup(
+                    tenant_id="t1", model="m1", messages=msgs,
+                    temperature=0.0, stream=False,
+                )
+                await cache.store(
+                    tenant_id="t1", model="m1", messages=msgs,
+                    response={"choices": [{"message": {"content": "hi"}}]},
+                    usage_tokens=12, temperature=0.0, stream=False,
+                )
+                r2 = await cache.lookup(
+                    tenant_id="t1", model="m1", messages=msgs,
+                    temperature=0.0, stream=False,
+                )
+                return r1, r2
+
+            r1, r2 = await _cache_test()
+            snap = get_semantic_cache_metrics().snapshot()
+            prom = get_semantic_cache_metrics().prometheus_text()
+            ok = (
+                r1 is None
+                and r2 is not None
+                and snap["hits"].get(("t1", "m1"), 0) == 1
+                and snap["misses"].get(("t1", "m1"), 0) == 1
+                and snap["tokens_saved"].get(("t1", "m1"), 0) == 12
+                and "semantic_cache_hits_total" in prom
+            )
+            out.append(
+                Check(
+                    "PG",
+                    "语义缓存 hit/miss + metrics",
+                    bool(ok),
+                    f"hits={snap['hits']} misses={snap['misses']}",
+                )
+            )
+        except Exception as e:
+            out.append(Check("PG", "语义缓存", False, str(e)))
+
+        # Phase F — Prompt 版本化
+        try:
+            from packages.prompt import (
+                PromptRegistry,
+                PromptRegistryError,
+                extract_variables,
+                render,
+            )
+
+            # 测试渲染
+            tpl = "参考资料：{{context}}\n问题：{{query}}"
+            vars_ = extract_variables(tpl)
+            rendered = render(tpl, {"context": "CTX", "query": "Q"})
+            render_ok = (
+                vars_ == ["context", "query"]
+                and "CTX" in rendered
+                and "Q" in rendered
+                and "{{" not in rendered
+            )
+            out.append(
+                Check(
+                    "PF",
+                    "Prompt 模板渲染 + 变量提取",
+                    bool(render_ok),
+                    f"vars={vars_} rendered={rendered[:40]}",
+                )
+            )
+        except Exception as e:
+            out.append(Check("PF", "Prompt 渲染", False, str(e)))
+
+        # Phase F — Prompt API
+        try:
+            r = await c.get("/internal/prompts", headers=ADMIN_HEADERS)
+            body = r.json() if r.content else {}
+            prompt_ids = body.get("prompt_ids", [])
+            api_ok = r.status_code == 200 and "rag_query" in prompt_ids
+            # 取 active 版本
+            r2 = await c.get("/internal/prompts/rag_query", headers=ADMIN_HEADERS)
+            body2 = r2.json() if r2.content else {}
+            active_ok = (
+                r2.status_code == 200
+                and body2.get("prompt_id") == "rag_query"
+                and body2.get("status") == "active"
+                and "context" in (body2.get("variables") or [])
+            )
+            # 渲染接口
+            r3 = await c.post(
+                "/internal/prompts/rag_query/render",
+                headers=ADMIN_HEADERS,
+                json={"variables": {"context": "X", "query": "Y"}},
+            )
+            body3 = r3.json() if r3.content else {}
+            render_api_ok = (
+                r3.status_code == 200
+                and "X" in (body3.get("rendered") or "")
+                and "Y" in (body3.get("rendered") or "")
+            )
+            out.append(
+                Check(
+                    "PF",
+                    "Prompt API list/get/render",
+                    bool(api_ok and active_ok and render_api_ok),
+                    f"ids={prompt_ids} active_v={body2.get('version')} rendered={body3.get('rendered', '')[:30]}",
+                )
+            )
+        except Exception as e:
+            out.append(Check("PF", "Prompt API", False, str(e)))
+
+        # Phase F — Prompt 创建版本 + 切换 active
+        try:
+            new_content = "新版本 参考资料：{{context}}\n问题：{{query}}"
+            r = await c.post(
+                "/internal/prompts/rag_query/versions",
+                headers=ADMIN_HEADERS,
+                json={"content": new_content, "changelog": "smoke v2", "set_active": True},
+            )
+            body = r.json() if r.content else {}
+            create_ok = r.status_code == 201 and body.get("version", 0) > 1
+            new_version = body.get("version")
+            # 切换回 v1
+            r2 = await c.patch(
+                "/internal/prompts/rag_query/active",
+                headers=ADMIN_HEADERS,
+                json={"version": 1},
+            )
+            rollback_ok = r2.status_code == 200 and r2.json().get("status") == "active"
+            out.append(
+                Check(
+                    "PF",
+                    "Prompt 创建版本 + 回滚",
+                    bool(create_ok and rollback_ok),
+                    f"new_v={new_version} rollback_status={r2.status_code}",
+                )
+            )
+        except Exception as e:
+            out.append(Check("PF", "Prompt 创建/回滚", False, str(e)))
+
+        # Phase F #30 — A/B 实验
+        try:
+            from packages.prompt import (
+                ExperimentStore,
+                ExperimentVariant,
+                reset_experiment_store_for_tests,
+            )
+            from pathlib import Path as _Path
+            import tempfile
+
+            reset_experiment_store_for_tests()
+            with tempfile.TemporaryDirectory() as td:
+                store = ExperimentStore(storage_path=_Path(td) / "exp.json")
+                store.load()
+                # 创建实验
+                exp = store.create_experiment(
+                    prompt_id="rag_query",
+                    variants=[
+                        ExperimentVariant(version=1, percent=50),
+                        ExperimentVariant(version=2, percent=50),
+                    ],
+                    min_samples=5,
+                    success_metric="quality",
+                    winner_margin=0.1,
+                )
+                create_ok = exp.status == "running" and len(exp.variants) == 2
+                # 分桶稳定性
+                p1 = store.pick_variant(
+                    prompt_id="rag_query", tenant_id="global", bucket_key="u1"
+                )
+                p2 = store.pick_variant(
+                    prompt_id="rag_query", tenant_id="global", bucket_key="u1"
+                )
+                bucket_ok = (
+                    p1 is not None
+                    and p2 is not None
+                    and p1[1].version == p2[1].version
+                )
+                # 自动胜出
+                for _ in range(5):
+                    store.record_request(
+                        experiment_id=exp.experiment_id,
+                        version=1,
+                        latency_ms=100,
+                        tokens=10,
+                        error=False,
+                    )
+                    store.record_quality(
+                        experiment_id=exp.experiment_id, version=1, score=0.9
+                    )
+                    store.record_request(
+                        experiment_id=exp.experiment_id,
+                        version=2,
+                        latency_ms=100,
+                        tokens=10,
+                        error=False,
+                    )
+                    store.record_quality(
+                        experiment_id=exp.experiment_id, version=2, score=0.4
+                    )
+                winner = store.maybe_auto_winner(exp.experiment_id)
+                auto_ok = winner == 1
+                exp2 = store.get_experiment(exp.experiment_id)
+                stop_ok = exp2.status == "stopped" and exp2.winner_version == 1
+            out.append(
+                Check(
+                    "PF",
+                    "A/B 实验创建 + 分桶 + 自动胜出",
+                    bool(create_ok and bucket_ok and auto_ok and stop_ok),
+                    f"create={create_ok} bucket={bucket_ok} winner={winner} stop={stop_ok}",
+                )
+            )
+        except Exception as e:
+            out.append(Check("PF", "A/B 实验", False, str(e)))
+
+        # Phase F #30 — A/B 实验 REST API
+        try:
+            # 确保 v2 存在（前面创建过）
+            r = await c.get(
+                "/internal/prompts/rag_query/versions", headers=ADMIN_HEADERS
+            )
+            versions = [
+                v["version"]
+                for v in (r.json() if r.content else {}).get("versions", [])
+            ]
+            api_ok = 1 in versions and 2 in versions
+            if api_ok:
+                # 创建实验
+                r = await c.post(
+                    "/internal/prompts/rag_query/experiments",
+                    headers=ADMIN_HEADERS,
+                    json={
+                        "variants": [
+                            {"version": 1, "percent": 50},
+                            {"version": 2, "percent": 50},
+                        ],
+                        "min_samples": 1000,  # 故意大，避免误触发自动胜出
+                        "success_metric": "quality",
+                        "winner_margin": 0.1,
+                    },
+                )
+                body = r.json() if r.content else {}
+                create_api = r.status_code == 201 and body.get("status") == "running"
+                exp_id = body.get("experiment_id", "")
+                # 查询当前
+                r2 = await c.get(
+                    "/internal/prompts/rag_query/experiments/current",
+                    headers=ADMIN_HEADERS,
+                )
+                cur_ok = r2.status_code == 200 and r2.json().get("running") is True
+                # 停止
+                r3 = await c.post(
+                    f"/internal/prompts/rag_query/experiments/{exp_id}/stop",
+                    headers=ADMIN_HEADERS,
+                )
+                stop_api = r3.status_code == 200 and r3.json().get("status") == "stopped"
+                api_ok = bool(create_api and cur_ok and stop_api)
+            out.append(
+                Check(
+                    "PF",
+                    "A/B 实验 REST API",
+                    bool(api_ok),
+                    f"versions={versions} create={create_api if api_ok else 'N/A'}",
+                )
+            )
+        except Exception as e:
+            out.append(Check("PF", "A/B 实验 API", False, str(e)))
+
+        # Phase F #31 — 长记忆
+        try:
+            from packages.memory import (
+                InMemoryMemoryStore,
+                MemoryRecord,
+                get_memory_metrics,
+            )
+            from packages.memory.metrics import reset_metrics_for_tests
+            from packages.memory.store import reset_memory_store_for_tests
+
+            reset_metrics_for_tests()
+            reset_memory_store_for_tests()
+            store = InMemoryMemoryStore()
+
+            async def _mem_test():
+                # 添加记忆
+                r1 = MemoryRecord(
+                    memory_id="m1",
+                    tenant_id="t1",
+                    scope="user",
+                    scope_id="u1",
+                    content="用户偏好：喜欢简洁回答",
+                    metadata={"source": "test"},
+                )
+                mid = await store.add(r1)
+                # 检索
+                results = await store.search(
+                    tenant_id="t1",
+                    scope="user",
+                    scope_id="u1",
+                    query="偏好",
+                    top_k=5,
+                )
+                return mid, results
+
+            mid, results = await _mem_test()
+            snap = get_memory_metrics().prometheus_text()
+            ok = (
+                mid == "m1"
+                and len(results) == 1
+                and results[0].content == "用户偏好：喜欢简洁回答"
+                and "memory_adds_total" in snap
+                and "memory_searches_total" in snap
+            )
+            out.append(
+                Check(
+                    "PF",
+                    "长记忆 add/search + metrics",
+                    bool(ok),
+                    f"mid={mid} results={len(results)}",
+                )
+            )
+        except Exception as e:
+            out.append(Check("PF", "长记忆", False, str(e)))
+
+        # Phase F #31 — 长记忆 REST API
+        try:
+            r = await c.post(
+                "/internal/memory",
+                headers=ADMIN_HEADERS,
+                json={
+                    "scope": "user",
+                    "scope_id": "smoke-user",
+                    "content": "smoke test memory",
+                    "metadata": {"source": "smoke"},
+                },
+            )
+            body = r.json() if r.content else {}
+            create_ok = r.status_code == 201 and body.get("created") is True
+            mem_id = body.get("memory_id", "")
+            # 搜索
+            r2 = await c.post(
+                "/internal/memory/search",
+                headers=ADMIN_HEADERS,
+                json={
+                    "scope": "user",
+                    "scope_id": "smoke-user",
+                    "query": "smoke",
+                    "top_k": 5,
+                },
+            )
+            body2 = r2.json() if r2.content else {}
+            search_ok = (
+                r2.status_code == 200
+                and body2.get("count", 0) >= 1
+            )
+            # 列出
+            r3 = await c.get(
+                "/internal/memory/list?scope=user&scope_id=smoke-user",
+                headers=ADMIN_HEADERS,
+            )
+            body3 = r3.json() if r3.content else {}
+            list_ok = r3.status_code == 200 and body3.get("count", 0) >= 1
+            # 删除
+            r4 = await c.delete(
+                f"/internal/memory/{mem_id}",
+                headers=ADMIN_HEADERS,
+            )
+            del_ok = r4.status_code == 200 and r4.json().get("deleted") is True
+            out.append(
+                Check(
+                    "PF",
+                    "长记忆 REST API CRUD",
+                    bool(create_ok and search_ok and list_ok and del_ok),
+                    f"create={create_ok} search={search_ok} list={list_ok} del={del_ok}",
+                )
+            )
+        except Exception as e:
+            out.append(Check("PF", "长记忆 API", False, str(e)))
+
+        # Phase F #33 — 上下文压缩
+        try:
+            from packages.agent.context_compress import (
+                MemoryInjection,
+                inject_memory_into_messages,
+                memory_injection_platform_meta,
+            )
+
+            # 测试 inject_memory_into_messages after_summary
+            messages = [
+                {"role": "system", "content": "[session_summary] xxx"},
+                {"role": "user", "content": "问题"},
+            ]
+            injection = MemoryInjection(
+                injected=True,
+                memory_count=2,
+                injected_tokens=80,
+                memories=[{"memory_id": "m1"}],
+                system_message={"role": "system", "content": "记忆要点"},
+            )
+            result = inject_memory_into_messages(
+                messages, injection, position="after_summary"
+            )
+            inject_ok = (
+                len(result) == 3
+                and result[0]["content"] == "[session_summary] xxx"
+                and result[1]["content"] == "记忆要点"
+                and result[2]["role"] == "user"
+            )
+
+            # 测试 not injected 不修改
+            no_injection = MemoryInjection(
+                injected=False,
+                memory_count=0,
+                injected_tokens=0,
+                memories=[],
+                system_message=None,
+            )
+            result2 = inject_memory_into_messages(messages, no_injection)
+            not_injected_ok = result2 is messages and len(result2) == 2
+
+            # 测试 platform_meta
+            meta = memory_injection_platform_meta(injection)
+            meta_ok = (
+                meta["injected"] is True
+                and meta["memory_count"] == 2
+                and meta["injected_tokens"] == 80
+            )
+
+            out.append(
+                Check(
+                    "PF",
+                    "上下文压缩 inject + meta",
+                    bool(inject_ok and not_injected_ok and meta_ok),
+                    f"inject={inject_ok} no_inject={not_injected_ok} meta={meta_ok}",
+                )
+            )
+        except Exception as e:
+            out.append(Check("PF", "上下文压缩", False, str(e)))
+
+        # Phase F #32 — MCP 集成
+        try:
+            from packages.mcp.transport import (
+                HttpTransport,
+                StdioTransport,
+                TransportError,
+            )
+
+            # 测试 transport 构造
+            stdio_t = StdioTransport(["echo", "test"])
+            http_t = HttpTransport(
+                "https://example.com/mcp",
+                headers={"Authorization": "Bearer xxx"},
+            )
+            construct_ok = (
+                stdio_t._command == ["echo", "test"]
+                and http_t._url == "https://example.com/mcp"
+                and http_t._headers["Authorization"] == "Bearer xxx"
+            )
+            # 测试 TransportError
+            err = TransportError("TIMEOUT", "读取超时")
+            error_ok = err.code == "TIMEOUT" and err.message == "读取超时"
+            out.append(
+                Check(
+                    "PF",
+                    "MCP transport 构造 + 错误",
+                    bool(construct_ok and error_ok),
+                    f"stdio={bool(stdio_t)} http={bool(http_t)} err={error_ok}",
+                )
+            )
+        except Exception as e:
+            out.append(Check("PF", "MCP transport", False, str(e)))
+
+        # Phase F #32 — MCP REST API
+        try:
+            # 列出 servers
+            r = await c.get("/internal/mcp/servers", headers=ADMIN_HEADERS)
+            body = r.json() if r.content else {}
+            list_ok = r.status_code == 200 and "servers" in body
+            initial_count = body.get("stats", {}).get("total_servers", 0)
+            # 创建一个 http server（不实际连接）
+            r2 = await c.post(
+                "/internal/mcp/servers",
+                headers=ADMIN_HEADERS,
+                json={
+                    "server_id": "smoke-mcp",
+                    "transport": "http",
+                    "enabled": False,  # 不启用，避免实际连接
+                    "url": "https://mcp.example.com",
+                    "description": "smoke test",
+                },
+            )
+            body2 = r2.json() if r2.content else {}
+            create_ok = r2.status_code == 201 and body2.get("server_id") == "smoke-mcp"
+            # 获取详情
+            r3 = await c.get("/internal/mcp/servers/smoke-mcp", headers=ADMIN_HEADERS)
+            get_ok = r3.status_code == 200 and r3.json().get("transport") == "http"
+            # 删除
+            r4 = await c.delete(
+                "/internal/mcp/servers/smoke-mcp", headers=ADMIN_HEADERS
+            )
+            del_ok = r4.status_code == 200 and r4.json().get("deleted") is True
+            out.append(
+                Check(
+                    "PF",
+                    "MCP REST API CRUD",
+                    bool(list_ok and create_ok and get_ok and del_ok),
+                    f"list={list_ok} create={create_ok} get={get_ok} del={del_ok}",
+                )
+            )
+        except Exception as e:
+            out.append(Check("PF", "MCP API", False, str(e)))
+
+        # Phase H #37 — 控制流编排引擎
+        try:
+            # 独立逻辑测试（不依赖 apps.gateway 链）
+            import importlib.util as _ilu
+
+            def _load_mod(name, path):
+                spec = _ilu.spec_from_file_location(name, path)
+                mod = _ilu.module_from_spec(spec)
+                import sys as _sys
+                _sys.modules[name] = mod
+                spec.loader.exec_module(mod)
+                return mod
+
+            graph_mod = _load_mod(
+                "smoke_graph",
+                Path("/Users/liuli/Downloads/ai-platform-lab/packages/agent/orchestrator/graph.py"),
+            )
+            # 测试 Workflow 创建与校验
+            wf = graph_mod.Workflow(
+                workflow_id="smoke_wf",
+                name="smoke",
+                nodes=[
+                    graph_mod.GraphNode(node_id="start", node_type="start"),
+                    graph_mod.GraphNode(node_id="end", node_type="end"),
+                ],
+                edges=[graph_mod.GraphEdge(from_node="start", to_node="end")],
+                start_node="start",
+                end_node="end",
+            )
+            graph_mod.validate_workflow(wf)
+            wf_dict = wf.to_dict()
+            ok = (
+                wf_dict["workflow_id"] == "smoke_wf"
+                and len(wf_dict["nodes"]) == 2
+                and len(wf_dict["edges"]) == 1
+            )
+            out.append(
+                Check(
+                    "PF",
+                    "编排引擎 DAG 模型 + 校验",
+                    bool(ok),
+                    f"nodes={len(wf_dict['nodes'])} edges={len(wf_dict['edges'])}",
+                )
+            )
+        except Exception as e:
+            out.append(Check("PF", "编排引擎", False, str(e)))
+
+        # Phase H #37 — 编排引擎 REST API
+        try:
+            # 创建工作流
+            r = await c.post(
+                "/internal/orchestrator/workflows",
+                headers=ADMIN_HEADERS,
+                json={
+                    "workflow_id": "smoke-wf",
+                    "name": "smoke test workflow",
+                    "nodes": [
+                        {"node_id": "start", "node_type": "start"},
+                        {
+                            "node_id": "out1",
+                            "node_type": "output",
+                            "config": {"value": "hello from workflow"},
+                        },
+                        {"node_id": "end", "node_type": "end"},
+                    ],
+                    "edges": [
+                        {"from_node": "start", "to_node": "out1"},
+                        {"from_node": "out1", "to_node": "end"},
+                    ],
+                    "start_node": "start",
+                    "end_node": "end",
+                },
+            )
+            body = r.json() if r.content else {}
+            create_ok = r.status_code == 201 and body.get("workflow_id") == "smoke-wf"
+            # 列出
+            r2 = await c.get("/internal/orchestrator/workflows", headers=ADMIN_HEADERS)
+            list_ok = r2.status_code == 200 and r2.json().get("count", 0) >= 1
+            # 执行工作流
+            r3 = await c.post(
+                "/internal/orchestrator/workflows/smoke-wf/execute",
+                headers=ADMIN_HEADERS,
+                json={"inputs": {}},
+            )
+            body3 = r3.json() if r3.content else {}
+            exec_ok = (
+                r3.status_code == 200
+                and body3.get("status") == "completed"
+                and body3.get("outputs", {}).get("out1", {}).get("value") == "hello from workflow"
+            )
+            # 删除
+            r4 = await c.delete(
+                "/internal/orchestrator/workflows/smoke-wf", headers=ADMIN_HEADERS
+            )
+            del_ok = r4.status_code == 200 and r4.json().get("deleted") is True
+            out.append(
+                Check(
+                    "PF",
+                    "编排引擎 REST API + 执行",
+                    bool(create_ok and list_ok and exec_ok and del_ok),
+                    f"create={create_ok} list={list_ok} exec={exec_ok} del={del_ok}",
+                )
+            )
+        except Exception as e:
+            out.append(Check("PF", "编排引擎 API", False, str(e)))
+
+        # Phase H #38 — Multi-Agent 框架
+        try:
+            # 独立逻辑测试
+            import importlib.util as _ilu2
+
+            def _load_mod2(name, path):
+                spec = _ilu2.spec_from_file_location(name, path)
+                mod = _ilu2.module_from_spec(spec)
+                import sys as _sys
+                _sys.modules[name] = mod
+                spec.loader.exec_module(mod)
+                return mod
+
+            reg_mod = _load_mod2(
+                "smoke_agent_reg",
+                Path("/Users/liuli/Downloads/ai-platform-lab/packages/agent/multi_agent/registry.py"),
+            )
+            spec = reg_mod.AgentSpec(
+                agent_id="smoke_agent",
+                name="Smoke Agent",
+                role="specialist",
+                description="smoke test",
+            )
+            spec_ok = (
+                spec.agent_id == "smoke_agent"
+                and spec.role == "specialist"
+                and spec.can_be_delegated_to is True
+                and spec.max_delegation_depth == 3
+            )
+            # 工具白名单
+            spec2 = reg_mod.AgentSpec(
+                agent_id="a2", name="A2", allowed_tools=["get_kb_snippet"]
+            )
+            tool_ok = (
+                spec2.is_tool_allowed("get_kb_snippet") is True
+                and spec2.is_tool_allowed("other") is False
+            )
+            out.append(
+                Check(
+                    "PF",
+                    "Multi-Agent AgentSpec + 工具白名单",
+                    bool(spec_ok and tool_ok),
+                    f"spec={spec_ok} tool_whitelist={tool_ok}",
+                )
+            )
+        except Exception as e:
+            out.append(Check("PF", "Multi-Agent spec", False, str(e)))
+
+        # Phase H #38 — Multi-Agent REST API
+        try:
+            # 列出
+            r = await c.get("/internal/agents", headers=ADMIN_HEADERS)
+            list_ok = r.status_code == 200 and "agents" in r.json()
+            # 创建 Agent
+            r2 = await c.post(
+                "/internal/agents",
+                headers=ADMIN_HEADERS,
+                json={
+                    "agent_id": "smoke-agent",
+                    "name": "Smoke Test Agent",
+                    "role": "specialist",
+                    "description": "smoke test",
+                    "system_prompt": "你是测试 Agent",
+                    "enabled": True,
+                },
+            )
+            body2 = r2.json() if r2.content else {}
+            create_ok = r2.status_code == 201 and body2.get("agent_id") == "smoke-agent"
+            # 获取详情
+            r3 = await c.get("/internal/agents/smoke-agent", headers=ADMIN_HEADERS)
+            get_ok = r3.status_code == 200 and r3.json().get("role") == "specialist"
+            # 删除
+            r4 = await c.delete(
+                "/internal/agents/smoke-agent", headers=ADMIN_HEADERS
+            )
+            del_ok = r4.status_code == 200 and r4.json().get("deleted") is True
+            out.append(
+                Check(
+                    "PF",
+                    "Multi-Agent REST API CRUD",
+                    bool(list_ok and create_ok and get_ok and del_ok),
+                    f"list={list_ok} create={create_ok} get={get_ok} del={del_ok}",
+                )
+            )
+        except Exception as e:
+            out.append(Check("PF", "Multi-Agent API", False, str(e)))
+
+        # Phase H #39 — Agent 生命周期管理
+        try:
+            # 注册版本
+            r = await c.post(
+                "/internal/agent-lifecycle/smoke-agent/versions",
+                headers=ADMIN_HEADERS,
+                json={"spec_snapshot": {"agent_id": "smoke-agent", "name": "Smoke"}, "metadata": {}},
+            )
+            body = r.json() if r.content else {}
+            create_ok = r.status_code == 201 and body.get("version", 0) >= 1
+            version_id = body.get("version_id", "")
+            # 列出版本
+            r2 = await c.get(
+                "/internal/agent-lifecycle/smoke-agent/versions",
+                headers=ADMIN_HEADERS,
+            )
+            list_ok = r2.status_code == 200 and r2.json().get("count", 0) >= 1
+            # 激活
+            r3 = await c.post(
+                f"/internal/agent-lifecycle/versions/{version_id}/activate",
+                headers=ADMIN_HEADERS,
+                json={"strategy": "all_at_once"},
+            )
+            activate_ok = r3.status_code == 200
+            # 查看激活版本
+            r4 = await c.get(
+                "/internal/agent-lifecycle/smoke-agent/active",
+                headers=ADMIN_HEADERS,
+            )
+            active_ok = r4.status_code == 200
+            out.append(
+                Check(
+                    "PF",
+                    "Agent 生命周期 REST API",
+                    bool(create_ok and list_ok and activate_ok and active_ok),
+                    f"create={create_ok} list={list_ok} activate={activate_ok} active={active_ok}",
+                )
+            )
+        except Exception as e:
+            out.append(Check("PF", "Agent 生命周期", False, str(e)))
+
+        # Phase H #40 — HITL 完整工作流
+        try:
+            # 创建审批
+            r = await c.post(
+                "/internal/hitl/approvals",
+                headers=ADMIN_HEADERS,
+                json={
+                    "tenant_id": "admin",
+                    "session_id": "smoke-session",
+                    "tool_name": "dangerous_tool",
+                    "arguments": {"x": 1},
+                    "timeout_seconds": 60,
+                },
+            )
+            body = r.json() if r.content else {}
+            create_ok = r.status_code == 201 and body.get("request_id")
+            request_id = body.get("request_id", "")
+            # 查看状态
+            r2 = await c.get(
+                f"/internal/hitl/approvals/{request_id}",
+                headers=ADMIN_HEADERS,
+            )
+            get_ok = r2.status_code == 200 and r2.json().get("status") == "pending"
+            # 批准
+            r3 = await c.post(
+                f"/internal/hitl/approvals/{request_id}/approve",
+                headers=ADMIN_HEADERS,
+                json={"decided_by": "admin", "reason": "smoke test"},
+            )
+            approve_ok = r3.status_code == 200 and r3.json().get("status") == "approved"
+            out.append(
+                Check(
+                    "PF",
+                    "HITL 审批工作流",
+                    bool(create_ok and get_ok and approve_ok),
+                    f"create={create_ok} get={get_ok} approve={approve_ok}",
+                )
+            )
+        except Exception as e:
+            out.append(Check("PF", "HITL 工作流", False, str(e)))
+
+        # Phase G #35 — Embedding 独立服务
+        try:
+            # 列出模型
+            r = await c.get("/internal/embeddings/models", headers=ADMIN_HEADERS)
+            list_ok = r.status_code == 200
+            # 注册 stub 模型（用于测试，不调真实 API）
+            r2 = await c.post(
+                "/internal/embeddings/models",
+                headers=ADMIN_HEADERS,
+                json={
+                    "model_id": "smoke-emb",
+                    "name": "Smoke Embedding",
+                    "provider": "stub",
+                    "dimensions": 128,
+                    "max_input_tokens": 8192,
+                },
+            )
+            body2 = r2.json() if r2.content else {}
+            create_ok = r2.status_code == 201 and body2.get("model_id") == "smoke-emb"
+            # 生成 embedding
+            r3 = await c.post(
+                "/internal/embeddings/embed",
+                headers=ADMIN_HEADERS,
+                json={"model_id": "smoke-emb", "texts": ["hello", "world"]},
+            )
+            body3 = r3.json() if r3.content else {}
+            embed_ok = (
+                r3.status_code == 200
+                and len(body3.get("embeddings", [])) == 2
+                and len(body3.get("embeddings", [[]])[0]) == 128
+            )
+            # 第二次应命中缓存
+            r4 = await c.post(
+                "/internal/embeddings/embed",
+                headers=ADMIN_HEADERS,
+                json={"model_id": "smoke-emb", "texts": ["hello"]},
+            )
+            cache_ok = r4.status_code == 200 and r4.json().get("cached") is True
+            # 删除模型
+            r5 = await c.delete(
+                "/internal/embeddings/models/smoke-emb", headers=ADMIN_HEADERS
+            )
+            del_ok = r5.status_code == 200
+            out.append(
+                Check(
+                    "PF",
+                    "Embedding 服务 + 缓存",
+                    bool(list_ok and create_ok and embed_ok and cache_ok and del_ok),
+                    f"list={list_ok} create={create_ok} embed={embed_ok} cache={cache_ok} del={del_ok}",
+                )
+            )
+        except Exception as e:
+            out.append(Check("PF", "Embedding 服务", False, str(e)))
+
+        # Phase I #41 — 沙箱容器隔离
+        try:
+            import importlib.util as _ilu3
+
+            def _load_mod3(name, path):
+                spec = _ilu3.spec_from_file_location(name, path)
+                mod = _ilu3.module_from_spec(spec)
+                import sys as _sys
+                _sys.modules[name] = mod
+                spec.loader.exec_module(mod)
+                return mod
+
+            exec_mod = _load_mod3(
+                "smoke_sandbox",
+                Path("/Users/liuli/Downloads/ai-platform-lab/packages/sandbox/executor.py"),
+            )
+            # 测试 SandboxConfig + SandboxResult
+            cfg = exec_mod.SandboxConfig(
+                enabled=True,
+                runtime="process",
+                image="python:3.11-slim",
+                memory_limit_mb=256,
+                cpu_limit=0.5,
+                timeout_seconds=5.0,
+                profile_id="default",
+            )
+            cfg_ok = cfg.runtime == "process" and cfg.memory_limit_mb == 256
+            # seccomp profiles
+            sec_mod = _load_mod3(
+                "smoke_seccomp",
+                Path("/Users/liuli/Downloads/ai-platform-lab/packages/sandbox/seccomp_profiles.py"),
+            )
+            profiles = sec_mod.SECCOMP_PROFILES
+            sec_ok = "default" in profiles and "strict" in profiles
+            out.append(
+                Check(
+                    "PF",
+                    "沙箱 SandboxConfig + seccomp 档案",
+                    bool(cfg_ok and sec_ok),
+                    f"config={cfg_ok} seccomp_profiles={sec_ok}",
+                )
+            )
+        except Exception as e:
+            out.append(Check("PF", "沙箱隔离", False, str(e)))
+
+        # Phase I #42 — 动作分级审计
+        try:
+            import importlib.util as _ilu4
+
+            def _load_mod4(name, path):
+                spec = _ilu4.spec_from_file_location(name, path)
+                mod = _ilu4.module_from_spec(spec)
+                import sys as _sys
+                _sys.modules[name] = mod
+                spec.loader.exec_module(mod)
+                return mod
+
+            al_mod = _load_mod4(
+                "smoke_action_levels",
+                Path("/Users/liuli/Downloads/ai-platform-lab/packages/audit/action_levels.py"),
+            )
+            # 测试 ActionLevel
+            assert al_mod.ActionLevel.READ_ONLY == "read_only"
+            assert al_mod.ActionLevel.DESTRUCTIVE == "destructive"
+            # 测试启发式分类
+            clf = al_mod.ActionClassifier()
+            assert clf.classify("delete_user", {}).value == "destructive"
+            assert clf.classify("get_user", {}).value == "read_only"
+            assert clf.classify("create_user", {}).value == "write"
+            classify_ok = True
+            out.append(
+                Check(
+                    "PF",
+                    "动作分级审计 ActionLevel + 启发式分类",
+                    bool(classify_ok),
+                    f"classify_delete=destructive classify_get=read_only",
+                )
+            )
+        except Exception as e:
+            out.append(Check("PF", "动作分级审计", False, str(e)))
+
+        # Phase I #43 — PII 脱敏
+        try:
+            import importlib.util as _ilu5
+
+            def _load_mod5(name, path):
+                spec = _ilu5.spec_from_file_location(name, path)
+                mod = _ilu5.module_from_spec(spec)
+                import sys as _sys
+                _sys.modules[name] = mod
+                spec.loader.exec_module(mod)
+                return mod
+
+            det_mod = _load_mod5(
+                "smoke_pii_detectors",
+                Path("/Users/liuli/Downloads/ai-platform-lab/packages/pii/detectors.py"),
+            )
+            detector = det_mod.PIIDetector()
+            # 测试 email 检测
+            matches = detector.detect("联系我：test@example.com 或 admin@foo.org")
+            email_ok = len(matches) >= 2 and all(
+                m.entity_type == "email" for m in matches
+            )
+            # 测试中国手机号
+            matches2 = detector.detect("电话：13812345678")
+            phone_ok = len(matches2) >= 1
+            out.append(
+                Check(
+                    "PF",
+                    "PII 检测 email + 手机号",
+                    bool(email_ok and phone_ok),
+                    f"email={email_ok} phone={phone_ok}",
+                )
+            )
+        except Exception as e:
+            out.append(Check("PF", "PII 脱敏", False, str(e)))
+
+        # Phase I #44 — OAuth2 / mTLS
+        try:
+            import importlib.util as _ilu6
+
+            def _load_mod6(name, path):
+                spec = _ilu6.spec_from_file_location(name, path)
+                mod = _ilu6.module_from_spec(spec)
+                import sys as _sys
+                _sys.modules[name] = mod
+                spec.loader.exec_module(mod)
+                return mod
+
+            oa_mod = _load_mod6(
+                "smoke_oauth2",
+                Path("/Users/liuli/Downloads/ai-platform-lab/packages/auth/oauth2.py"),
+            )
+            cfg = oa_mod.OAuth2Config(
+                client_id="test_client",
+                client_secret="test_secret",
+                authorization_endpoint="https://idp.example.com/authorize",
+                token_endpoint="https://idp.example.com/token",
+                userinfo_endpoint="https://idp.example.com/userinfo",
+                redirect_uri="http://127.0.0.1:8000/callback",
+                scopes=["openid", "profile"],
+                issuer="https://idp.example.com",
+            )
+            provider = oa_mod.OAuth2Provider(cfg)
+            auth_url = provider.get_authorization_url(state="xyz")
+            url_ok = "client_id=test_client" in auth_url and "state=xyz" in auth_url
+            out.append(
+                Check(
+                    "PF",
+                    "OAuth2 配置 + 授权 URL",
+                    bool(url_ok),
+                    f"auth_url_built={url_ok}",
+                )
+            )
+        except Exception as e:
+            out.append(Check("PF", "OAuth2/mTLS", False, str(e)))
+
         try:
             from packages.rag.canary_guard import apply_auto_rollback
 

@@ -22,6 +22,25 @@ router = APIRouter(prefix="/v1/agent", tags=["agent"])
 quota_tracker = get_quota_tracker()
 
 
+def _resolve_agent_kb_hint(settings, kb_id: str) -> str:
+    """Phase F：优先从 prompt registry 取 agent_kb_hint 模板渲染；否则回退硬编码。"""
+    if settings.prompt_registry_enabled:
+        from packages.prompt import get_registry
+
+        reg = get_registry()
+        if reg is not None:
+            try:
+                entry = reg.get_active("agent_kb_hint")
+                if entry is not None and entry.version > 0:
+                    return entry.render({"kb_id": kb_id})
+            except Exception as e:
+                logger.warning("prompt registry agent_kb_hint lookup failed: %s", e)
+    return (
+        f"默认知识库 kb_id={kb_id}。"
+        "调用 get_kb_snippet 时请使用该 kb_id（除非用户指定其他库）。"
+    )
+
+
 def _require_tenant(
     x_tenant_id: str | None,
     authorization: str | None,
@@ -70,10 +89,7 @@ async def agent_run(
         m.model_dump(exclude_none=True) for m in body.messages
     ]
     if body.kb_id:
-        hint = (
-            f"默认知识库 kb_id={body.kb_id}。"
-            "调用 get_kb_snippet 时请使用该 kb_id（除非用户指定其他库）。"
-        )
+        hint = _resolve_agent_kb_hint(settings, body.kb_id)
         new_messages = [
             {"role": "system", "content": hint},
             *new_messages,

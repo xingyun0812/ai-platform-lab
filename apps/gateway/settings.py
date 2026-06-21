@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
@@ -161,6 +163,455 @@ class Settings(BaseSettings):
     canary_auto_rollback_min_pass_rate: float = Field(
         default=0.85,
         validation_alias="CANARY_AUTO_ROLLBACK_MIN_PASS_RATE",
+    )
+
+    # Phase G — 语义缓存 (#34)
+    semantic_cache_enabled: bool = Field(
+        default=False,
+        validation_alias="SEMANTIC_CACHE_ENABLED",
+    )
+    semantic_cache_mode: str = Field(
+        default="semantic",
+        validation_alias="SEMANTIC_CACHE_MODE",
+        description="exact=SHA256 精确匹配（无 embedding 也可用）；semantic=embedding 余弦相似度",
+    )
+    semantic_cache_similarity_threshold: float = Field(
+        default=0.92,
+        validation_alias="SEMANTIC_CACHE_SIMILARITY_THRESHOLD",
+    )
+    semantic_cache_ttl_seconds: int = Field(
+        default=3600,
+        validation_alias="SEMANTIC_CACHE_TTL_SECONDS",
+    )
+    semantic_cache_max_entries_per_tenant: int = Field(
+        default=256,
+        validation_alias="SEMANTIC_CACHE_MAX_ENTRIES_PER_TENANT",
+    )
+    semantic_cache_skip_models: str = Field(
+        default="",
+        validation_alias="SEMANTIC_CACHE_SKIP_MODELS",
+        description="逗号分隔模型名，这些模型跳过缓存（如 o1,reasoning-*）",
+    )
+    semantic_cache_max_temperature: float = Field(
+        default=0.3,
+        validation_alias="SEMANTIC_CACHE_MAX_TEMPERATURE",
+        description="temperature 高于此值的请求跳过缓存（非确定性生成）",
+    )
+
+    # Phase F — Prompt 版本化 (#29)
+    prompt_registry_enabled: bool = Field(
+        default=True,
+        validation_alias="PROMPT_REGISTRY_ENABLED",
+        description="启用后 RAG/Agent 优先从 registry 取 prompt；关闭则回退 legacy txt",
+    )
+    prompts_config_path: Path = Field(
+        default=REPO_ROOT / "config" / "prompts.yaml",
+        validation_alias="PROMPTS_CONFIG_PATH",
+        description="Prompt 版本 YAML 默认（git 跟踪）",
+    )
+    prompt_overrides_path: Path = Field(
+        default=REPO_ROOT / "data" / "prompt_overrides.json",
+        validation_alias="PROMPT_OVERRIDES_PATH",
+        description="Prompt 运行时 overrides（admin API 写入，不进 git）",
+    )
+
+    # Phase F — Prompt A/B 实验 (#30)
+    prompt_experiment_enabled: bool = Field(
+        default=True,
+        validation_alias="PROMPT_EXPERIMENT_ENABLED",
+        description="启用后 RAG query 时按实验分桶；关闭则始终用 active 版本",
+    )
+    prompt_experiments_path: Path = Field(
+        default=REPO_ROOT / "data" / "prompt_experiments.json",
+        validation_alias="PROMPT_EXPERIMENTS_PATH",
+        description="A/B 实验存储（JSON，不进 git）",
+    )
+    prompt_experiment_default_min_samples: int = Field(
+        default=100,
+        validation_alias="PROMPT_EXPERIMENT_DEFAULT_MIN_SAMPLES",
+        description="自动胜出所需最小样本数（每 variant）",
+    )
+    prompt_experiment_default_margin: float = Field(
+        default=0.1,
+        validation_alias="PROMPT_EXPERIMENT_DEFAULT_MARGIN",
+        description="自动胜出相对改进阈值（10%）",
+    )
+
+    # Phase F — 长记忆 (#31)
+    memory_store_enabled: bool = Field(
+        default=True,
+        validation_alias="MEMORY_STORE_ENABLED",
+        description="启用后 Agent 自动 summarize + 持久化到 Postgres / 进程内兜底",
+    )
+    agent_memory_model: str | None = Field(
+        default=None,
+        validation_alias="AGENT_MEMORY_MODEL",
+        description="长记忆摘要使用的模型；未配置则回退到 default_model",
+    )
+    memory_summarize_every_n_turns: int = Field(
+        default=8,
+        validation_alias="MEMORY_SUMMARIZE_EVERY_N_TURNS",
+        description="每 N 轮自动触发一次记忆摘要",
+    )
+    memory_default_ttl_seconds: int = Field(
+        default=0,
+        validation_alias="MEMORY_DEFAULT_TTL_SECONDS",
+        description="默认 TTL；0 表示不过期",
+    )
+    memory_search_top_k: int = Field(
+        default=5,
+        validation_alias="MEMORY_SEARCH_TOP_K",
+        description="检索返回 top_k 条",
+    )
+
+    # Phase F — 上下文压缩 (#33)
+    context_llm_summary_enabled: bool = Field(
+        default=True,
+        validation_alias="CONTEXT_LLM_SUMMARY_ENABLED",
+        description="启用后 maybe_compact 用 LLM 替换 stub_summarize；关闭则保持 stub 行为",
+    )
+    context_memory_injection_enabled: bool = Field(
+        default=True,
+        validation_alias="CONTEXT_MEMORY_INJECTION_ENABLED",
+        description="启用后 Agent 启动时检索长记忆注入 system prompt",
+    )
+    context_memory_injection_top_k: int = Field(
+        default=3,
+        validation_alias="CONTEXT_MEMORY_INJECTION_TOP_K",
+        description="注入记忆条数上限",
+    )
+    context_memory_injection_min_budget: int = Field(
+        default=500,
+        validation_alias="CONTEXT_MEMORY_INJECTION_MIN_BUDGET",
+        description="剩余 Token 预算低于此值时跳过注入",
+    )
+
+    # Phase F — MCP 真实集成 (#32)
+    mcp_enabled: bool = Field(
+        default=True,
+        validation_alias="MCP_ENABLED",
+        description="启用后 Agent 动态加载 MCP server 工具；关闭则仅用内置工具",
+    )
+    mcp_servers_config_path: Path = Field(
+        default=REPO_ROOT / "config" / "mcp_servers.yaml",
+        validation_alias="MCP_SERVERS_CONFIG_PATH",
+        description="MCP server YAML 配置（git 跟踪）",
+    )
+    mcp_overrides_path: Path = Field(
+        default=REPO_ROOT / "data" / "mcp_servers_overrides.json",
+        validation_alias="MCP_OVERRIDES_PATH",
+        description="MCP server 运行时 overrides（admin API 写入，不进 git）",
+    )
+    mcp_connect_timeout_seconds: float = Field(
+        default=5.0,
+        validation_alias="MCP_CONNECT_TIMEOUT_SECONDS",
+        description="MCP server 连接超时",
+    )
+    mcp_tool_call_timeout_seconds: float = Field(
+        default=30.0,
+        validation_alias="MCP_TOOL_CALL_TIMEOUT_SECONDS",
+        description="MCP 工具调用超时",
+    )
+
+    # Phase H — 控制流编排引擎 (#37)
+    orchestrator_enabled: bool = Field(
+        default=True,
+        validation_alias="ORCHESTRATOR_ENABLED",
+        description="启用后支持 DAG + 条件分支 + 循环工作流",
+    )
+    orchestrator_workflows_path: Path = Field(
+        default=REPO_ROOT / "config" / "orchestrator_workflows.yaml",
+        validation_alias="ORCHESTRATOR_WORKFLOWS_PATH",
+        description="工作流定义 YAML（git 跟踪）",
+    )
+    orchestrator_overrides_path: Path = Field(
+        default=REPO_ROOT / "data" / "orchestrator_overrides.json",
+        validation_alias="ORCHESTRATOR_OVERRIDES_PATH",
+        description="工作流运行时 overrides（admin API，不进 git）",
+    )
+    orchestrator_max_steps: int = Field(
+        default=100,
+        validation_alias="ORCHESTRATOR_MAX_STEPS",
+        description="单次工作流最大节点执行数（防死循环）",
+    )
+    orchestrator_timeout_seconds: float = Field(
+        default=300.0,
+        validation_alias="ORCHESTRATOR_TIMEOUT_SECONDS",
+        description="单次工作流总超时",
+    )
+    orchestrator_max_parallel_branches: int = Field(
+        default=5,
+        validation_alias="ORCHESTRATOR_MAX_PARALLEL_BRANCHES",
+        description="parallel 节点最大并发分支数",
+    )
+
+    # Phase H — Multi-Agent 协作框架 (#38)
+    multi_agent_enabled: bool = Field(
+        default=True,
+        validation_alias="MULTI_AGENT_ENABLED",
+        description="启用后支持主 Agent 委托子 Agent 协作",
+    )
+    agents_config_path: Path = Field(
+        default=REPO_ROOT / "config" / "agents.yaml",
+        validation_alias="AGENTS_CONFIG_PATH",
+        description="Agent 定义 YAML（git 跟踪）",
+    )
+    agents_overrides_path: Path = Field(
+        default=REPO_ROOT / "data" / "agents_overrides.json",
+        validation_alias="AGENTS_OVERRIDES_PATH",
+        description="Agent 运行时 overrides（admin API，不进 git）",
+    )
+    multi_agent_default_timeout: float = Field(
+        default=60.0,
+        validation_alias="MULTI_AGENT_DEFAULT_TIMEOUT",
+        description="单次委托默认超时",
+    )
+    multi_agent_max_depth: int = Field(
+        default=3,
+        validation_alias="MULTI_AGENT_MAX_DEPTH",
+        description="委托最大深度（防递归爆炸）",
+    )
+
+    # Phase H — Agent 生命周期管理 (#39)
+    agent_lifecycle_enabled: bool = Field(
+        default=True,
+        validation_alias="AGENT_LIFECYCLE_ENABLED",
+        description="启用 Agent 版本管理 + 灰度发布 + 回滚",
+    )
+    agent_lifecycle_versions_path: Path = Field(
+        default=REPO_ROOT / "config" / "agent_versions.yaml",
+        validation_alias="AGENT_LIFECYCLE_VERSIONS_PATH",
+        description="Agent 版本 YAML（git 跟踪）",
+    )
+    agent_lifecycle_overrides_path: Path = Field(
+        default=REPO_ROOT / "data" / "agent_versions_overrides.json",
+        validation_alias="AGENT_LIFECYCLE_OVERRIDES_PATH",
+        description="Agent 版本运行时 overrides（不进 git）",
+    )
+
+    # Phase H — HITL 完整工作流 (#40)
+    hitl_enabled: bool = Field(
+        default=True,
+        validation_alias="HITL_ENABLED",
+        description="启用 HITL 审批工作流（替换 stub）",
+    )
+    hitl_store_database_url: str | None = Field(
+        default=None,
+        validation_alias="HITL_STORE_DATABASE_URL",
+        description="HITL 审批队列存储；None=内存",
+    )
+    hitl_default_timeout_seconds: int = Field(
+        default=300,
+        validation_alias="HITL_DEFAULT_TIMEOUT_SECONDS",
+        description="审批默认超时",
+    )
+    hitl_webhook_url: str | None = Field(
+        default=None,
+        validation_alias="HITL_WEBHOOK_URL",
+        description="审批通知 webhook URL",
+    )
+    hitl_webhook_secret: str | None = Field(
+        default=None,
+        validation_alias="HITL_WEBHOOK_SECRET",
+        description="webhook HMAC 签名密钥",
+    )
+    hitl_expiry_check_interval_seconds: int = Field(
+        default=60,
+        validation_alias="HITL_EXPIRY_CHECK_INTERVAL_SECONDS",
+        description="过期检查间隔",
+    )
+
+    # Phase G — Embedding 独立服务 (#35)
+    embedding_service_enabled: bool = Field(
+        default=True,
+        validation_alias="EMBEDDING_SERVICE_ENABLED",
+        description="启用独立 Embedding 服务",
+    )
+    embedding_models_config_path: Path = Field(
+        default=REPO_ROOT / "config" / "embedding_models.yaml",
+        validation_alias="EMBEDDING_MODELS_CONFIG_PATH",
+        description="Embedding 模型 YAML（git 跟踪）",
+    )
+    embedding_models_overrides_path: Path = Field(
+        default=REPO_ROOT / "data" / "embedding_models_overrides.json",
+        validation_alias="EMBEDDING_MODELS_OVERRIDES_PATH",
+        description="Embedding 模型运行时 overrides（不进 git）",
+    )
+    embedding_cache_max_size: int = Field(
+        default=10000,
+        validation_alias="EMBEDDING_CACHE_MAX_SIZE",
+        description="Embedding 缓存最大条数",
+    )
+    embedding_default_model: str = Field(
+        default="text-embedding-3-small",
+        validation_alias="EMBEDDING_DEFAULT_MODEL",
+        description="默认 embedding 模型",
+    )
+
+    # Phase I #41 — 沙箱容器隔离
+    sandbox_enabled: bool = Field(
+        default=False,
+        validation_alias="SANDBOX_ENABLED",
+        description="启用工具沙箱隔离",
+    )
+    sandbox_default_runtime: str = Field(
+        default="process",
+        validation_alias="SANDBOX_DEFAULT_RUNTIME",
+        description="默认运行时: process/docker/gvisor",
+    )
+    sandbox_default_image: str = Field(
+        default="python:3.11-slim",
+        validation_alias="SANDBOX_DEFAULT_IMAGE",
+        description="默认容器镜像",
+    )
+    sandbox_profiles_config_path: Path = Field(
+        default=REPO_ROOT / "config" / "sandbox_profiles.yaml",
+        validation_alias="SANDBOX_PROFILES_CONFIG_PATH",
+        description="沙箱档案 YAML（git 跟踪）",
+    )
+    sandbox_profiles_overrides_path: Path = Field(
+        default=REPO_ROOT / "data" / "sandbox_profiles_overrides.json",
+        validation_alias="SANDBOX_PROFILES_OVERRIDES_PATH",
+        description="沙箱档案 overrides（不进 git）",
+    )
+    sandbox_default_memory_mb: int = Field(
+        default=256,
+        validation_alias="SANDBOX_DEFAULT_MEMORY_MB",
+        description="默认内存限制（MB）",
+    )
+    sandbox_default_cpu_limit: float = Field(
+        default=0.5,
+        validation_alias="SANDBOX_DEFAULT_CPU_LIMIT",
+        description="默认 CPU 核数限制",
+    )
+    sandbox_default_timeout_seconds: float = Field(
+        default=30.0,
+        validation_alias="SANDBOX_DEFAULT_TIMEOUT_SECONDS",
+        description="默认超时（秒）",
+    )
+
+    # Phase I #42 — 动作分级审计
+    audit_actions_enabled: bool = Field(
+        default=True,
+        validation_alias="AUDIT_ACTIONS_ENABLED",
+        description="启用动作分级审计",
+    )
+    audit_actions_config_path: Path = Field(
+        default=REPO_ROOT / "config" / "tool_classifications.yaml",
+        validation_alias="AUDIT_ACTIONS_CONFIG_PATH",
+        description="工具分类 YAML（git 跟踪）",
+    )
+    audit_actions_overrides_path: Path = Field(
+        default=REPO_ROOT / "data" / "tool_classifications_overrides.json",
+        validation_alias="AUDIT_ACTIONS_OVERRIDES_PATH",
+        description="工具分类 overrides（不进 git）",
+    )
+    audit_actions_store_database_url: str | None = Field(
+        default=None,
+        validation_alias="AUDIT_ACTIONS_STORE_DATABASE_URL",
+        description="动作审计存储；None=内存",
+    )
+    audit_destructive_requires_approval: bool = Field(
+        default=True,
+        validation_alias="AUDIT_DESTRUCTIVE_REQUIRES_APPROVAL",
+        description="destructive 动作是否强制审批",
+    )
+
+    # Phase I #43 — PII 脱敏 + 内容安全
+    pii_service_enabled: bool = Field(
+        default=True,
+        validation_alias="PII_SERVICE_ENABLED",
+        description="启用 PII 脱敏 + 内容安全",
+    )
+    pii_patterns_config_path: Path = Field(
+        default=REPO_ROOT / "config" / "pii_patterns.yaml",
+        validation_alias="PII_PATTERNS_CONFIG_PATH",
+        description="PII 模式 YAML（git 跟踪）",
+    )
+    pii_patterns_overrides_path: Path = Field(
+        default=REPO_ROOT / "data" / "pii_patterns_overrides.json",
+        validation_alias="PII_PATTERNS_OVERRIDES_PATH",
+        description="PII 模式 overrides（不进 git）",
+    )
+    pii_safety_keywords_path: Path = Field(
+        default=REPO_ROOT / "config" / "safety_keywords.yaml",
+        validation_alias="PII_SAFETY_KEYWORDS_PATH",
+        description="安全关键词 YAML",
+    )
+    pii_default_policy: str = Field(
+        default="default",
+        validation_alias="PII_DEFAULT_POLICY",
+        description="默认脱敏策略",
+    )
+    pii_block_on_safety_failure: bool = Field(
+        default=False,
+        validation_alias="PII_BLOCK_ON_SAFETY_FAILURE",
+        description="内容安全检查失败时是否阻断",
+    )
+
+    # Phase I #44 — OAuth2 / mTLS
+    oauth2_enabled: bool = Field(
+        default=False,
+        validation_alias="OAUTH2_ENABLED",
+        description="启用 OAuth2 鉴权（默认关闭，保持 JWT HS256）",
+    )
+    oauth2_client_id: str | None = Field(
+        default=None,
+        validation_alias="OAUTH2_CLIENT_ID",
+    )
+    oauth2_client_secret: str | None = Field(
+        default=None,
+        validation_alias="OAUTH2_CLIENT_SECRET",
+    )
+    oauth2_authorization_endpoint: str = Field(
+        default="",
+        validation_alias="OAUTH2_AUTHORIZATION_ENDPOINT",
+    )
+    oauth2_token_endpoint: str = Field(
+        default="",
+        validation_alias="OAUTH2_TOKEN_ENDPOINT",
+    )
+    oauth2_userinfo_endpoint: str = Field(
+        default="",
+        validation_alias="OAUTH2_USERINFO_ENDPOINT",
+    )
+    oauth2_redirect_uri: str = Field(
+        default="http://127.0.0.1:8000/internal/auth/oauth2/callback",
+        validation_alias="OAUTH2_REDIRECT_URI",
+    )
+    oauth2_scopes: str = Field(
+        default="openid profile email",
+        validation_alias="OAUTH2_SCOPES",
+    )
+    oauth2_issuer: str | None = Field(
+        default=None,
+        validation_alias="OAUTH2_ISSUER",
+    )
+    oauth2_jwt_fallback: bool = Field(
+        default=True,
+        validation_alias="OAUTH2_JWT_FALLBACK",
+        description="OAuth2 失败时回退 JWT",
+    )
+    mtls_enabled: bool = Field(
+        default=False,
+        validation_alias="MTLS_ENABLED",
+        description="启用 mTLS 客户端证书校验",
+    )
+    mtls_ca_cert_path: str | None = Field(
+        default=None,
+        validation_alias="MTLS_CA_CERT_PATH",
+    )
+    mtls_server_cert_path: str | None = Field(
+        default=None,
+        validation_alias="MTLS_SERVER_CERT_PATH",
+    )
+    mtls_server_key_path: str | None = Field(
+        default=None,
+        validation_alias="MTLS_SERVER_KEY_PATH",
+    )
+    mtls_client_cert_required: bool = Field(
+        default=True,
+        validation_alias="MTLS_CLIENT_CERT_REQUIRED",
     )
 
 

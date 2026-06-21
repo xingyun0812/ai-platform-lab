@@ -11,11 +11,24 @@ from fastapi.staticfiles import StaticFiles
 
 from apps.gateway.agent.approval_routes import router as agent_approval_router
 from apps.gateway.agent.routes import router as agent_router
+from apps.gateway.agent_lifecycle_routes import router as agent_lifecycle_router
+from apps.gateway.audit_action_routes import router as audit_action_router
 from apps.gateway.audit_routes import router as audit_router
+from apps.gateway.auth_routes import router as auth_router
 from apps.gateway.billing_routes import router as billing_router
+from apps.gateway.embedding_routes import router as embedding_router
+from apps.gateway.hitl_routes import router as hitl_router
 from apps.gateway.http_utils import json_error, resolve_tenant
+from apps.gateway.mcp_routes import router as mcp_router
+from apps.gateway.memory_routes import router as memory_router
 from apps.gateway.model_router import forward_with_model_router
+from apps.gateway.multi_agent_routes import router as multi_agent_router
+from apps.gateway.orchestrator_routes import router as orchestrator_router
+from apps.gateway.pii_routes import router as pii_router
 from apps.gateway.platform_routes import router as platform_router
+from apps.gateway.prompt_experiment_routes import router as prompt_experiment_router
+from apps.gateway.prompt_routes import router as prompt_router
+from apps.gateway.sandbox_routes import router as sandbox_router
 from apps.gateway.quota import get_quota_tracker
 from apps.gateway.rag.query_routes import router as rag_query_router
 from apps.gateway.rag.routes import router as rag_router
@@ -29,10 +42,34 @@ from packages.observability.context import get_trace_id
 from packages.observability.metrics import get_metrics_store
 from packages.observability.middleware import TraceIdMiddleware
 from packages.observability.otel import init_otel
+from packages.memory import init_memory_store
+from packages.mcp import init_mcp_registry
+from packages.prompt import init_experiment_store as init_prompt_experiment_store
+from packages.prompt import init_registry as init_prompt_registry
+from packages.semantic_cache import (
+    SemanticCacheConfig,
+    get_semantic_cache,
+    init_semantic_cache,
+)
 
 logger = logging.getLogger("ai_platform.gateway")
 
 quota_tracker = get_quota_tracker()
+
+
+def _build_semantic_cache_config(settings) -> SemanticCacheConfig:
+    skip_models_str = (settings.semantic_cache_skip_models or "").strip()
+    skip_models = [m.strip() for m in skip_models_str.split(",") if m.strip()]
+    return SemanticCacheConfig(
+        enabled=settings.semantic_cache_enabled,
+        mode=settings.semantic_cache_mode,
+        similarity_threshold=settings.semantic_cache_similarity_threshold,
+        ttl_seconds=settings.semantic_cache_ttl_seconds,
+        max_entries_per_tenant=settings.semantic_cache_max_entries_per_tenant,
+        skip_models=skip_models,
+        max_temperature=settings.semantic_cache_max_temperature,
+        embedding_dims=settings.embedding_dimensions,
+    )
 
 
 def get_tenants() -> dict[str, TenantRecord]:
@@ -47,6 +84,181 @@ def create_app() -> FastAPI:
         console_export=settings.otel_console_export,
         otlp_endpoint=settings.otel_exporter_otlp_endpoint,
     )
+    # Phase G — 语义缓存初始化（启用时根据 REDIS_URL 选择后端）
+    if settings.semantic_cache_enabled:
+        init_semantic_cache(
+            _build_semantic_cache_config(settings),
+            redis_url=settings.redis_url or None,
+        )
+        logger.info(
+            "semantic cache enabled mode=%s threshold=%.2f ttl=%ds",
+            settings.semantic_cache_mode,
+            settings.semantic_cache_similarity_threshold,
+            settings.semantic_cache_ttl_seconds,
+        )
+    # Phase F — Prompt 版本注册表初始化
+    if settings.prompt_registry_enabled:
+        init_prompt_registry(
+            yaml_path=settings.prompts_config_path,
+            overrides_path=settings.prompt_overrides_path,
+            legacy_fallback={
+                # 向后兼容：若 prompts.yaml 中无 rag_query，回退到原 txt
+                "rag_query": settings.rag_prompt_path,
+            },
+        )
+        logger.info(
+            "prompt registry enabled yaml=%s overrides=%s",
+            settings.prompts_config_path,
+            settings.prompt_overrides_path,
+        )
+        # Phase F #30 — A/B 实验存储
+        if settings.prompt_experiment_enabled:
+            init_prompt_experiment_store(
+                storage_path=settings.prompt_experiments_path
+            )
+            logger.info(
+                "prompt experiment enabled storage=%s",
+                settings.prompt_experiments_path,
+            )
+    # Phase F #31 — 长记忆持久化
+    if settings.memory_store_enabled:
+        init_memory_store(database_url=settings.database_url or None)
+        logger.info(
+            "memory store enabled database_url=%s",
+            "configured" if settings.database_url else "memory-fallback",
+        )
+    # Phase F #32 — MCP 真实集成
+    if settings.mcp_enabled:
+        init_mcp_registry(
+            yaml_path=settings.mcp_servers_config_path,
+            overrides_path=settings.mcp_overrides_path,
+        )
+        logger.info(
+            "mcp enabled yaml=%s overrides=%s",
+            settings.mcp_servers_config_path,
+            settings.mcp_overrides_path,
+        )
+    # Phase H #37 — 控制流编排引擎
+    if settings.orchestrator_enabled:
+        from packages.agent.orchestrator import init_workflow_store
+
+        init_workflow_store(
+            yaml_path=settings.orchestrator_workflows_path,
+            overrides_path=settings.orchestrator_overrides_path,
+        )
+        logger.info(
+            "orchestrator enabled workflows=%s overrides=%s",
+            settings.orchestrator_workflows_path,
+            settings.orchestrator_overrides_path,
+        )
+    # Phase H #38 — Multi-Agent 协作框架
+    if settings.multi_agent_enabled:
+        from packages.agent.multi_agent import init_agent_registry
+
+        init_agent_registry(
+            yaml_path=settings.agents_config_path,
+            overrides_path=settings.agents_overrides_path,
+        )
+        logger.info(
+            "multi_agent enabled yaml=%s overrides=%s",
+            settings.agents_config_path,
+            settings.agents_overrides_path,
+        )
+    # Phase H #39 — Agent 生命周期管理
+    if settings.agent_lifecycle_enabled:
+        from packages.agent.lifecycle import init_lifecycle_registry
+
+        init_lifecycle_registry(
+            yaml_path=settings.agent_lifecycle_versions_path,
+            overrides_path=settings.agent_lifecycle_overrides_path,
+        )
+        logger.info(
+            "agent_lifecycle enabled versions=%s overrides=%s",
+            settings.agent_lifecycle_versions_path,
+            settings.agent_lifecycle_overrides_path,
+        )
+    # Phase H #40 — HITL 完整工作流
+    if settings.hitl_enabled:
+        from packages.hitl import init_approval_store
+
+        init_approval_store(database_url=settings.hitl_store_database_url)
+        logger.info(
+            "hitl enabled database_url=%s",
+            "configured" if settings.hitl_store_database_url else "memory",
+        )
+    # Phase G #35 — Embedding 独立服务
+    if settings.embedding_service_enabled:
+        from packages.embedding import init_embedding_service
+
+        init_embedding_service(
+            registry_yaml_path=settings.embedding_models_config_path,
+            registry_overrides_path=settings.embedding_models_overrides_path,
+        )
+        logger.info(
+            "embedding_service enabled models=%s overrides=%s",
+            settings.embedding_models_config_path,
+            settings.embedding_models_overrides_path,
+        )
+    # Phase I #41 — 沙箱容器隔离
+    if settings.sandbox_enabled:
+        from packages.sandbox import init_sandbox_executor
+
+        init_sandbox_executor(
+            yaml_path=settings.sandbox_profiles_config_path,
+            overrides_path=settings.sandbox_profiles_overrides_path,
+        )
+        logger.info("sandbox enabled runtime=%s", settings.sandbox_default_runtime)
+    # Phase I #42 — 动作分级审计
+    if settings.audit_actions_enabled:
+        from packages.audit.action_levels import init_classifier
+        from packages.audit.action_logger import init_action_logger
+
+        init_classifier(
+            yaml_path=settings.audit_actions_config_path,
+            overrides_path=settings.audit_actions_overrides_path,
+        )
+        init_action_logger(database_url=settings.audit_actions_store_database_url)
+        logger.info("audit_actions enabled")
+    # Phase I #43 — PII 脱敏 + 内容安全
+    if settings.pii_service_enabled:
+        from packages.pii import init_pii_service
+
+        init_pii_service(
+            detector_yaml=settings.pii_patterns_config_path,
+            detector_overrides=settings.pii_patterns_overrides_path,
+            safety_yaml=settings.pii_safety_keywords_path,
+        )
+        logger.info("pii_service enabled")
+    # Phase I #44 — OAuth2 / mTLS（opt-in，默认关闭）
+    if settings.oauth2_enabled:
+        from packages.auth.oauth2 import OAuth2Config, init_oauth2_provider
+
+        init_oauth2_provider(
+            OAuth2Config(
+                client_id=settings.oauth2_client_id or "",
+                client_secret=settings.oauth2_client_secret or "",
+                authorization_endpoint=settings.oauth2_authorization_endpoint,
+                token_endpoint=settings.oauth2_token_endpoint,
+                userinfo_endpoint=settings.oauth2_userinfo_endpoint,
+                redirect_uri=settings.oauth2_redirect_uri,
+                scopes=settings.oauth2_scopes.split(),
+                issuer=settings.oauth2_issuer or "",
+            )
+        )
+        logger.info("oauth2 enabled issuer=%s", settings.oauth2_issuer)
+    if settings.mtls_enabled:
+        from packages.auth.mtls import MTLSConfig, init_mtls_context
+
+        init_mtls_context(
+            MTLSConfig(
+                enabled=True,
+                ca_cert_path=settings.mtls_ca_cert_path or "",
+                server_cert_path=settings.mtls_server_cert_path or "",
+                server_key_path=settings.mtls_server_key_path or "",
+                client_cert_required=settings.mtls_client_cert_required,
+            )
+        )
+        logger.info("mtls enabled")
     app = FastAPI(title=settings.app_name, version=settings.app_version)
     app.add_middleware(TraceIdMiddleware)
     app.include_router(rag_router)
@@ -54,8 +266,21 @@ def create_app() -> FastAPI:
     app.include_router(agent_router)
     app.include_router(agent_approval_router)
     app.include_router(audit_router)
+    app.include_router(audit_action_router)
+    app.include_router(auth_router)
     app.include_router(billing_router)
+    app.include_router(embedding_router)
+    app.include_router(hitl_router)
+    app.include_router(mcp_router)
+    app.include_router(memory_router)
+    app.include_router(multi_agent_router)
+    app.include_router(orchestrator_router)
+    app.include_router(pii_router)
     app.include_router(platform_router)
+    app.include_router(prompt_router)
+    app.include_router(prompt_experiment_router)
+    app.include_router(agent_lifecycle_router)
+    app.include_router(sandbox_router)
     console_dir = Path(__file__).resolve().parents[2] / "apps" / "console"
     if console_dir.is_dir():
         app.mount("/console", StaticFiles(directory=str(console_dir), html=True), name="console")
@@ -140,8 +365,22 @@ def create_app() -> FastAPI:
     async def metrics() -> PlainTextResponse:
         if not settings.metrics_enabled:
             return PlainTextResponse("# metrics disabled\n", status_code=503)
-        body = get_metrics_store().prometheus_text()
-        return PlainTextResponse(body, media_type="text/plain; version=0.0.4; charset=utf-8")
+        parts = [get_metrics_store().prometheus_text()]
+        # Phase G — 语义缓存指标
+        try:
+            from packages.semantic_cache import get_semantic_cache_metrics
+
+            parts.append(get_semantic_cache_metrics().prometheus_text())
+        except Exception:
+            logger.exception("semantic cache metrics export failed")
+        # Phase F #31 — 长记忆指标
+        try:
+            from packages.memory import get_memory_metrics
+
+            parts.append(get_memory_metrics().prometheus_text())
+        except Exception:
+            logger.exception("memory metrics export failed")
+        return PlainTextResponse("".join(parts), media_type="text/plain; version=0.0.4; charset=utf-8")
 
     @app.post("/v1/chat/completions")
     async def chat_completions(
@@ -195,6 +434,44 @@ def create_app() -> FastAPI:
         from packages.observability.otel import component_span
 
         payload = body.upstream_payload(resolved_model)
+
+        # Phase G — 语义缓存查询
+        cache = get_semantic_cache()
+        cache_lookup = None
+        if cache is not None:
+            cache_lookup = await cache.lookup(
+                tenant_id=tenant.tenant_id,
+                model=resolved_model,
+                messages=[m.model_dump() for m in body.messages],
+                temperature=body.temperature,
+                stream=bool(body.stream),
+            )
+            if isinstance(cache_lookup, str):
+                # 跳过缓存（如 stream=true / temperature 过高），继续走上游
+                logger.debug("semantic cache skipped: %s", cache_lookup)
+                cache_lookup = None
+            elif cache_lookup is not None:
+                # 命中缓存：返回带 _platform.cache_hit 标记
+                cached_body = dict(cache_lookup.entry.response)
+                meta = cached_body.setdefault("_platform", {})
+                if isinstance(meta, dict):
+                    meta["cache_hit"] = True
+                    meta["cache_mode"] = cache_lookup.mode
+                    meta["cache_similarity"] = round(cache_lookup.similarity, 4)
+                    meta["cache_age_seconds"] = round(
+                        time.time() - cache_lookup.entry.created_at, 2
+                    )
+                    meta["model"] = cache_lookup.entry.model
+                    meta["tenant_id"] = tenant.tenant_id
+                logger.info(
+                    "semantic cache hit tenant=%s model=%s mode=%s sim=%.4f",
+                    tenant.tenant_id,
+                    resolved_model,
+                    cache_lookup.mode,
+                    cache_lookup.similarity,
+                )
+                return JSONResponse(status_code=200, content=cached_body)
+
         with component_span(
             "gateway.chat_completions",
             component="gateway",
@@ -262,6 +539,22 @@ def create_app() -> FastAPI:
                     "total_tokens": usage.total_tokens,
                     **budget_platform_meta(snap, usage.total_tokens),
                 }
+
+        # Phase G — 写入语义缓存（仅成功响应且 cache 未跳过时）
+        if cache is not None and cache_lookup is None:
+            try:
+                await cache.store(
+                    tenant_id=tenant.tenant_id,
+                    model=resolved_model,
+                    messages=[m.model_dump() for m in body.messages],
+                    response=content,
+                    usage_tokens=(usage.total_tokens if usage else 0),
+                    temperature=body.temperature,
+                    stream=bool(body.stream),
+                )
+            except Exception:
+                logger.exception("semantic cache store failed")
+
         return JSONResponse(status_code=200, content=content)
 
     return app

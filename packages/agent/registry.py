@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import logging
+
 from packages.agent.tools.base import ToolDefinition
 from packages.agent.tools.builtin import (
     handle_calc,
@@ -8,6 +10,8 @@ from packages.agent.tools.builtin import (
     handle_math_llm_stub,
     handle_search_web_stub,
 )
+
+logger = logging.getLogger("ai_platform.agent.registry")
 
 _REGISTRY: dict[str, ToolDefinition] | None = None
 
@@ -93,14 +97,90 @@ def get_tool_registry() -> dict[str, ToolDefinition]:
     global _REGISTRY
     if _REGISTRY is None:
         merged = build_default_registry()
+        # Phase F #32：动态加载 MCP server 工具
         try:
-            from packages.agent.mcp_stub import load_mcp_stub_tools
+            from apps.gateway.settings import get_settings
 
-            merged.update(load_mcp_stub_tools())
+            settings = get_settings()
+            if settings.mcp_enabled:
+                import asyncio
+
+                from packages.mcp import get_mcp_registry, load_mcp_tools
+
+                # 确保 registry 已初始化
+                if get_mcp_registry() is None:
+                    from packages.mcp import init_mcp_registry
+
+                    init_mcp_registry(
+                        yaml_path=settings.mcp_servers_config_path,
+                        overrides_path=settings.mcp_overrides_path,
+                    )
+                # 加载 MCP 工具（同步包装 async）
+                try:
+                    loop = asyncio.get_event_loop()
+                except RuntimeError:
+                    loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(loop)
+                if loop.is_running():
+                    # 在已有事件循环中（如 FastAPI）：调度但不阻塞
+                    logger.info("mcp tools loading deferred to async context")
+                else:
+                    mcp_tools = loop.run_until_complete(
+                        load_mcp_tools(
+                            timeout_seconds=settings.mcp_connect_timeout_seconds
+                        )
+                    )
+                    merged.update(mcp_tools)
+                    logger.info("mcp tools loaded count=%d", len(mcp_tools))
+            else:
+                # 关闭时回退到 stub
+                from packages.agent.mcp_stub import load_mcp_stub_tools
+
+                merged.update(load_mcp_stub_tools())
         except Exception:
-            pass
+            # 兜底：用 stub
+            try:
+                from packages.agent.mcp_stub import load_mcp_stub_tools
+
+                merged.update(load_mcp_stub_tools())
+            except Exception:
+                pass
         _REGISTRY = merged
     return _REGISTRY
+
+
+async def refresh_mcp_tools() -> int:
+    """重新加载 MCP 工具（运行时刷新）。
+
+    返回新加载的工具数。
+    用于 admin 通过 API 添加 MCP server 后刷新 registry。
+    """
+    from apps.gateway.settings import get_settings
+    from packages.mcp import get_mcp_registry, load_mcp_tools
+
+    settings = get_settings()
+    if not settings.mcp_enabled:
+        return 0
+    if get_mcp_registry() is None:
+        from packages.mcp import init_mcp_registry
+
+        init_mcp_registry(
+            yaml_path=settings.mcp_servers_config_path,
+            overrides_path=settings.mcp_overrides_path,
+        )
+    mcp_tools = await load_mcp_tools(
+        timeout_seconds=settings.mcp_connect_timeout_seconds
+    )
+    global _REGISTRY
+    if _REGISTRY is None:
+        _REGISTRY = build_default_registry()
+    # 移除旧的 mcp_ 工具
+    old_keys = [k for k in _REGISTRY if k.startswith("mcp_")]
+    for k in old_keys:
+        _REGISTRY.pop(k, None)
+    _REGISTRY.update(mcp_tools)
+    logger.info("mcp tools refreshed count=%d", len(mcp_tools))
+    return len(mcp_tools)
 
 
 class ToolRegistry:

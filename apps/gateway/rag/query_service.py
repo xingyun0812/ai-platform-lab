@@ -19,6 +19,64 @@ from packages.rag.retrieval import retrieve_chunks
 logger = logging.getLogger("ai_platform.rag.query")
 
 
+def _resolve_rag_prompt_template(settings, *, bucket_key: str | None = None) -> tuple[str, dict[str, Any]]:
+    """Phase F：优先从 prompt registry 取 rag_query 模板；否则回退 legacy txt。
+
+    若启用 A/B 实验 + bucket_key，则按实验分桶取版本；返回 (template, exp_info)。
+    registry 中模板用 {{context}}/{{query}} 语法，但 render_rag_prompt 期望 {context}/{query}。
+    因此：若模板含 {{var}} 双花括号，先渲染为 {context}/{query} 占位文本。
+    """
+    exp_info: dict[str, Any] = {}
+    if settings.prompt_registry_enabled:
+        from packages.prompt import get_experiment_store, get_registry
+
+        reg = get_registry()
+        if reg is not None:
+            try:
+                if bucket_key and settings.prompt_experiment_enabled:
+                    store = get_experiment_store()
+                    if store is not None:
+                        # render_with_experiment 会自动按 bucket 分桶或回退 active
+                        content, _entry, exp_info = reg.render_with_experiment(
+                            "rag_query",
+                            {"context": "{context}", "query": "{query}"},
+                            bucket_key=bucket_key,
+                            experiment_store=store,
+                        )
+                        # 用 {{context}} → {context} 留给 render_rag_prompt
+                        return content.replace("{{context}}", "{context}").replace(
+                            "{{query}}", "{query}"
+                        ), exp_info
+                # 无实验：取 active
+                entry = reg.get_active("rag_query")
+                if entry is not None and entry.version > 0:
+                    return (
+                        entry.content.replace("{{context}}", "{context}").replace(
+                            "{{query}}", "{query}"
+                        ),
+                        exp_info,
+                    )
+            except Exception as e:
+                logger.warning("prompt registry rag_query lookup failed: %s", e)
+    return load_prompt_template(settings.rag_prompt_path), exp_info
+
+
+def _resolve_rag_system_prompt(settings) -> str:
+    """Phase F：优先从 registry 取 rag_system；否则回退硬编码。"""
+    if settings.prompt_registry_enabled:
+        from packages.prompt import get_registry
+
+        reg = get_registry()
+        if reg is not None:
+            try:
+                entry = reg.get_active("rag_system")
+                if entry is not None and entry.version > 0:
+                    return entry.content
+            except Exception as e:
+                logger.warning("prompt registry rag_system lookup failed: %s", e)
+    return "你是企业知识库问答助手，严格依据用户消息中的参考资料作答。"
+
+
 class RagQueryRefusal(Exception):
     """业务拒答：携带业务错误码，与 HTTP 状态在路由层映射。"""
 
@@ -159,17 +217,20 @@ async def run_rag_query(
             detail={"tenant_id": tenant_id, "quota": daily_request_quota},
         )
 
-    template = load_prompt_template(settings.rag_prompt_path)
+    template, exp_info = _resolve_rag_prompt_template(
+        settings, bucket_key=f"{tenant_id}|{query}"
+    )
     context = build_context_block(chunks)
     user_prompt = render_rag_prompt(template, context=context, query=query)
 
     llm_start = time.perf_counter()
+    system_content = _resolve_rag_system_prompt(settings)
     payload = {
         "model": effective_model,
         "messages": [
             {
                 "role": "system",
-                "content": "你是企业知识库问答助手，严格依据用户消息中的参考资料作答。",
+                "content": system_content,
             },
             {"role": "user", "content": user_prompt},
         ],
@@ -195,6 +256,25 @@ async def run_rag_query(
         upstream_body=routed.body,
         trace_id=get_trace_id(),
     )
+    # Phase F #30：若命中 A/B 实验，记录指标 + 触发自动胜出
+    if exp_info.get("experiment_id") and exp_info.get("variant_version") is not None:
+        try:
+            from packages.prompt import get_experiment_store
+
+            store = get_experiment_store()
+            if store is not None:
+                llm_ms_for_metrics = (time.perf_counter() - llm_start) * 1000
+                tokens = usage.total_tokens if usage else 0
+                store.record_request(
+                    experiment_id=exp_info["experiment_id"],
+                    version=exp_info["variant_version"],
+                    latency_ms=llm_ms_for_metrics,
+                    tokens=tokens,
+                    error=False,
+                )
+                store.maybe_auto_winner(exp_info["experiment_id"])
+        except Exception as e:
+            logger.warning("experiment metrics record failed: %s", e)
     snap = get_budget_snapshot(
         tenant_id,
         token_budget_daily=token_budget_daily,
@@ -246,6 +326,8 @@ async def run_rag_query(
             "version": resolved_version,
         },
     }
+    if exp_info.get("experiment_id"):
+        platform_meta["experiment"] = exp_info
     if usage is not None:
         platform_meta["usage"] = {
             "input_tokens": usage.input_tokens,

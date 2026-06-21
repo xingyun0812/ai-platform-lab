@@ -17,6 +17,12 @@ from packages.agent.context_budget import (
     maybe_compact_session,
     truncate_tool_content,
 )
+from packages.agent.context_compress import (
+    inject_memory_into_messages,
+    maybe_compact_with_llm,
+    memory_injection_platform_meta,
+    retrieve_and_inject_memory,
+)
 from packages.agent.hitl import ApprovalStatus, get_approval
 from packages.agent.quality_gate import QUALITY_HINT, assess_tool_output
 from packages.agent.registry import ToolRegistry
@@ -40,6 +46,55 @@ class AgentRunError(Exception):
         self.message = message
         self.detail = detail
         super().__init__(message)
+
+
+async def _maybe_persist_memory(
+    *,
+    tenant_id: str,
+    session_id: str,
+    messages: list[dict[str, Any]],
+    turn_count: int,
+) -> bool:
+    """Phase F #31：将当前会话历史压缩为长期记忆并持久化。
+
+    失败时静默返回 False（不影响主流程）。
+    """
+    try:
+        from packages.memory import get_memory_store
+        from packages.memory.summarize import summarize_messages
+        from packages.memory.store import MemoryRecord, _gen_id
+
+        store = get_memory_store()
+        if store is None:
+            return False
+        summary = await summarize_messages(messages, tenant_id=tenant_id)
+        if not summary.strip():
+            return False
+        record = MemoryRecord(
+            memory_id=_gen_id(),
+            tenant_id=tenant_id,
+            scope="session",
+            scope_id=session_id,
+            content=summary,
+            summary=None,
+            metadata={
+                "turn_count": turn_count,
+                "trace_id": get_trace_id(),
+                "source": "auto_summarize",
+            },
+        )
+        await store.add(record)
+        logger.info(
+            "memory persisted tenant=%s session=%s turns=%d mem_id=%s",
+            tenant_id,
+            session_id,
+            turn_count,
+            record.memory_id,
+        )
+        return True
+    except Exception as e:
+        logger.warning("memory persist failed: %s", e)
+        return False
 
 
 async def _execute_tool(
@@ -261,6 +316,30 @@ async def run_agent(
         keep_recent_turns=settings.agent_context_keep_recent_turns,
         tool_result_max_chars=settings.agent_tool_result_max_chars,
     )
+    # Phase F #33：长记忆注入 system prompt
+    if settings.context_memory_injection_enabled and new_messages:
+        # 用最新 user message 作为 query
+        query_text = ""
+        for m in reversed(new_messages):
+            if m.get("role") == "user":
+                content = m.get("content")
+                if isinstance(content, str):
+                    query_text = content
+                    break
+        budget_remaining = max(
+            0, budget_meta.budget - budget_meta.estimated_tokens
+        )
+        if budget_remaining >= settings.context_memory_injection_min_budget:
+            memory_injection = await retrieve_and_inject_memory(
+                tenant_id=tenant_id,
+                session_id=session_id,
+                query=query_text,
+                budget_remaining=budget_remaining,
+                top_k=settings.context_memory_injection_top_k,
+                scope="session",
+            )
+            if memory_injection.injected:
+                messages = inject_memory_into_messages(messages, memory_injection)
     runtime_truncated_tools = 0
     reflect_remaining = settings.agent_reflect_max_retries
 
@@ -274,6 +353,8 @@ async def run_agent(
     tools_spec = reg.openai_tools_spec_subset(routing.tool_names, allowed_tools)
     trace: list[ToolCallRecord] = []
     shadow_trace: list[ToolCallRecord] = []
+    # memory_injection 在 assemble_llm_messages 后才确定
+    memory_injection = None  # type: ignore[assignment]
     steps = 0
     final_message = ""
     total_input_tokens = 0
@@ -460,12 +541,36 @@ async def run_agent(
         summary=state.summary,
         turn_count=state.turn_count,
     )
-    saved_state = maybe_compact_session(
-        saved_state,
-        every_n_turns=settings.agent_summary_every_n_turns,
-        keep_recent_turns=settings.agent_context_keep_recent_turns,
-    )
+    # Phase F #33：LLM 增强摘要（替换 stub_summarize）
+    if settings.context_llm_summary_enabled:
+        saved_state = await maybe_compact_with_llm(
+            saved_state,
+            every_n_turns=settings.agent_summary_every_n_turns,
+            keep_recent_turns=settings.agent_context_keep_recent_turns,
+            tenant_id=tenant_id,
+            enable_llm_summary=settings.context_llm_summary_enabled,
+        )
+    else:
+        saved_state = maybe_compact_session(
+            saved_state,
+            every_n_turns=settings.agent_summary_every_n_turns,
+            keep_recent_turns=settings.agent_context_keep_recent_turns,
+        )
     session_store.save_session_state(tenant_id, session_id, saved_state)
+
+    # Phase F #31：按周期触发长记忆摘要持久化
+    memory_persisted = False
+    if (
+        settings.memory_store_enabled
+        and saved_state.turn_count > 0
+        and saved_state.turn_count % max(1, settings.memory_summarize_every_n_turns) == 0
+    ):
+        memory_persisted = await _maybe_persist_memory(
+            tenant_id=tenant_id,
+            session_id=session_id,
+            messages=saved_state.messages,
+            turn_count=saved_state.turn_count,
+        )
 
     logger.info(
         "agent_run",
@@ -510,7 +615,12 @@ async def run_agent(
         "session_summary": bool(saved_state.summary),
         "reflect_remaining": reflect_remaining,
         "shadow_mode": shadow_mode,
+        "memory_persisted": memory_persisted,
     }
+    if memory_injection is not None:
+        platform_meta["memory_injection"] = memory_injection_platform_meta(
+            memory_injection
+        )
     if total_tokens > 0:
         platform_meta["usage"] = {
             "input_tokens": total_input_tokens,
