@@ -1,0 +1,41 @@
+name: "💡 Feature Request"
+description: "建议一个新功能（不在 roadmap 中）"
+labels: ["feature-request"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: "要解决什么问题？"
+      description: "描述你遇到的痛点或场景"
+      placeholder: "现在无法查看某个 Agent 的调用历史..."
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: "你期望的方案"
+      description: "希望平台怎么解决？"
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: "备选方案"
+      description: "考虑过哪些替代方案？"
+  - type: dropdown
+    id: priority
+    attributes:
+      label: "优先级"
+      options:
+        - "P0 — 阻塞生产"
+        - "P1 — 影响效率"
+        - "P2 — 锦上添花"
+    validations:
+      required: true
+  - type: checkboxes
+    id: willing
+    attributes:
+      label: "是否愿意贡献？"
+      options:
+        - label: "我愿意提交 PR 实现这个功能"
+          required: false

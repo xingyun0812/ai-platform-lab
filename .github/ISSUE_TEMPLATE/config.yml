@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 💬 提问 / 讨论
+    url: https://github.com/xingyun0812/ai-platform-lab/discussions
+    about: 使用问题、架构讨论、想法交流请发 Discussions，不要开 Issue
+  - name: 📖 项目 Roadmap
+    url: https://github.com/xingyun0812/ai-platform-lab/blob/main/docs/roadmap.md
+    about: 查看 Phase A-K 完整规划，确认你的 Issue 是否在 roadmap 中
+  - name: 🤝 贡献指南
+    url: https://github.com/xingyun0812/ai-platform-lab/blob/main/CONTRIBUTING.md
+    about: 认领 Issue、提交 PR 前必读

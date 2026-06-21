@@ -1,0 +1,102 @@
+name: "🚀 Phase Task"
+description: "Phase 规划的功能任务（由维护者创建，贡献者认领）"
+labels: ["phase-task", "feature"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        感谢贡献！这是 Phase J/K 规划的任务。
+        请先在 [roadmap.md](../docs/roadmap.md) 确认 Issue 编号与内容。
+  - type: input
+    id: issue-number
+    attributes:
+      label: "Roadmap Issue 编号"
+      description: "对应 docs/roadmap.md 中的 #NN"
+      placeholder: "#45"
+    validations:
+      required: true
+  - type: dropdown
+    id: phase
+    attributes:
+      label: Phase
+      options:
+        - "Phase J — 平台开发者体验"
+        - "Phase K — 生产基础设施"
+        - "Phase L — 未来规划"
+    validations:
+      required: true
+  - type: textarea
+    id: goal
+    attributes:
+      label: "目标"
+      description: "这个 Issue 要解决什么问题？为什么需要？"
+      placeholder: "让外部开发者可以用 Python SDK 调用平台 API..."
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: "验收标准"
+      description: "完成标志（可勾选清单）"
+      value: |
+        - [ ] 核心模块实现
+        - [ ] REST API（如适用）
+        - [ ] 单测 ≥ 10 个，全通过
+        - [ ] 设计文档 docs/phase-<letter>-<area>.md
+        - [ ] .env.example 配置项
+        - [ ] README.md 章节
+        - [ ] roadmap.md 标记 ✅
+        - [ ] acceptance_smoke.py 验收检查
+    validations:
+      required: true
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: "依赖"
+      description: "前置 Issue（如有）"
+      placeholder: "无 / 依赖 #NN"
+  - type: textarea
+    id: plan
+    attributes:
+      label: "实施计划"
+      description: "打算怎么实现？列文件清单"
+      value: |
+        **新增文件**：
+        - packages/<area>/__init__.py
+        - packages/<area>/<core>.py
+        - apps/gateway/<area>_routes.py
+        - tests/test_<area>.py
+        - docs/phase-<letter>-<area>.md
+
+        **修改文件**（由父 Agent 统一集成，避免冲突）：
+        - apps/gateway/main.py
+        - apps/gateway/settings.py
+        - .env.example
+        - README.md
+        - docs/roadmap.md
+        - eval/acceptance_smoke.py
+  - type: textarea
+    id: test-plan
+    attributes:
+      label: "测试计划"
+      description: "如何验证实现正确？"
+      placeholder: |
+        1. python3 tests/test_<area>.py — ≥10 用例
+        2. python3 eval/acceptance_smoke.py — PF 段通过
+        3. curl 验证 REST API
+  - type: input
+    id: estimate
+    attributes:
+      label: "预估工期"
+      placeholder: "3w"
+    validations:
+      required: true
+  - type: checkboxes
+    id: confirm
+    attributes:
+      label: "认领前确认"
+      options:
+        - label: "我已阅读 CONTRIBUTING.md"
+          required: true
+        - label: "我已在本地跑通现有测试（273 个全通过）"
+          required: true

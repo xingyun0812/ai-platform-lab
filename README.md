@@ -34,6 +34,17 @@ python eval/run.py run
 
 ---
 
+## 协作贡献
+
+欢迎贡献！请先阅读 [CONTRIBUTING.md](CONTRIBUTING.md) 了解 **Issue 驱动开发流程**。
+
+- **认领 Issue** → [Issues 待办](https://github.com/xingyun0812/ai-platform-lab/issues)
+- **提 PR 前必读** → [CONTRIBUTING.md](CONTRIBUTING.md)（分支命名 / commit 规范 / 测试要求）
+- **待创建 Issue 清单** → [docs/issues-backlog.md](docs/issues-backlog.md)（#45-#52）
+- **讨论/提问** → [Discussions](https://github.com/xingyun0812/ai-platform-lab/discussions)
+
+---
+
 ## 环境（本地开发）
 
 - Python **3.11+**
