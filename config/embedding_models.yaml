@@ -1,0 +1,37 @@
+# Embedding 模型默认配置
+# 修改此文件后重启服务生效
+# 运行时覆盖存储在 data/embedding_models_overrides.json
+
+models:
+  - model_id: text-embedding-3-small
+    name: OpenAI text-embedding-3-small
+    provider: openai
+    dimensions: 1536
+    max_input_tokens: 8191
+    metadata:
+      pricing_per_1k_tokens: 0.00002
+
+  - model_id: text-embedding-3-large
+    name: OpenAI text-embedding-3-large
+    provider: openai
+    dimensions: 3072
+    max_input_tokens: 8191
+    metadata:
+      pricing_per_1k_tokens: 0.00013
+
+  - model_id: text-embedding-ada-002
+    name: OpenAI text-embedding-ada-002 (legacy)
+    provider: openai
+    dimensions: 1536
+    max_input_tokens: 8191
+    metadata:
+      pricing_per_1k_tokens: 0.0001
+      legacy: true
+
+  - model_id: stub-embedding
+    name: Stub Embedding (test/dev)
+    provider: stub
+    dimensions: 1536
+    max_input_tokens: 99999
+    metadata:
+      note: 确定性哈希向量，不调用 LLM，适合测试
