@@ -1,0 +1,37 @@
+# MCP Servers — Phase F #32
+#
+# 配置 MCP server 连接信息。admin API 写入的 overrides 落
+# data/mcp_servers_overrides.json（不进 git）。
+#
+# transport:
+#   stdio — 本地子进程，通过 stdin/stdout 通信
+#   http  — 远程 HTTP server
+#
+# 鉴权：
+#   api_key — stdio 时注入到 env；http 时注入到 Authorization header
+
+servers:
+  # 示例：本地 stdio MCP server（Python 实现）
+  # 启动命令：python -m my_mcp_server
+  # 实际使用时取消注释并替换为真实 server
+  #
+  # - server_id: local_python_mcp
+  #   transport: stdio
+  #   enabled: false
+  #   command: ["python3", "-m", "my_mcp_server"]
+  #   env:
+  #     MCP_LOG_LEVEL: INFO
+  #   description: "本地 Python MCP server 示例"
+  #   created_by: system
+
+  # 示例：远程 HTTP MCP server
+  #
+  # - server_id: remote_http_mcp
+  #   transport: http
+  #   enabled: false
+  #   url: https://mcp.example.com/v1
+  #   headers:
+  #     X-Client: ai-platform-lab
+  #   api_key: ""  # 配置后注入 Authorization: Bearer <key>
+  #   description: "远程 HTTP MCP server 示例"
+  #   created_by: system
