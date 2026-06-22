@@ -4,6 +4,8 @@ Issues：[#15](https://github.com/xingyun0812/ai-platform-lab/issues/15)–[#23]
 
 规划背景：[phase-d-future-evolution.md](./phase-d-future-evolution.md)
 
+构建思路、使用链路与逐文件代码说明见 [phase-d-build-and-code-guide.md](./phase-d-build-and-code-guide.md)。
+
 ---
 
 ## 波次对照

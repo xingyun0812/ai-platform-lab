@@ -6,6 +6,8 @@
 
 ## 1. 设计要点
 
+构建思路、使用链路与逐文件代码说明见 [phase-j-build-and-code-guide.md](./phase-j-build-and-code-guide.md)。
+
 ### 1.1 三类基准数据集
 
 | 文件 | 类别 | 数量 | 说明 |

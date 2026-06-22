@@ -3,6 +3,8 @@
 > **状态**：Phase E 已交付（E1～E5）。见 [roadmap.md](./roadmap.md) Issue #24～#28。  
 > **前置**：Phase D（`phase-d-ops`）Agent 治理 + Redis Session。
 
+
+构建思路、使用链路与逐文件代码说明见 [phase-e-build-and-code-guide.md](./phase-e-build-and-code-guide.md)。
 ---
 
 ## E1 — Agent 轨迹评测 ✅

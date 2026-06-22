@@ -38,3 +38,5 @@ sdk/python/build/
 *.egg-info/
 eval/runs/*.json
 eval/runs/agent/*.json
+node_modules/
+package-lock.json

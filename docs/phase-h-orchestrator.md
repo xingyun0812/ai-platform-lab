@@ -6,6 +6,8 @@
 
 ---
 
+构建思路、使用链路与逐文件代码说明见 [phase-h-build-and-code-guide.md](./phase-h-build-and-code-guide.md)。
+
 ## 1. 设计要点
 
 ### 1.1 数据模型

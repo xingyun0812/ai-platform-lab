@@ -4,6 +4,8 @@
 
 关联 GitHub Issues：[#1 Redis](https://github.com/xingyun0812/ai-platform-lab/issues/1) · [#2 审计](https://github.com/xingyun0812/ai-platform-lab/issues/2) · [#3 Worker](https://github.com/xingyun0812/ai-platform-lab/issues/3) · [#4 CI](https://github.com/xingyun0812/ai-platform-lab/issues/4)
 
+构建思路、使用链路与逐文件代码说明见 [phase-a-build-and-code-guide.md](./phase-a-build-and-code-guide.md)。
+
 ---
 
 ## 目标

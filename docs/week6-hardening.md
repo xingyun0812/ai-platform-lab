@@ -1,7 +1,7 @@
 # 第 6 周：硬化与平台叙事
 
 学习计划见 [AI中台学习执行手册](./AI中台学习执行手册.md) 第 6 周。  
-构建思路见 [hardening-build-and-code-guide.md](./hardening-build-and-code-guide.md)。
+构建思路、使用链路与逐文件代码说明见 [hardening-build-and-code-guide.md](./hardening-build-and-code-guide.md)。
 
 ---
 

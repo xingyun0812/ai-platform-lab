@@ -6,6 +6,8 @@
 
 ## 1. 设计要点
 
+构建思路、使用链路与逐文件代码说明见 [phase-g-build-and-code-guide.md](./phase-g-build-and-code-guide.md)。
+
 ### 1.1 Provider 抽象
 
 | Provider | 说明 | 使用场景 |

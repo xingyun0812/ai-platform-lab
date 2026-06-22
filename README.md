@@ -474,26 +474,19 @@ r = c.chat.completions.create(model="gpt-4o-mini", messages=[{"role":"user","con
 | 全路线 | [AI中台学习执行手册](docs/AI中台学习执行手册.md) | — |
 | 架构 | [architecture.md](docs/architecture.md) | [roadmap.md](docs/roadmap.md) |
 | Gap 分析 | [gap-analysis-diagram.md](docs/gap-analysis-diagram.md) | [roadmap-gantt.md](docs/roadmap-gantt.md) |
-| Phase A 可内测 | [phase-a-internal-beta.md](docs/phase-a-internal-beta.md) | — |
-| Phase B1 计费 | [phase-b-small-production.md](docs/phase-b-small-production.md) | — |
-| Phase B2 并行 | [phase-b2-parallel.md](docs/phase-b2-parallel.md) | — |
-| Phase B3 rerank | [phase-b3-rerank-canary.md](docs/phase-b3-rerank-canary.md) | — |
-| Phase C 平台化 | [phase-c-platform.md](docs/phase-c-platform.md) | — |
-| Phase D 运维 | [phase-d-ops.md](docs/phase-d-ops.md) | [phase-d-future-evolution.md](docs/phase-d-future-evolution.md) |
-| Phase E Agent 效果 | [phase-e-agent-quality.md](docs/phase-e-agent-quality.md) | [enterprise-ai-platform-sop.md](docs/enterprise-ai-platform-sop.md) |
-| Phase F Prompt 版本化 | [phase-f-prompt-registry.md](docs/phase-f-prompt-registry.md) | [phase-f-prompt-experiment.md](docs/phase-f-prompt-experiment.md) |
-| Phase F 长记忆 | [phase-f-memory.md](docs/phase-f-memory.md) | [phase-f-context-compress.md](docs/phase-f-context-compress.md) |
-| Phase F MCP 集成 | [phase-f-mcp.md](docs/phase-f-mcp.md) | — |
-| Phase G 语义缓存 | [phase-g-semantic-cache.md](docs/phase-g-semantic-cache.md) | [phase-g-embedding.md](docs/phase-g-embedding.md) |
-| Phase H 控制流编排 | [phase-h-orchestrator.md](docs/phase-h-orchestrator.md) | [phase-h-multi-agent.md](docs/phase-h-multi-agent.md) |
-| Phase H Agent 生命周期 | [phase-h-agent-lifecycle.md](docs/phase-h-agent-lifecycle.md) | [phase-h-hitl.md](docs/phase-h-hitl.md) |
-| Phase I 安全合规 | [phase-i-sandbox.md](docs/phase-i-sandbox.md) | [phase-i-audit-actions.md](docs/phase-i-audit-actions.md) |
-| Phase I PII + 鉴权 | [phase-i-pii.md](docs/phase-i-pii.md) | [phase-i-auth.md](docs/phase-i-auth.md) |
-| Phase J SDK + Console | [phase-j-python-sdk.md](docs/phase-j-python-sdk.md) | [phase-j-console-v2.md](docs/phase-j-console-v2.md) |
-| Phase J 评测 + 存储 | [phase-j-eval-pipeline.md](docs/phase-j-eval-pipeline.md) | [phase-k-object-storage.md](docs/phase-k-object-storage.md) |
-| Phase J 反馈飞轮 | [phase-j-feedback-loop.md](docs/phase-j-feedback-loop.md) | — |
-| Phase K Helm | [phase-k-helm.md](docs/phase-k-helm.md) | [phase-k-multi-az.md](docs/phase-k-multi-az.md) |
-| Phase K GPU 调度 | [phase-k-gpu-scheduling.md](docs/phase-k-gpu-scheduling.md) | — |
+| Phase A 可内测 | [phase-a-internal-beta.md](docs/phase-a-internal-beta.md) | [phase-a-build-and-code-guide.md](docs/phase-a-build-and-code-guide.md) |
+| Phase B1 计费 | [phase-b-small-production.md](docs/phase-b-small-production.md) | [phase-b-build-and-code-guide.md](docs/phase-b-build-and-code-guide.md) |
+| Phase B2 并行 | [phase-b2-parallel.md](docs/phase-b2-parallel.md) | [phase-b-build-and-code-guide.md](docs/phase-b-build-and-code-guide.md) |
+| Phase B3 rerank | [phase-b3-rerank-canary.md](docs/phase-b3-rerank-canary.md) | [phase-b-build-and-code-guide.md](docs/phase-b-build-and-code-guide.md) |
+| Phase C 平台化 | [phase-c-platform.md](docs/phase-c-platform.md) | [phase-c-build-and-code-guide.md](docs/phase-c-build-and-code-guide.md) |
+| Phase D 运维 | [phase-d-ops.md](docs/phase-d-ops.md) | [phase-d-build-and-code-guide.md](docs/phase-d-build-and-code-guide.md) · [phase-d-future-evolution.md](docs/phase-d-future-evolution.md) |
+| Phase E Agent 效果 | [phase-e-agent-quality.md](docs/phase-e-agent-quality.md) | [phase-e-build-and-code-guide.md](docs/phase-e-build-and-code-guide.md) · [enterprise-ai-platform-sop.md](docs/enterprise-ai-platform-sop.md) |
+| Phase F 能力中台 | [phase-f-prompt-registry.md](docs/phase-f-prompt-registry.md) 等 | [phase-f-build-and-code-guide.md](docs/phase-f-build-and-code-guide.md) |
+| Phase G 模型服务 | [phase-g-semantic-cache.md](docs/phase-g-semantic-cache.md) | [phase-g-build-and-code-guide.md](docs/phase-g-build-and-code-guide.md) |
+| Phase H Agent 高阶 | [phase-h-orchestrator.md](docs/phase-h-orchestrator.md) 等 | [phase-h-build-and-code-guide.md](docs/phase-h-build-and-code-guide.md) |
+| Phase I 安全合规 | [phase-i-sandbox.md](docs/phase-i-sandbox.md) 等 | [phase-i-build-and-code-guide.md](docs/phase-i-build-and-code-guide.md) |
+| Phase J 开发者体验 | [phase-j-python-sdk.md](docs/phase-j-python-sdk.md) 等 | [phase-j-build-and-code-guide.md](docs/phase-j-build-and-code-guide.md) |
+| Phase K 生产基础设施 | [phase-k-helm.md](docs/phase-k-helm.md) 等 | [phase-k-build-and-code-guide.md](docs/phase-k-build-and-code-guide.md) |
 | 大厂 SOP 对照 | [enterprise-ai-platform-sop.md](docs/enterprise-ai-platform-sop.md) | 按周次/Phase 的踩坑与 SOP |
 | 第 1 周 Gateway | [week1-gateway.md](docs/week1-gateway.md) | [gateway-build-and-code-guide.md](docs/gateway-build-and-code-guide.md) |
 | 第 2 周 RAG 管道 | [week2-rag-pipeline.md](docs/week2-rag-pipeline.md) | [rag-build-and-code-guide.md](docs/rag-build-and-code-guide.md) |

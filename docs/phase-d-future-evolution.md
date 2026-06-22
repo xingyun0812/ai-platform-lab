@@ -4,6 +4,8 @@
 > **前置**：Phase A（可内测）→ Phase B（小流量生产）→ Phase C（平台化 API）均已交付，见 [roadmap.md](./roadmap.md)。  
 > **定位**：本仓库仍是 **学习 + 面试可讲的最小中台**；下文描述「若继续做，产品形态会往哪走」，不等于承诺全部落地。
 
+构建思路、使用链路与逐文件代码说明见 [phase-d-build-and-code-guide.md](./phase-d-build-and-code-guide.md)。
+
 ---
 
 ## 1. 当前产品形态（Phase C 之后）

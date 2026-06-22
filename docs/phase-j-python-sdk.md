@@ -6,6 +6,8 @@
 
 ## Table of Contents
 
+构建思路、使用链路与逐文件代码说明见 [phase-j-build-and-code-guide.md](./phase-j-build-and-code-guide.md)。
+
 1. [Design Overview](#design-overview)
 2. [Installation](#installation)
 3. [Quick-start](#quick-start)

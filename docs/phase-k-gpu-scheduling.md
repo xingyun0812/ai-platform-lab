@@ -6,6 +6,8 @@
 
 GPU elastic scheduling adds dedicated GPU node pools for the Embedding and Rerank services. Instead of routing to external APIs, both services run as **separate GPU-aware Kubernetes Deployments** with multi-metric Horizontal Pod Autoscaling (HPA) that reacts to CPU utilization, GPU utilization (via DCGM Exporter), and gateway QPS — reducing idle cost by scaling to 1 replica and scaling out during peak load.
 
+构建思路、使用链路与逐文件代码说明见 [phase-k-build-and-code-guide.md](./phase-k-build-and-code-guide.md)。
+
 ### Architecture
 
 ```

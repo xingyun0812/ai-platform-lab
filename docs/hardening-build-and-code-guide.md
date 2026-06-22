@@ -1,10 +1,24 @@
 # 第 6 周构建思路与代码导读：硬化
 
-周文档见 [week6-hardening.md](./week6-hardening.md)。架构总览见 [architecture.md](./architecture.md)。
+> 操作手册见 [week6-hardening.md](./week6-hardening.md)。架构总览见 [architecture.md](./architecture.md)。
 
 ---
 
-## 1. 为什么要做这三件事
+## 目录
+
+1. [构建思路](#1-构建思路)
+2. [使用链路](#2-使用链路)
+3. [代码导读（按文件）](#3-代码导读按文件)
+4. [Model Router 流程](#4-model-router-流程)
+5. [限流与日配额](#5-限流与日配额)
+6. [10 条自测用例](#6-10-条自测用例)
+7. [面试口述提纲](#7-面试口述提纲)
+
+---
+
+## 1. 构建思路
+
+### 1.1 为什么要做这三件事
 
 ```mermaid
 %%{init: {'theme': 'dark', 'themeVariables': { 'primaryColor': '#1e3a5f', 'primaryTextColor': '#e6edf3', 'primaryBorderColor': '#58a6ff', 'lineColor': '#8b949e', 'secondaryColor': '#21262d'}}}%%
@@ -23,7 +37,44 @@ flowchart LR
 
 ---
 
-## 2. 搭建顺序
+## 2. 使用链路
+
+### 2.1 15 分钟主路径
+
+```mermaid
+flowchart TD
+  P1["cp .env.example .env"] --> P2["docker compose up -d --build"]
+  P2 --> P3["GET /healthz"]
+  P3 --> P4["POST chat chat-fast"]
+  P4 --> P5["POST internal index + RAG query"]
+  P5 --> P6["POST agent run + eval run"]
+```
+
+### 2.2 Chat 降级时序
+
+```mermaid
+sequenceDiagram
+  participant C as Client
+  participant GW as Gateway
+  participant MR as model_router
+  participant Up as 上游 LLM
+
+  C->>GW: POST chat completions
+  GW->>GW: 鉴权 限流 日配额
+  GW->>MR: forward_with_model_router
+  MR->>Up: 主模型
+  alt 主模型 5xx 或 429
+    MR->>Up: fallback 链下一模型
+  end
+  Up-->>GW: JSON
+  GW-->>C: 200 及 fallback 元数据
+```
+
+---
+
+## 3. 代码导读（按文件）
+
+### 3.1 搭建顺序
 
 1. 读 `config/models.yaml`、`config/tenants.yaml` 新增字段
 2. 读 `apps/gateway/model_router.py` — 别名解析与 `forward_with_model_router`
@@ -31,9 +82,7 @@ flowchart LR
 4. 看 `main.py` / `query_routes.py` / `agent/routes.py` 如何调用 guards
 5. `docker compose up -d --build` 验证拓扑
 
----
-
-## 3. 核心文件
+### 3.2 核心文件
 
 | 文件 | 职责 |
 |------|------|
@@ -78,7 +127,7 @@ sequenceDiagram
 
 ---
 
-## 5. 限流与日配额的关系
+## 5. 限流与日配额
 
 | 机制 | 粒度 | 错误码 | 用途 |
 |------|------|--------|------|
@@ -89,7 +138,7 @@ sequenceDiagram
 
 ---
 
-## 6. 自测用例（10 条）
+## 6. 10 条自测用例
 
 | # | 输入 | 预期 |
 |---|------|------|
@@ -106,7 +155,7 @@ sequenceDiagram
 
 ---
 
-## 7. 面试 10 分钟口述提纲
+## 7. 面试口述提纲
 
 1. **分层**：接入层 gateway → 能力层 packages → Qdrant/LLM（architecture.md 图）
 2. **租户**：demo-a 别名 + 工具白名单；demo-b 低配额+低 RPS

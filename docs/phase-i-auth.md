@@ -5,6 +5,8 @@
 本模块在 ai-platform-lab 的现有 JWT HS256 鉴权基础上，以**完全向后兼容、opt-in**的方式引入：
 
 1. **OAuth2**（Authorization Code Flow + Client Credentials Flow）
+
+构建思路、使用链路与逐文件代码说明见 [phase-i-build-and-code-guide.md](./phase-i-build-and-code-guide.md)。
 2. **mTLS**（Mutual TLS 客户端证书验证）
 
 两者均通过环境变量开关控制（默认关闭），关闭时现有 JWT HS256 鉴权逻辑完全不受影响。

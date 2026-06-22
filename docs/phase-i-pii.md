@@ -6,6 +6,8 @@
 
 ## 1. 设计目标
 
+构建思路、使用链路与逐文件代码说明见 [phase-i-build-and-code-guide.md](./phase-i-build-and-code-guide.md)。
+
 在 AI 平台网关层提供统一的 **PII（个人身份信息）检测与脱敏**及**内容安全过滤**能力，满足 GDPR、CCPA 等合规要求，保护用户隐私，防止敏感数据泄露至 LLM 提供商。
 
 核心原则：

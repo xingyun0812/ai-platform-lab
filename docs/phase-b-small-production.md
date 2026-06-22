@@ -4,6 +4,8 @@
 
 关联 Issues：[#5](https://github.com/xingyun0812/ai-platform-lab/issues/5) · [#6](https://github.com/xingyun0812/ai-platform-lab/issues/6)
 
+构建思路、使用链路与逐文件代码说明见 [phase-b-build-and-code-guide.md](./phase-b-build-and-code-guide.md)。
+
 ---
 
 ## 架构

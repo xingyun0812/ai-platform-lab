@@ -4,6 +4,8 @@ Issues：[#7](https://github.com/xingyun0812/ai-platform-lab/issues/7) · [#8](h
 
 ---
 
+构建思路、使用链路与逐文件代码说明见 [phase-b-build-and-code-guide.md](./phase-b-build-and-code-guide.md)。
+
 ## 1. 密钥托管（#7）
 
 | 模式 | 配置 | 行为 |
