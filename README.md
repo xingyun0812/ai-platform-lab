@@ -188,6 +188,21 @@ python eval/canary_stats.py --samples 1000   # 命中率模拟
 
 详见 [docs/phase-d-ops.md](docs/phase-d-ops.md)。远期见 [phase-d-future-evolution.md](docs/phase-d-future-evolution.md)。
 
+## Phase E — Agent 效果深化
+
+- **轨迹评测**：`eval/agent_run.py` + `agent_baseline.jsonl`（`expect_tools`、Tool Precision@1）
+- **选工具准**：`tool_router.py` 意图路由 / Tool-RAG Top-K
+- **长上下文**：`context_budget.py` 滚动摘要 + Token 预算
+- **质量门**：`quality_gate.py` + 工具 envelope；低质量反思 hint
+- **HITL / Shadow**：高风险工具 `202 pending_approval`；`X-Agent-Shadow: true`
+
+```bash
+python eval/agent_run.py validate-baseline
+python eval/agent_run.py run --min-pass-rate 0.8   # 需 LLM_API_KEY
+```
+
+详见 [docs/phase-e-agent-quality.md](docs/phase-e-agent-quality.md)。大厂 SOP 对照见 [enterprise-ai-platform-sop.md](docs/enterprise-ai-platform-sop.md)。
+
 ## Phase G — 语义缓存（#34）
 
 - **双模式命中**：`exact`（SHA256 精确）/ `semantic`（embedding 余弦相似度）
@@ -465,6 +480,7 @@ r = c.chat.completions.create(model="gpt-4o-mini", messages=[{"role":"user","con
 | Phase B3 rerank | [phase-b3-rerank-canary.md](docs/phase-b3-rerank-canary.md) | — |
 | Phase C 平台化 | [phase-c-platform.md](docs/phase-c-platform.md) | — |
 | Phase D 运维 | [phase-d-ops.md](docs/phase-d-ops.md) | [phase-d-future-evolution.md](docs/phase-d-future-evolution.md) |
+| Phase E Agent 效果 | [phase-e-agent-quality.md](docs/phase-e-agent-quality.md) | [enterprise-ai-platform-sop.md](docs/enterprise-ai-platform-sop.md) |
 | Phase F Prompt 版本化 | [phase-f-prompt-registry.md](docs/phase-f-prompt-registry.md) | [phase-f-prompt-experiment.md](docs/phase-f-prompt-experiment.md) |
 | Phase F 长记忆 | [phase-f-memory.md](docs/phase-f-memory.md) | [phase-f-context-compress.md](docs/phase-f-context-compress.md) |
 | Phase F MCP 集成 | [phase-f-mcp.md](docs/phase-f-mcp.md) | — |
@@ -502,10 +518,11 @@ r = c.chat.completions.create(model="gpt-4o-mini", messages=[{"role":"user","con
 | `phase-b3-rerank-canary` | `5536a05` | RAG rerank stub、kb 金丝雀路由 |
 | `phase-c-platform` | `e7e96c2` | 供应商矩阵、Region、租户 API、工具市场 |
 | `phase-d-ops` | `981ff89` | 熔断/Grafana、JWT/RBAC、控制台、账单 API |
+| `phase-e-agent-quality` | `5163bf0` | Agent 轨迹评测、Tool-RAG、上下文预算、质量门、HITL/Shadow |
 
 ```bash
 git fetch origin --tags
-git show phase-d-ops
+git show phase-e-agent-quality
 ```
 
 ## 目录说明

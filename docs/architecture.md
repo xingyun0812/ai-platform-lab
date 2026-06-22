@@ -12,6 +12,7 @@ flowchart TB
   subgraph Client["客户端 / 评测脚本"]
     C1["业务系统 / curl"]
     C2["eval/run.py"]
+    C3["eval/agent_run.py"]
   end
 
   subgraph Edge["接入层 apps/gateway"]
@@ -24,6 +25,7 @@ flowchart TB
   subgraph Cap["能力层 packages/*"]
     R1["RAG: chunk / embed / retrieve"]
     A1["Agent: tools / session / loop"]
+    A2["Phase E: 路由 / 预算 / 质量门 / HITL"]
     O1["Observability: trace / metrics"]
   end
 
@@ -35,9 +37,11 @@ flowchart TB
 
   C1 --> G1
   C2 --> G1
+  C3 --> G1
   G1 --> G2 --> G3 --> G4
   G4 --> R1
   G4 --> A1
+  A1 --> A2
   G4 --> O1
   R1 --> Q
   R1 --> U
@@ -53,28 +57,26 @@ flowchart TB
 ### 1. Chat 补全（第 1 周 + 第 6 周硬化）
 
 ```mermaid
-%%{init: {'theme': 'dark', 'themeVariables': { 'primaryColor': '#1e3a5f', 'primaryTextColor': '#e6edf3', 'primaryBorderColor': '#58a6ff', 'lineColor': '#8b949e', 'actorBkg': '#161b22', 'actorTextColor': '#e6edf3', 'actorBorder': '#58a6ff', 'signalColor': '#8b949e', 'noteBkgColor': '#21262d', 'noteTextColor': '#e6edf3'}}}%%
 sequenceDiagram
   participant Client
   participant Gateway
   participant Router as Model Router
   participant LLM as 上游 LLM
 
-  Client->>Gateway: POST /v1/chat/completions
-  Gateway->>Gateway: 鉴权 + 令牌桶 + 日配额
-  Gateway->>Router: 解析别名 / 选降级链
-  Router->>LLM: chat/completions
-  alt 主模型 5xx/429
+  Client->>Gateway: POST chat completions
+  Gateway->>Gateway: 鉴权、令牌桶、日配额
+  Gateway->>Router: 解析别名并选降级链
+  Router->>LLM: chat completions
+  alt 主模型 5xx 或 429
     Router->>LLM: 尝试 fallback 链下一模型
   end
   LLM-->>Gateway: JSON 响应
-  Gateway-->>Client: 200 + 可选 _platform.fallback_used
+  Gateway-->>Client: 200 及 fallback 元数据
 ```
 
 ### 2. RAG 问答（第 2～3 周）
 
 ```mermaid
-%%{init: {'theme': 'dark', 'themeVariables': { 'primaryColor': '#1e3a5f', 'primaryTextColor': '#e6edf3', 'primaryBorderColor': '#58a6ff', 'lineColor': '#8b949e', 'actorBkg': '#161b22', 'actorTextColor': '#e6edf3', 'actorBorder': '#58a6ff', 'signalColor': '#8b949e'}}}%%
 sequenceDiagram
   participant Client
   participant Gateway
@@ -82,22 +84,24 @@ sequenceDiagram
   participant Qdrant
   participant LLM
 
-  Client->>Gateway: POST /v1/rag/query
+  Client->>Gateway: POST rag query
   Gateway->>RAG: retrieve top_k
   RAG->>Qdrant: 向量检索
-  Qdrant-->>RAG: chunks + score
-  alt score < min_score
-    RAG-->>Client: 422 RAG_LOW_CONFIDENCE
+  Qdrant-->>RAG: chunks 与 score
+  alt 低置信度未达阈值
+    RAG-->>Gateway: 422 RAG_LOW_CONFIDENCE
+    Gateway-->>Client: 错误响应
   else 命中
-    RAG->>LLM: prompt + citations 上下文
-    LLM-->>Client: answer + citations + timings
+    RAG->>LLM: prompt 与 citations 上下文
+    LLM-->>RAG: 生成 answer
+    RAG-->>Gateway: answer citations timings
+    Gateway-->>Client: 200 响应
   end
 ```
 
 ### 3. Agent 运行时（第 4 周）
 
 ```mermaid
-%%{init: {'theme': 'dark', 'themeVariables': { 'primaryColor': '#1e3a5f', 'primaryTextColor': '#e6edf3', 'primaryBorderColor': '#58a6ff', 'lineColor': '#8b949e', 'actorBkg': '#161b22', 'actorTextColor': '#e6edf3', 'actorBorder': '#58a6ff', 'signalColor': '#8b949e'}}}%%
 sequenceDiagram
   participant Client
   participant Gateway
@@ -105,18 +109,62 @@ sequenceDiagram
   participant Tools
   participant LLM
 
-  Client->>Gateway: POST /v1/agent/run
+  Client->>Gateway: POST agent run
   Gateway->>Agent: 合并 session 历史
-  loop max_steps
-    Agent->>LLM: messages + tools schema
-    alt tool_calls
-      Agent->>Tools: 执行（租户 allowed_tools 校验）
+  loop 至多 max_steps
+    Agent->>LLM: messages 与 tools schema
+    alt 存在 tool_calls
+      Agent->>Tools: 执行工具并校验 ACL
       Tools-->>Agent: 结果写回 messages
     else 最终回复
-      Agent-->>Client: answer + tool_trace
+      Agent-->>Gateway: answer 与 tool_trace
+      Gateway-->>Client: 200 响应
     end
   end
 ```
+
+### 4. Agent 效果进阶（Phase E）
+
+```mermaid
+sequenceDiagram
+  participant Client
+  participant Gateway
+  participant Agent
+  participant Router as Tool Router
+  participant Tools
+  participant LLM
+  participant Admin as platform_admin
+
+  Client->>Gateway: POST agent run
+  Gateway->>Agent: 加载 SessionState
+  Agent->>Agent: assemble_llm_messages 预算裁剪
+  Agent->>Router: 意图或 RAG 选 Top-K 工具
+  Router-->>Agent: candidate_tools
+  loop 至多 max_steps
+    Agent->>LLM: 裁剪后 messages 与候选 tools
+    alt 高风险工具
+      Agent-->>Gateway: 202 pending_approval
+      Gateway-->>Client: approval_id
+      Admin->>Gateway: POST approvals confirm
+      Client->>Gateway: resume approval_id
+    else 普通工具
+      Agent->>Tools: envelope 结果
+      Agent->>Agent: quality_gate 低质量则反思 hint
+    end
+  end
+  Gateway-->>Client: tool_trace 与 _platform 元数据
+```
+
+Phase E 模块对照：
+
+| 能力 | 包 / 脚本 |
+|------|-----------|
+| 轨迹评测 | `eval/agent_run.py`、`eval/agent_baseline.jsonl` |
+| 工具路由 | `packages/agent/tool_router.py` |
+| 上下文预算 | `packages/agent/context_budget.py` |
+| 质量门 | `packages/agent/quality_gate.py`、`tool_envelope.py` |
+| HITL | `packages/agent/hitl.py`、`apps/gateway/agent/approval_routes.py` |
+| Shadow | `packages/agent/shadow.py`（`X-Agent-Shadow: true`） |
 
 ---
 
@@ -128,6 +176,8 @@ sequenceDiagram
 | 模型白名单 | 租户 `allowed_models` | 支持别名（如 `chat-fast`） |
 | 默认模型 | 租户 `default_model` | 请求未指定时使用 |
 | 工具 ACL | 租户 `allowed_tools` | Agent 工具调用前校验 |
+| 工具路由 | `config/agent_tool_routing.yaml` | 意图 / Top-K 缩小候选工具（Phase E） |
+| 高风险审批 | `config/tools_marketplace.yaml` | `risk_level: high` → HITL（Phase E） |
 | 日配额 | `daily_request_quota` | 进程内 UTC 日切 |
 | 速率 | `rate_limit_rps/burst` | 令牌桶，429 `RATE_LIMIT_EXCEEDED` |
 | 模型降级 | `config/models.yaml` | 上游失败按链 fallback |
@@ -166,5 +216,7 @@ flowchart LR
 ## 相关文档
 
 - [roadmap.md](./roadmap.md) — 已知限制与后续路线
+- [phase-e-agent-quality.md](./phase-e-agent-quality.md) — Phase E 交付说明
+- [enterprise-ai-platform-sop.md](./enterprise-ai-platform-sop.md) — 大厂 SOP 与踩坑对照
 - [week6-hardening.md](./week6-hardening.md) — 第 6 周验收与演示
 - [hardening-build-and-code-guide.md](./hardening-build-and-code-guide.md) — 代码导读
