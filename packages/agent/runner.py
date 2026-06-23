@@ -494,7 +494,7 @@ async def run_agent(
                         arguments={},
                         status="failed",
                         result=None,
-                        error=e.message,
+                        error=f"{e.code}: {e.message}",
                         latency_ms=0.0,
                         quality_gate="failed",
                     )

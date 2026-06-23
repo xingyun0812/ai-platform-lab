@@ -1,10 +1,10 @@
 # Phase L — 工程深度与面试叙事（规划）
 
-> **状态**：**Wave1 已完成**（#53 + #62 + #63）— Console / Demo / SDK / 文档对齐；Wave2 RAG 深化 ⏳  
+> **状态**：**Wave1 ✅**（#53 + #62 + #63）；**Wave2 ✅**（#54～#57 RAG 深化 + 内网模型联调）；**Wave3 ⏳**（#58～#60 Agent 深化）  
 > **前置**：Phase A～K 功能清单已完成（484+ 单测）；见 [PROJECT_STATUS.md](./PROJECT_STATUS.md)。  
 > **目标**：**不扩新模块**，把 stub / 未验证能力 **做深、做真、串成故事**，支撑面试讲解与工程 credibility。  
 > **ROI 优先级**：[phase-l-priority-roi.md](./phase-l-priority-roi.md)  
-> **Issue 正文**：[issues-backlog-phase-l.md](./issues-backlog-phase-l.md)（#53～#63，**GitHub 待创建**）。  
+> **Issue 正文**：[issues-backlog-phase-l.md](./issues-backlog-phase-l.md)（GitHub #37～#47 对应 backlog #53～#63）。  
 > **面试稿**：[interview-narrative.md](./interview-narrative.md)
 
 ---
@@ -60,8 +60,8 @@ flowchart LR
 | 优先级 | 主题 | Issue | 状态 |
 |--------|------|-------|------|
 | 🥇 第一 | Console + Demo + SDK | #62-console ✅、#62 ✅、#63 ✅ | **Wave1 完成** |
-| 🥈 第二 | RAG 深化 | #54～#57 | ⏳ 下一步 |
-| 🥉 第三 | Agent 深化 | #58～#60 | ⏳ |
+| 🥈 第二 | RAG 深化 | #54～#57 | ✅ |
+| 🥉 第三 | Agent 深化 | #58～#60 | ⏳ **#58 进行中** |
 | 第四 | 反馈飞轮 | #61 | ⏳ |
 | 第五 并行 | 文档对齐 | #53 | ✅ |
 | 第六 后置 | 多模态等 | Phase M | 刻意不做 |
