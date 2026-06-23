@@ -13,7 +13,6 @@ will appear in apps/console/static/ and test #9 will also pass.
 """
 from __future__ import annotations
 
-import os
 import sys
 from pathlib import Path
 
@@ -116,7 +115,7 @@ def test_build_output_directory():
         f"Build output directory missing: {APPS_CONSOLE_STATIC}\n"
         "Run `cd console-v2 && npm run build` to generate static assets."
     )
-    print(f"  [OK  ] apps/console/static/ exists")
+    print("  [OK  ] apps/console/static/ exists")
 
 
 # ── Test 8: package.json has correct fields ───────────────────────────────────
@@ -143,12 +142,12 @@ def test_vite_config_build_output():
     """vite.config.ts points outDir to ../apps/console/static."""
     print("\n[test_vite_config_build_output]")
     vite_cfg = CONSOLE_V2 / "vite.config.ts"
-    assert vite_cfg.exists(), f"vite.config.ts missing"
+    assert vite_cfg.exists(), "vite.config.ts missing"
     content = vite_cfg.read_text()
     assert "../apps/console/static" in content, (
         "vite.config.ts should set outDir to '../apps/console/static'"
     )
-    print(f"  [OK  ] outDir '../apps/console/static' found in vite.config.ts")
+    print("  [OK  ] outDir '../apps/console/static' found in vite.config.ts")
 
 
 # ── Test 10: RequireAuth.tsx has auth guard logic ─────────────────────────────

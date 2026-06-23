@@ -33,9 +33,8 @@ try:
         cancelled = "cancelled"
 
 except ImportError:
-    from enum import Enum  # Python 3.9 fallback
 
-    class ApprovalStatus(str, Enum):  # type: ignore[no-redef]
+    class ApprovalStatus(StrEnum):  # type: ignore[no-redef]
         pending = "pending"
         confirmed = "confirmed"
         rejected = "rejected"
@@ -88,7 +87,6 @@ def _write_rows(rows: list[dict[str, Any]]) -> None:
 
 
 def _now_iso() -> str:
-    import time  # noqa: PLC0415
     from datetime import datetime  # noqa: PLC0415
     return datetime.utcnow().isoformat() + "Z"
 

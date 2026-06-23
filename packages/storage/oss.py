@@ -8,10 +8,8 @@ from __future__ import annotations
 
 import asyncio
 import time
-from pathlib import Path
-from typing import Any
 
-from packages.storage.backend import StorageBackend, StorageConfig, StorageObject
+from packages.storage.backend import StorageBackend, StorageConfig
 
 
 def _import_oss2():
@@ -64,7 +62,6 @@ class OSStorageBackend(StorageBackend):
 
     async def get(self, key: str) -> bytes:
         full_key = self._full_key(key)
-        oss2 = self._oss2
 
         def _get():
             result = self._bucket_client.get_object(full_key)

@@ -118,7 +118,7 @@ class StdioTransport(Transport):
             await process.stdin.drain()
             try:
                 raw = await asyncio.wait_for(process.stdout.readline(), timeout=timeout)
-            except asyncio.TimeoutError as e:
+            except TimeoutError as e:
                 raise TransportError("TIMEOUT", f"读取响应超时 {timeout}s") from e
             if not raw:
                 # 进程可能已退出
@@ -187,5 +187,5 @@ class HttpTransport(Transport):
                     return data
         except aiohttp.ClientError as e:
             raise TransportError("NETWORK_ERROR", f"HTTP 网络错误: {e}") from e
-        except asyncio.TimeoutError as e:
+        except TimeoutError as e:
             raise TransportError("TIMEOUT", f"HTTP 请求超时 {timeout}s") from e

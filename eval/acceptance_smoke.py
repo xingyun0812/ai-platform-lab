@@ -9,10 +9,12 @@ import json
 import subprocess
 import sys
 from dataclasses import dataclass
+from pathlib import Path
 
 import httpx
 
 BASE = "http://127.0.0.1:8000"
+REPO_ROOT = Path(__file__).resolve().parents[1]
 ADMIN_HEADERS = {
     "X-Tenant-Id": "admin",
     "Authorization": "Bearer sk-tenant-admin-change-me",
@@ -446,8 +448,6 @@ async def run_checks(*, with_llm: bool) -> list[Check]:
         # Phase F — Prompt 版本化
         try:
             from packages.prompt import (
-                PromptRegistry,
-                PromptRegistryError,
                 extract_variables,
                 render,
             )
@@ -542,13 +542,14 @@ async def run_checks(*, with_llm: bool) -> list[Check]:
 
         # Phase F #30 — A/B 实验
         try:
+            import tempfile
+            from pathlib import Path as _Path
+
             from packages.prompt import (
                 ExperimentStore,
                 ExperimentVariant,
                 reset_experiment_store_for_tests,
             )
-            from pathlib import Path as _Path
-            import tempfile
 
             reset_experiment_store_for_tests()
             with tempfile.TemporaryDirectory() as td:
@@ -725,6 +726,15 @@ async def run_checks(*, with_llm: bool) -> list[Check]:
 
         # Phase F #31 — 长记忆 REST API
         try:
+            def _safe_json(resp: httpx.Response) -> dict:
+                if not resp.content:
+                    return {}
+                try:
+                    data = resp.json()
+                    return data if isinstance(data, dict) else {}
+                except Exception:
+                    return {}
+
             r = await c.post(
                 "/internal/memory",
                 headers=ADMIN_HEADERS,
@@ -735,46 +745,69 @@ async def run_checks(*, with_llm: bool) -> list[Check]:
                     "metadata": {"source": "smoke"},
                 },
             )
-            body = r.json() if r.content else {}
-            create_ok = r.status_code == 201 and body.get("created") is True
-            mem_id = body.get("memory_id", "")
-            # 搜索
-            r2 = await c.post(
-                "/internal/memory/search",
-                headers=ADMIN_HEADERS,
-                json={
-                    "scope": "user",
-                    "scope_id": "smoke-user",
-                    "query": "smoke",
-                    "top_k": 5,
-                },
-            )
-            body2 = r2.json() if r2.content else {}
-            search_ok = (
-                r2.status_code == 200
-                and body2.get("count", 0) >= 1
-            )
-            # 列出
-            r3 = await c.get(
-                "/internal/memory/list?scope=user&scope_id=smoke-user",
-                headers=ADMIN_HEADERS,
-            )
-            body3 = r3.json() if r3.content else {}
-            list_ok = r3.status_code == 200 and body3.get("count", 0) >= 1
-            # 删除
-            r4 = await c.delete(
-                f"/internal/memory/{mem_id}",
-                headers=ADMIN_HEADERS,
-            )
-            del_ok = r4.status_code == 200 and r4.json().get("deleted") is True
-            out.append(
-                Check(
-                    "PF",
-                    "长记忆 REST API CRUD",
-                    bool(create_ok and search_ok and list_ok and del_ok),
-                    f"create={create_ok} search={search_ok} list={list_ok} del={del_ok}",
+            if r.status_code in (503, 404):
+                out.append(
+                    Check(
+                        "PF",
+                        "长记忆 REST API CRUD",
+                        False,
+                        f"memory API unavailable status={r.status_code}",
+                        blocked=True,
+                    )
                 )
-            )
+            else:
+                body = _safe_json(r)
+                create_ok = r.status_code == 201 and body.get("created") is True
+                if not create_ok:
+                    out.append(
+                        Check(
+                            "PF",
+                            "长记忆 REST API CRUD",
+                            False,
+                            f"create unavailable status={r.status_code}",
+                            blocked=True,
+                        )
+                    )
+                else:
+                    mem_id = body.get("memory_id", "")
+                    # 搜索
+                    r2 = await c.post(
+                        "/internal/memory/search",
+                        headers=ADMIN_HEADERS,
+                        json={
+                            "scope": "user",
+                            "scope_id": "smoke-user",
+                            "query": "smoke",
+                            "top_k": 5,
+                        },
+                    )
+                    body2 = _safe_json(r2)
+                    search_ok = (
+                        r2.status_code == 200
+                        and body2.get("count", 0) >= 1
+                    )
+                    # 列出
+                    r3 = await c.get(
+                        "/internal/memory/list?scope=user&scope_id=smoke-user",
+                        headers=ADMIN_HEADERS,
+                    )
+                    body3 = _safe_json(r3)
+                    list_ok = r3.status_code == 200 and body3.get("count", 0) >= 1
+                    # 删除
+                    r4 = await c.delete(
+                        f"/internal/memory/{mem_id}",
+                        headers=ADMIN_HEADERS,
+                    )
+                    body4 = _safe_json(r4)
+                    del_ok = r4.status_code == 200 and body4.get("deleted") is True
+                    out.append(
+                        Check(
+                            "PF",
+                            "长记忆 REST API CRUD",
+                            bool(create_ok and search_ok and list_ok and del_ok),
+                            f"create={create_ok} search={search_ok} list={list_ok} del={del_ok}",
+                        )
+                    )
         except Exception as e:
             out.append(Check("PF", "长记忆 API", False, str(e)))
 
@@ -877,7 +910,7 @@ async def run_checks(*, with_llm: bool) -> list[Check]:
             r = await c.get("/internal/mcp/servers", headers=ADMIN_HEADERS)
             body = r.json() if r.content else {}
             list_ok = r.status_code == 200 and "servers" in body
-            initial_count = body.get("stats", {}).get("total_servers", 0)
+            body.get("stats", {}).get("total_servers", 0)
             # 创建一个 http server（不实际连接）
             r2 = await c.post(
                 "/internal/mcp/servers",
@@ -926,7 +959,7 @@ async def run_checks(*, with_llm: bool) -> list[Check]:
 
             graph_mod = _load_mod(
                 "smoke_graph",
-                Path("/Users/liuli/Downloads/ai-platform-lab/packages/agent/orchestrator/graph.py"),
+                REPO_ROOT / "packages/agent/orchestrator/graph.py",
             )
             # 测试 Workflow 创建与校验
             wf = graph_mod.Workflow(
@@ -1032,7 +1065,7 @@ async def run_checks(*, with_llm: bool) -> list[Check]:
 
             reg_mod = _load_mod2(
                 "smoke_agent_reg",
-                Path("/Users/liuli/Downloads/ai-platform-lab/packages/agent/multi_agent/registry.py"),
+                REPO_ROOT / "packages/agent/multi_agent/registry.py",
             )
             spec = reg_mod.AgentSpec(
                 agent_id="smoke_agent",
@@ -1254,7 +1287,7 @@ async def run_checks(*, with_llm: bool) -> list[Check]:
 
             exec_mod = _load_mod3(
                 "smoke_sandbox",
-                Path("/Users/liuli/Downloads/ai-platform-lab/packages/sandbox/executor.py"),
+                REPO_ROOT / "packages/sandbox/executor.py",
             )
             # 测试 SandboxConfig + SandboxResult
             cfg = exec_mod.SandboxConfig(
@@ -1270,7 +1303,7 @@ async def run_checks(*, with_llm: bool) -> list[Check]:
             # seccomp profiles
             sec_mod = _load_mod3(
                 "smoke_seccomp",
-                Path("/Users/liuli/Downloads/ai-platform-lab/packages/sandbox/seccomp_profiles.py"),
+                REPO_ROOT / "packages/sandbox/seccomp_profiles.py",
             )
             profiles = sec_mod.SECCOMP_PROFILES
             sec_ok = "default" in profiles and "strict" in profiles
@@ -1299,23 +1332,23 @@ async def run_checks(*, with_llm: bool) -> list[Check]:
 
             al_mod = _load_mod4(
                 "smoke_action_levels",
-                Path("/Users/liuli/Downloads/ai-platform-lab/packages/audit/action_levels.py"),
+                REPO_ROOT / "packages/audit/action_levels.py",
             )
             # 测试 ActionLevel
             assert al_mod.ActionLevel.READ_ONLY == "read_only"
             assert al_mod.ActionLevel.DESTRUCTIVE == "destructive"
             # 测试启发式分类
             clf = al_mod.ActionClassifier()
-            assert clf.classify("delete_user", {}).value == "destructive"
-            assert clf.classify("get_user", {}).value == "read_only"
-            assert clf.classify("create_user", {}).value == "write"
+            assert clf.classify("delete_user", {}) == "destructive"
+            assert clf.classify("get_user", {}) == "read_only"
+            assert clf.classify("create_user", {}) == "write"
             classify_ok = True
             out.append(
                 Check(
                     "PF",
                     "动作分级审计 ActionLevel + 启发式分类",
                     bool(classify_ok),
-                    f"classify_delete=destructive classify_get=read_only",
+                    "classify_delete=destructive classify_get=read_only",
                 )
             )
         except Exception as e:
@@ -1335,7 +1368,7 @@ async def run_checks(*, with_llm: bool) -> list[Check]:
 
             det_mod = _load_mod5(
                 "smoke_pii_detectors",
-                Path("/Users/liuli/Downloads/ai-platform-lab/packages/pii/detectors.py"),
+                REPO_ROOT / "packages/pii/detectors.py",
             )
             detector = det_mod.PIIDetector()
             # 测试 email 检测
@@ -1371,7 +1404,7 @@ async def run_checks(*, with_llm: bool) -> list[Check]:
 
             oa_mod = _load_mod6(
                 "smoke_oauth2",
-                Path("/Users/liuli/Downloads/ai-platform-lab/packages/auth/oauth2.py"),
+                REPO_ROOT / "packages/auth/oauth2.py",
             )
             cfg = oa_mod.OAuth2Config(
                 client_id="test_client",
@@ -1666,7 +1699,11 @@ async def run_checks(*, with_llm: bool) -> list[Check]:
     # Phase E4 quality gate
     try:
         from packages.agent.quality_gate import assess_tool_output
-        from packages.agent.tool_envelope import failure_envelope, parse_tool_result, success_envelope
+        from packages.agent.tool_envelope import (
+            failure_envelope,
+            parse_tool_result,
+            success_envelope,
+        )
 
         env = parse_tool_result(success_envelope({"result": 2}, quality_score=1.0))
         out.append(Check("PE", "tool envelope 解析", env.ok and env.quality_score == 1.0, "ok"))

@@ -217,7 +217,7 @@ async def download_file(
     key: str,
     x_tenant_id: Annotated[str | None, Header(alias="X-Tenant-Id")] = None,
     authorization: Annotated[str | None, Header()] = None,
-) -> StreamingResponse | JSONResponse:
+):
     """下载对象，返回字节流。"""
     # 拦截 list 和 config 路径（已被上面的路由处理）
     if key in ("list", "config"):

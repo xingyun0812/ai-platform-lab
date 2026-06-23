@@ -14,7 +14,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Annotated, Optional
+from typing import Annotated
 
 from fastapi import APIRouter, Header, HTTPException, Query
 from fastapi.responses import JSONResponse
@@ -22,7 +22,7 @@ from pydantic import BaseModel, Field
 
 from apps.gateway.http_utils import json_error, resolve_tenant
 from apps.gateway.tenants import TenantRecord, load_tenants
-from packages.auth.rbac import can_approve_tools, can_patch_tenant_limits
+from packages.auth.rbac import can_patch_tenant_limits
 
 logger = logging.getLogger("ai_platform.hitl.routes")
 
@@ -84,14 +84,14 @@ class CreateApprovalRequest(BaseModel):
     arguments: dict = Field(default_factory=dict)
     timeout_seconds: int = Field(default=300, ge=1, le=86400)
     metadata: dict = Field(default_factory=dict)
-    webhook_url: Optional[str] = None
-    webhook_secret: Optional[str] = None
+    webhook_url: str | None = None
+    webhook_secret: str | None = None
     webhook_headers: dict = Field(default_factory=dict)
 
 
 class DecisionRequest(BaseModel):
     decided_by: str = Field(..., min_length=1)
-    reason: Optional[str] = None
+    reason: str | None = None
 
 
 class WebhookTestRequest(BaseModel):
@@ -171,8 +171,8 @@ async def get_approval(
 
 @router.get("/approvals")
 async def list_approvals(
-    tenant_id: Annotated[Optional[str], Query()] = None,
-    status: Annotated[Optional[str], Query()] = "pending",
+    tenant_id: Annotated[str | None, Query()] = None,
+    status: Annotated[str | None, Query()] = "pending",
     x_tenant_id: Annotated[str | None, Header(alias="X-Tenant-Id")] = None,
     authorization: Annotated[str | None, Header()] = None,
 ) -> JSONResponse:

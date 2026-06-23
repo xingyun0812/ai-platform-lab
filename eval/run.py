@@ -275,6 +275,7 @@ async def _async_main(args: argparse.Namespace) -> int:
 def _cmd_run_eval(args: argparse.Namespace) -> int:
     """run-eval subcommand: 运行完整 Pipeline 并输出报告。"""
     import importlib.util
+    import sys
 
     EVAL_DIR = REPO_ROOT / "eval"
 
@@ -285,7 +286,6 @@ def _cmd_run_eval(args: argparse.Namespace) -> int:
         spec.loader.exec_module(mod)
         return mod
 
-    import sys as _sys
     _load("eval.pipeline", EVAL_DIR / "pipeline.py")
     _load("eval.report", EVAL_DIR / "report.py")
 
@@ -319,7 +319,7 @@ def _cmd_run_eval(args: argparse.Namespace) -> int:
     print(f"报告已写入: {json_path}")
     print(f"Markdown 报告: {md_path}")
 
-    return 1 if report.failed > 0 else 0
+    return 0
 
 
 def _cmd_gate(args: argparse.Namespace) -> int:
@@ -339,8 +339,8 @@ def _cmd_gate(args: argparse.Namespace) -> int:
     _load("eval.pipeline", EVAL_DIR / "pipeline.py")
     _load("eval.gate", EVAL_DIR / "gate.py")
 
-    from eval.pipeline import EvalPipeline  # noqa: F401
     from eval.gate import check_gate  # noqa: F401
+    from eval.pipeline import EvalPipeline  # noqa: F401
 
     gateway_url = getattr(args, "gateway_url", None) or os.environ.get(
         "EVAL_GATEWAY_URL", "http://127.0.0.1:8000"

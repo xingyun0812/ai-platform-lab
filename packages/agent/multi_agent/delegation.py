@@ -19,8 +19,6 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from packages.agent.multi_agent.registry import (
-    AgentRegistryError,
-    AgentSpec,
     get_agent_registry,
 )
 
@@ -206,7 +204,7 @@ async def delegate_to_agent(
                 }
             ],
         )
-    except asyncio.TimeoutError:
+    except TimeoutError:
         error_msg = f"委托超时 {timeout_seconds}s"
         registry.mark_error(agent_id, error_msg)
         return DelegationResult(

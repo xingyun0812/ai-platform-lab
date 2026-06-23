@@ -37,33 +37,19 @@ _load_module("packages.pii.redactor", REPO_ROOT / "packages/pii/redactor.py")
 _load_module("packages.pii.content_safety", REPO_ROOT / "packages/pii/content_safety.py")
 _load_module("packages.pii.service", REPO_ROOT / "packages/pii/service.py")
 
+from packages.pii.content_safety import (  # noqa: E402
+    ContentSafetyChecker,
+)
 from packages.pii.detectors import (  # noqa: E402
     PIIPattern,
-    PIIMatch,
-    PIIDetector,
     init_detector,
-    get_detector,
-    reset_detector_for_tests,
 )
 from packages.pii.redactor import (  # noqa: E402
-    RedactionPolicy,
-    RedactionResult,
-    Redactor,
-    init_redactor,
     get_redactor,
-    reset_redactor_for_tests,
-)
-from packages.pii.content_safety import (  # noqa: E402
-    ContentSafetyResult,
-    ContentSafetyChecker,
-    init_safety_checker,
-    get_safety_checker,
-    reset_safety_checker_for_tests,
 )
 from packages.pii.service import (  # noqa: E402
-    PIIService,
-    init_pii_service,
     get_pii_service,
+    init_pii_service,
     reset_for_tests,
 )
 

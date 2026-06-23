@@ -12,7 +12,7 @@ import json
 import logging
 import re
 import threading
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -171,7 +171,7 @@ class PIIDetector:
         try:
             import yaml
 
-            with open(path, "r", encoding="utf-8") as f:
+            with open(path, encoding="utf-8") as f:
                 data = yaml.safe_load(f)
             if isinstance(data, list):
                 for item in data:
@@ -181,7 +181,7 @@ class PIIDetector:
 
     def _load_overrides(self, path: Path) -> None:
         try:
-            with open(path, "r", encoding="utf-8") as f:
+            with open(path, encoding="utf-8") as f:
                 data = json.load(f)
             if isinstance(data, list):
                 for item in data:

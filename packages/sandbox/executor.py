@@ -148,7 +148,7 @@ class SandboxExecutor:
         try:
             import yaml  # type: ignore[import]
 
-            with open(yaml_path, "r", encoding="utf-8") as f:
+            with open(yaml_path, encoding="utf-8") as f:
                 data = yaml.safe_load(f) or {}
             for pid, cfg in data.items():
                 profile = SandboxProfile(
@@ -169,7 +169,7 @@ class SandboxExecutor:
         if not overrides_path or not Path(overrides_path).exists():
             return
         try:
-            with open(overrides_path, "r", encoding="utf-8") as f:
+            with open(overrides_path, encoding="utf-8") as f:
                 data = json.load(f)
             if isinstance(data, list):
                 items = data
@@ -240,7 +240,7 @@ class SandboxExecutor:
                 stdout_bytes, stderr_bytes = await asyncio.wait_for(
                     proc.communicate(), timeout=config.timeout_seconds
                 )
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 timed_out = True
                 try:
                     proc.kill()
@@ -362,7 +362,7 @@ class SandboxExecutor:
                     proc.communicate(), timeout=config.timeout_seconds
                 )
                 exit_code = proc.returncode if proc.returncode is not None else -1
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 timed_out = True
                 try:
                     proc.kill()

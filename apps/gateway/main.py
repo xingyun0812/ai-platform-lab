@@ -17,6 +17,8 @@ from apps.gateway.audit_routes import router as audit_router
 from apps.gateway.auth_routes import router as auth_router
 from apps.gateway.billing_routes import router as billing_router
 from apps.gateway.embedding_routes import router as embedding_router
+from apps.gateway.feedback_loop_routes import router as feedback_loop_router
+from apps.gateway.feedback_routes import router as feedback_router
 from apps.gateway.hitl_routes import router as hitl_router
 from apps.gateway.http_utils import json_error, resolve_tenant
 from apps.gateway.mcp_routes import router as mcp_router
@@ -28,26 +30,24 @@ from apps.gateway.pii_routes import router as pii_router
 from apps.gateway.platform_routes import router as platform_router
 from apps.gateway.prompt_experiment_routes import router as prompt_experiment_router
 from apps.gateway.prompt_routes import router as prompt_router
-from apps.gateway.sandbox_routes import router as sandbox_router
-from apps.gateway.storage_routes import router as storage_router
-from apps.gateway.feedback_routes import router as feedback_router
 from apps.gateway.quality_routes import router as quality_router
-from apps.gateway.feedback_loop_routes import router as feedback_loop_router
 from apps.gateway.quota import get_quota_tracker
 from apps.gateway.rag.query_routes import router as rag_query_router
 from apps.gateway.rag.routes import router as rag_router
 from apps.gateway.request_guards import check_model_allowed, check_rate_limit, check_token_budget
+from apps.gateway.sandbox_routes import router as sandbox_router
 from apps.gateway.settings import get_settings
+from apps.gateway.storage_routes import router as storage_router
 from apps.gateway.tenants import TenantRecord, load_tenants
 from packages.billing.budget import budget_platform_meta, get_budget_snapshot
 from packages.billing.recorder import record_upstream_usage
 from packages.contracts.schemas import ChatCompletionRequest
+from packages.mcp import init_mcp_registry
+from packages.memory import init_memory_store
 from packages.observability.context import get_trace_id
 from packages.observability.metrics import get_metrics_store
 from packages.observability.middleware import TraceIdMiddleware
 from packages.observability.otel import init_otel
-from packages.memory import init_memory_store
-from packages.mcp import init_mcp_registry
 from packages.prompt import init_experiment_store as init_prompt_experiment_store
 from packages.prompt import init_registry as init_prompt_registry
 from packages.semantic_cache import (

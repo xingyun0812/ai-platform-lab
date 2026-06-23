@@ -61,8 +61,8 @@ async def _maybe_persist_memory(
     """
     try:
         from packages.memory import get_memory_store
-        from packages.memory.summarize import summarize_messages
         from packages.memory.store import MemoryRecord, _gen_id
+        from packages.memory.summarize import summarize_messages
 
         store = get_memory_store()
         if store is None:

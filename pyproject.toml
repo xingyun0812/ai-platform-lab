@@ -43,3 +43,5 @@ ignore = ["E501"]
 
 [tool.ruff.lint.per-file-ignores]
 "packages/contracts/rag_schemas.py" = ["UP042"]
+"packages/auth/**" = ["E402"]
+"**/__init__.py" = ["F401"]

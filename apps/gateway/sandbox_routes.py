@@ -264,7 +264,7 @@ async def sandbox_status(
             try:
                 await asyncio.wait_for(proc.communicate(), timeout=5.0)
                 gvisor_available = proc.returncode == 0
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 pass
         except Exception:
             pass

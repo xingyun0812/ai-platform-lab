@@ -10,13 +10,10 @@ from __future__ import annotations
 
 import asyncio
 import json
-import os
 import threading
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
-
 
 # ---------------------------------------------------------------------------
 # 数据类
@@ -172,7 +169,7 @@ class LocalStorageBackend(StorageBackend):
         def _list():
             with self._lock:
                 results: list[str] = []
-                root_str = str(self._root)
+                str(self._root)
                 for p in self._root.rglob("*"):
                     if p.is_file() and not p.name.endswith(".meta.json"):
                         rel = str(p.relative_to(self._root))

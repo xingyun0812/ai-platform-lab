@@ -11,7 +11,6 @@ Run: python3 tests/test_gpu_scheduling.py
 """
 from __future__ import annotations
 
-import os
 import re
 import sys
 import unittest

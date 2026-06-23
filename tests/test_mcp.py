@@ -11,9 +11,7 @@ CI 使用 Python 3.11 完整运行。
 from __future__ import annotations
 
 import asyncio
-import json
 import sys
-import tempfile
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]

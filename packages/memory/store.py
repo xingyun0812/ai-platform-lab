@@ -15,12 +15,12 @@ scope 三级：
 
 from __future__ import annotations
 
+import dataclasses as _dc
 import json
 import logging
 import threading
 import time
 import uuid
-import dataclasses as _dc
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -255,7 +255,6 @@ class PostgresMemoryStore(MemoryStore):
 
     def _connect(self):
         import psycopg
-
         from psycopg.rows import dict_row
 
         return psycopg.connect(self._url, row_factory=dict_row)

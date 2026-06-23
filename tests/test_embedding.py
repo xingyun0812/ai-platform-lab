@@ -16,7 +16,6 @@ import json
 import os
 import sys
 import tempfile
-import time
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -359,7 +358,7 @@ def test_global_singleton():
     reset_embedding_service_for_tests()
     assert get_embedding_service() is None
 
-    with tempfile.TemporaryDirectory() as tmpdir:
+    with tempfile.TemporaryDirectory():
         svc = init_embedding_service(
             registry_yaml_path=None,
             registry_overrides_path=None,

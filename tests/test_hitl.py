@@ -11,7 +11,6 @@ from __future__ import annotations
 
 import asyncio
 import importlib.util
-import json
 import sys
 import tempfile
 import time
@@ -106,9 +105,9 @@ def test_inmemory_create_and_get():
 def test_inmemory_list_pending():
     """InMemoryApprovalStore: list_pending 返回正确租户的待审批"""
     store = InMemoryApprovalStore()
-    r1 = _make_req(store, request_id="r1", tenant_id="t1")
-    r2 = _make_req(store, request_id="r2", tenant_id="t2")
-    r3 = _make_req(store, request_id="r3", tenant_id="t1")
+    _make_req(store, request_id="r1", tenant_id="t1")
+    _make_req(store, request_id="r2", tenant_id="t2")
+    _make_req(store, request_id="r3", tenant_id="t1")
 
     pending_t1 = _run_async(store.list_pending("t1"))
     ids = {r.request_id for r in pending_t1}
@@ -121,7 +120,7 @@ def test_inmemory_list_pending():
 def test_inmemory_approve():
     """InMemoryApprovalStore: decide approved"""
     store = InMemoryApprovalStore()
-    req = _make_req(store, request_id="app-1")
+    _make_req(store, request_id="app-1")
     decision = ApprovalDecision(
         request_id="app-1",
         status="approved",
@@ -139,7 +138,7 @@ def test_inmemory_approve():
 def test_inmemory_reject():
     """InMemoryApprovalStore: decide rejected"""
     store = InMemoryApprovalStore()
-    req = _make_req(store, request_id="rej-1")
+    _make_req(store, request_id="rej-1")
     decision = ApprovalDecision(
         request_id="rej-1",
         status="rejected",
@@ -309,7 +308,7 @@ def test_service_request_and_check():
 
         return req.request_id
 
-    rid = _run_async(_run())
+    _run_async(_run())
     reset_approval_store_for_tests()
     print("PASS test_service_request_and_check")
 

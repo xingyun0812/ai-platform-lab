@@ -13,7 +13,6 @@ import urllib.parse
 from dataclasses import dataclass, field
 from typing import Any
 
-
 # ---------------------------------------------------------------------------
 # Data models
 # ---------------------------------------------------------------------------
