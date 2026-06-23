@@ -10,9 +10,11 @@ from ai_platform_lab._base import AsyncBaseResource, BaseResource
 class RagResource(BaseResource):
     """Sync RAG resource."""
 
-    def query(self, text: str, kb_id: str, top_k: int = 5, **kwargs: Any) -> dict[str, Any]:
+    def query(self, query: str, kb_id: str, top_k: int = 5, **kwargs: Any) -> dict[str, Any]:
         """POST /v1/rag/query — retrieve relevant chunks from a knowledge base."""
-        payload = {"text": text, "kb_id": kb_id, "top_k": top_k, **kwargs}
+        payload: dict[str, Any] = {"query": query, "kb_id": kb_id, "top_k": top_k, **kwargs}
+        if self._tenant_id and "tenant_id" not in payload:
+            payload["tenant_id"] = self._tenant_id
         return self._request("POST", "/v1/rag/query", json=payload)
 
     def upload(self, kb_id: str, file_path: str | Path, **kwargs: Any) -> dict[str, Any]:
@@ -39,9 +41,11 @@ class RagResource(BaseResource):
 class AsyncRagResource(AsyncBaseResource):
     """Async RAG resource."""
 
-    async def query(self, text: str, kb_id: str, top_k: int = 5, **kwargs: Any) -> dict[str, Any]:
+    async def query(self, query: str, kb_id: str, top_k: int = 5, **kwargs: Any) -> dict[str, Any]:
         """POST /v1/rag/query."""
-        payload = {"text": text, "kb_id": kb_id, "top_k": top_k, **kwargs}
+        payload: dict[str, Any] = {"query": query, "kb_id": kb_id, "top_k": top_k, **kwargs}
+        if self._tenant_id and "tenant_id" not in payload:
+            payload["tenant_id"] = self._tenant_id
         return await self._request("POST", "/v1/rag/query", json=payload)
 
     async def upload(self, kb_id: str, file_path: str | Path, **kwargs: Any) -> dict[str, Any]:
