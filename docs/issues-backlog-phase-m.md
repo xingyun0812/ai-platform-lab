@@ -9,7 +9,7 @@
 | M1 BM25 merge | [#63](https://github.com/xingyun0812/ai-platform-lab/issues/63) | #68 |
 | M2 purge-source | [#64](https://github.com/xingyun0812/ai-platform-lab/issues/64) | #69 |
 | M3 API + metrics | [#65](https://github.com/xingyun0812/ai-platform-lab/issues/65) | #70 |
-| M4 demo 断言 | [#66](https://github.com/xingyun0812/ai-platform-lab/issues/66) | （本 PR） |
+| M4 demo 断言 | [#66](https://github.com/xingyun0812/ai-platform-lab/issues/66) | #71 |
 
 ---
 

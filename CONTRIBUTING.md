@@ -183,7 +183,7 @@ python3 eval/acceptance_smoke.py
 | H (#37-#40) | 历史已合并 | ✅ tag `phase-h-agent-advanced` |
 | I (#41-#44) | 历史已合并 | ✅ tag `phase-i-security` |
 | **L (#53-#63)** | #37-#47 等 | ✅ tag `phase-l-engineering-depth` |
-| **M (M1-M4)** | [#63](https://github.com/xingyun0812/ai-platform-lab/issues/63)–[#66](https://github.com/xingyun0812/ai-platform-lab/issues/66) | ⏳ 堆叠 PR 补录中 |
+| **M (M1-M4)** | [#63](https://github.com/xingyun0812/ai-platform-lab/issues/63)–[#66](https://github.com/xingyun0812/ai-platform-lab/issues/66) | ✅ PR [#68](https://github.com/xingyun0812/ai-platform-lab/pull/68)–[#71](https://github.com/xingyun0812/ai-platform-lab/pull/71) 堆叠补录 |
 
 > **注意**：roadmap 中的 `#NN` 为规划编号；GitHub Issue 以实际分配为准。从 Phase J 起，**每个 Issue 必须对应一个 PR**。
 
