@@ -13,7 +13,8 @@ from packages.billing.recorder import record_upstream_usage
 from packages.contracts.rag_schemas import RagCitation, RagQueryTimings, RetrievedChunk
 from packages.observability.context import get_trace_id
 from packages.rag.prompt import build_context_block, load_prompt_template, render_rag_prompt
-from packages.rag.rerank import rerank_chunks
+from packages.rag.rerank import rerank_chunks, rerank_provider_name
+from packages.rag.rerank_providers import provider_config_from_settings
 from packages.rag.retrieval import retrieve_chunks
 
 logger = logging.getLogger("ai_platform.rag.query")
@@ -166,12 +167,14 @@ async def run_rag_query(
     retrieve_ms = (time.perf_counter() - retrieve_start) * 1000
 
     rerank_ms = 0.0
+    rerank_cfg = provider_config_from_settings(settings)
     if settings.rag_rerank_enabled and raw_chunks:
         raw_chunks, rerank_ms = rerank_chunks(
             query,
             raw_chunks,
             top_n=settings.rag_rerank_top_n,
             mode=settings.rag_rerank_mode,
+            provider_config=rerank_cfg,
         )
 
     if not raw_chunks:
@@ -328,6 +331,11 @@ async def run_rag_query(
     }
     if exp_info.get("experiment_id"):
         platform_meta["experiment"] = exp_info
+    if settings.rag_rerank_enabled:
+        platform_meta["rerank"] = {
+            "provider": rerank_provider_name(settings.rag_rerank_mode, rerank_cfg),
+            "mode": settings.rag_rerank_mode,
+        }
     if usage is not None:
         platform_meta["usage"] = {
             "input_tokens": usage.input_tokens,

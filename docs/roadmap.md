@@ -181,9 +181,9 @@
 | Issue | 波次 | 内容 | 依赖 | 工期 | 状态 |
 |-------|------|------|------|------|------|
 | #53 | L0 | 文档状态对齐（roadmap / gap / 远期规划） | — | 2d | ✅ |
-| #54 | L1 | RAG 真 Rerank Provider | #53 | 1.5w | ⏳ |
+| #54 | L1 | RAG 真 Rerank Provider | #53 | 1.5w | ✅ |
 | #55 | L1 | RAG 增量索引 | — | 1w | ⏳ |
-| #56 | L1 | Eval LLM-as-Judge | #54 | 1.5w | ⏳ |
+| #56 | L1 | Eval LLM-as-Judge | #54 | 1.5w | ✅ |
 | #57 | L1 | kb 金丝雀自动回滚 Job | #56 | 1w | ⏳ |
 | #58 | L2 | Agent 三率指标 | — | 1w | ⏳ |
 | #59 | L2 | Agent Vertical（Orchestrator + HITL） | #58 | 1.5w | ⏳ |
