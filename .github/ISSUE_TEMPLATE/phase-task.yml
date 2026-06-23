@@ -24,6 +24,7 @@ body:
         - "Phase K — 生产基础设施"
         - "Phase L — 工程深度与面试叙事"
         - "Phase M — RAG 增量索引做满"
+        - "Phase N — Python SDK 发布 PyPI"
     validations:
       required: true
   - type: textarea
