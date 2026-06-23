@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Phase E1：Agent 轨迹评测 — expect_tools / forbid_tools + 轨迹指标报告。"""
+"""Phase E1 / L #58：Agent 轨迹评测 — 四率指标 + baseline 报告。"""
 
 from __future__ import annotations
 
@@ -22,6 +22,13 @@ TENANT_TOKENS: dict[str, str] = {
     "demo-a": "sk-tenant-demo-a-change-me",
     "demo-b": "sk-tenant-demo-b-change-me",
 }
+
+METRIC_KEYS = (
+    "tool_precision_at_1",
+    "needless_tool_rate",
+    "missing_tool_rate",
+    "arg_valid_rate",
+)
 
 
 @dataclass
@@ -48,6 +55,8 @@ class AgentCaseResult:
     forbid_tools: list[str] = field(default_factory=list)
     expect_no_tools: bool = False
     expect_first_tool: str | None = None
+    direct_answer: bool = False
+    require_tools: bool = False
 
 
 def load_cases(path: Path) -> list[dict[str, Any]]:
@@ -58,6 +67,27 @@ def load_cases(path: Path) -> list[dict[str, Any]]:
             continue
         cases.append(json.loads(line))
     return cases
+
+
+def _case_expect_tools(case: dict[str, Any]) -> list[str]:
+    if case.get("expect_tools"):
+        return [str(t) for t in case["expect_tools"]]
+    expected = case.get("expected_tool")
+    if expected:
+        return [str(expected)]
+    return []
+
+
+def _case_direct_answer(case: dict[str, Any]) -> bool:
+    if "direct_answer" in case:
+        return bool(case["direct_answer"])
+    return bool(case.get("expect_no_tools"))
+
+
+def _case_require_tools(case: dict[str, Any]) -> bool:
+    if "require_tools" in case:
+        return bool(case["require_tools"])
+    return bool(_case_expect_tools(case))
 
 
 def _tool_names_from_body(body: dict[str, Any]) -> list[str]:
@@ -109,26 +139,48 @@ def evaluate_agent_case(
     metrics.tool_names = tool_names
     metrics.arg_invalid = _has_bad_args(tool_calls)
 
-    expect_tools = case.get("expect_tools") or []
-    forbid_tools = case.get("forbid_tools") or []
+    expect_tools = _case_expect_tools(case)
+    forbid_tools = [str(t) for t in (case.get("forbid_tools") or [])]
     expect_first = case.get("expect_first_tool")
-    expect_no_tools = bool(case.get("expect_no_tools"))
+    direct_answer = _case_direct_answer(case)
+    require_tools = _case_require_tools(case)
+
+    if direct_answer and tool_names:
+        metrics.needless_tool = True
 
     forbidden_hit = [t for t in forbid_tools if t in tool_names]
     if forbidden_hit:
         metrics.needless_tool = True
         return False, f"禁止工具被调用: {forbidden_hit}", metrics
 
-    if expect_no_tools and tool_names:
-        metrics.needless_tool = True
-        return False, f"期望不调用工具但调用了: {tool_names}", metrics
+    if direct_answer and tool_names:
+        return False, f"期望 direct_answer 不调用工具但调用了: {tool_names}", metrics
+
+    if require_tools and not tool_names:
+        metrics.missing_tool = True
+        return False, "require_tools 但未调用任何工具", metrics
+
+    if expect_tools and tool_names:
+        first = tool_names[0]
+        metrics.first_tool_correct = first in expect_tools
+        if expect_first is not None:
+            metrics.first_tool_correct = first == expect_first
 
     missing = [t for t in expect_tools if t not in tool_names]
     if missing:
         metrics.missing_tool = True
+        if metrics.first_tool_correct is None and expect_tools and tool_names:
+            metrics.first_tool_correct = tool_names[0] in expect_tools
         return False, f"缺少期望工具: {missing}，实际 {tool_names}", metrics
 
-    if expect_first is not None:
+    if expect_tools and tool_names:
+        first = tool_names[0]
+        if expect_first is not None:
+            if first != expect_first:
+                return False, f"第一步工具期望 {expect_first!r} 实际 {first!r}", metrics
+        elif first not in expect_tools:
+            return False, f"第一步工具 {first!r} 不在 expect_tools {expect_tools}", metrics
+    elif expect_first is not None:
         first = tool_names[0] if tool_names else None
         metrics.first_tool_correct = first == expect_first
         if first != expect_first:
@@ -148,15 +200,17 @@ def evaluate_agent_case(
 
 
 def aggregate_trajectory_metrics(results: list[AgentCaseResult]) -> dict[str, Any]:
-    """汇总轨迹指标（大厂周报 5 项中的 4 项 + pass_rate）。"""
-    precision_cases = [r for r in results if r.expect_first_tool is not None]
+    """汇总四率 + pass_rate（Phase L #58 agent_metrics 数据源）。"""
+    precision_cases = [
+        r for r in results if r.expect_tools and r.trajectory.first_tool_correct is not None
+    ]
     precision_ok = sum(1 for r in precision_cases if r.trajectory.first_tool_correct)
 
-    needless_denom = [r for r in results if r.forbid_tools or r.expect_no_tools]
+    needless_denom = [r for r in results if r.direct_answer]
     needless_bad = [r for r in needless_denom if r.trajectory.needless_tool]
 
-    expect_tool_denom = [r for r in results if r.expect_tools]
-    missing_bad = [r for r in expect_tool_denom if r.trajectory.missing_tool]
+    missing_denom = [r for r in results if r.require_tools]
+    missing_bad = [r for r in missing_denom if r.trajectory.missing_tool]
 
     tool_call_cases = [r for r in results if r.trajectory.tool_names]
     arg_invalid_cases = [r for r in tool_call_cases if r.trajectory.arg_invalid]
@@ -167,14 +221,14 @@ def aggregate_trajectory_metrics(results: list[AgentCaseResult]) -> dict[str, An
     def rate(num: int, denom: int) -> float | None:
         return round(num / denom, 4) if denom else None
 
-    return {
+    metrics = {
         "total": total,
         "passed": passed,
         "failed": total - passed,
         "pass_rate": rate(passed, total) or 0.0,
         "tool_precision_at_1": rate(precision_ok, len(precision_cases)),
         "needless_tool_rate": rate(len(needless_bad), len(needless_denom)),
-        "missing_tool_rate": rate(len(missing_bad), len(expect_tool_denom)),
+        "missing_tool_rate": rate(len(missing_bad), len(missing_denom)),
         "arg_valid_rate": rate(
             len(tool_call_cases) - len(arg_invalid_cases),
             len(tool_call_cases),
@@ -187,6 +241,17 @@ def aggregate_trajectory_metrics(results: list[AgentCaseResult]) -> dict[str, An
         "missing_tool_cases": len(missing_bad),
         "arg_invalid_cases": len(arg_invalid_cases),
     }
+    return metrics
+
+
+def build_agent_metrics(summary: dict[str, Any]) -> dict[str, Any]:
+    return {k: summary.get(k) for k in METRIC_KEYS}
+
+
+def _metrics_from_report(report: dict[str, Any]) -> dict[str, Any]:
+    if isinstance(report.get("agent_metrics"), dict):
+        return report["agent_metrics"]
+    return report.get("summary", {})
 
 
 def validate_agent_baseline(path: Path) -> tuple[bool, list[str]]:
@@ -224,6 +289,12 @@ def validate_agent_baseline(path: Path) -> tuple[bool, list[str]]:
         tenant = case.get("tenant_id")
         if tenant and tenant not in TENANT_TOKENS:
             errors.append(f"行 {i}: 未知 tenant_id {tenant!r}，须在 {list(TENANT_TOKENS)}")
+        for flag in ("direct_answer", "require_tools"):
+            if flag in case and not isinstance(case[flag], bool):
+                errors.append(f"行 {i}: {flag} 须为 bool")
+        for list_key in ("expect_tools", "forbid_tools"):
+            if list_key in case and not isinstance(case[list_key], list):
+                errors.append(f"行 {i}: {list_key} 须为数组")
     return len(errors) == 0, errors
 
 
@@ -284,6 +355,7 @@ async def run_agent_baseline(
             passed, reason, traj = evaluate_agent_case(case, status=r.status_code, body=body)
             err_code = (body.get("error") or {}).get("code") if isinstance(body.get("error"), dict) else None
             final = body.get("final_message") if isinstance(body.get("final_message"), str) else None
+            expect_tools = _case_expect_tools(case)
             results.append(
                 AgentCaseResult(
                     id=case_id,
@@ -295,14 +367,17 @@ async def run_agent_baseline(
                     final_message_preview=(final[:120] if final else None),
                     tool_names=traj.tool_names,
                     trajectory=traj,
-                    expect_tools=list(case.get("expect_tools") or []),
-                    forbid_tools=list(case.get("forbid_tools") or []),
+                    expect_tools=expect_tools,
+                    forbid_tools=[str(t) for t in (case.get("forbid_tools") or [])],
                     expect_no_tools=bool(case.get("expect_no_tools")),
                     expect_first_tool=case.get("expect_first_tool"),
+                    direct_answer=_case_direct_answer(case),
+                    require_tools=_case_require_tools(case),
                 )
             )
 
     summary = aggregate_trajectory_metrics(results)
+    agent_metrics = build_agent_metrics(summary)
     report = {
         "run_id": run_id,
         "kind": "agent",
@@ -310,6 +385,7 @@ async def run_agent_baseline(
         "base_url": base_url,
         "baseline": str(baseline_path),
         "summary": summary,
+        "agent_metrics": agent_metrics,
         "results": [
             {
                 **asdict(r),
@@ -324,6 +400,7 @@ async def run_agent_baseline(
 def compare_reports(path_a: Path, path_b: Path) -> dict[str, Any]:
     a = json.loads(path_a.read_text(encoding="utf-8"))
     b = json.loads(path_b.read_text(encoding="utf-8"))
+    ma, mb = _metrics_from_report(a), _metrics_from_report(b)
     rate_a = a.get("summary", {}).get("pass_rate", 0)
     rate_b = b.get("summary", {}).get("pass_rate", 0)
     by_id_a = {r["id"]: r for r in a.get("results", [])}
@@ -341,12 +418,13 @@ def compare_reports(path_a: Path, path_b: Path) -> dict[str, Any]:
             )
 
     def metric_delta(key: str) -> dict[str, Any]:
-        va = a.get("summary", {}).get(key)
-        vb = b.get("summary", {}).get(key)
+        va = ma.get(key)
+        vb = mb.get(key)
         if va is None or vb is None:
             return {"a": va, "b": vb, "delta": None}
         return {"a": va, "b": vb, "delta": round(vb - va, 4) if isinstance(va, (int, float)) else None}
 
+    agent_metrics_delta = {k: metric_delta(k) for k in METRIC_KEYS}
     return {
         "kind": "agent",
         "run_a": a.get("run_id"),
@@ -355,12 +433,8 @@ def compare_reports(path_a: Path, path_b: Path) -> dict[str, Any]:
         "pass_rate_b": rate_b,
         "pass_rate_delta": round(rate_b - rate_a, 4),
         "flipped_cases": flipped,
-        "trajectory_metrics": {
-            "tool_precision_at_1": metric_delta("tool_precision_at_1"),
-            "needless_tool_rate": metric_delta("needless_tool_rate"),
-            "missing_tool_rate": metric_delta("missing_tool_rate"),
-            "arg_valid_rate": metric_delta("arg_valid_rate"),
-        },
+        "agent_metrics": agent_metrics_delta,
+        "trajectory_metrics": agent_metrics_delta,
     }
 
 
@@ -387,7 +461,7 @@ async def _async_main(args: argparse.Namespace) -> int:
     )
     out = save_report(report)
     summary = report["summary"]
-    print(json.dumps(summary, ensure_ascii=False, indent=2))
+    print(json.dumps({"summary": summary, "agent_metrics": report["agent_metrics"]}, ensure_ascii=False, indent=2))
     print(f"报告已写入: {out}")
     if summary["failed"] > 0:
         return 1

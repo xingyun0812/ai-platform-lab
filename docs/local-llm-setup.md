@@ -36,8 +36,8 @@ QDRANT_COLLECTION=ai_platform_lab_qwen8b
 # Rerank（可选）
 RAG_RERANK_API_URL=http://10.212.129.94:8090/v1/rerank
 RAG_RERANK_MODEL=Qwen3-Reranker-8B
-# RAG_RERANK_ENABLED=true
-# RAG_RERANK_MODE=api
+RAG_RERANK_ENABLED=true
+RAG_RERANK_MODE=api
 ```
 
 > **注意**：Embedding 为 **4096 维**，与旧 `text-embedding-3-small`（1536）不兼容。换新 `QDRANT_COLLECTION` 或清空 Qdrant 后重新索引。

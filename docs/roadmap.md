@@ -185,7 +185,7 @@
 | #55 | L1 | RAG 增量索引 | — | 1w | ✅ |
 | #56 | L1 | Eval LLM-as-Judge | #54 | 1.5w | ✅ |
 | #57 | L1 | kb 金丝雀自动回滚 Job | #56 | 1w | ✅ |
-| #58 | L2 | Agent 三率指标 | — | 1w | ⏳ |
+| #58 | L2 | Agent 三率指标 | — | 1w | ✅ |
 | #59 | L2 | Agent Vertical（Orchestrator + HITL） | #58 | 1.5w | ⏳ |
 | #60 | L2 | Agent Baseline 扩充 + CI 门禁 | #58 | 1w | ⏳ |
 | #61 | L3 | 反馈飞轮 E2E 实测 | #56, #60 | 1w | ⏳ |
