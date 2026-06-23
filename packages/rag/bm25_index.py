@@ -86,12 +86,17 @@ def index_path(kb_id: str, version: int) -> Path:
     return root / kb_id / f"v{version}.json"
 
 
-def build_index_from_chunks(chunks: list[TextChunk]) -> Bm25Index:
+def build_index_from_chunks(
+    chunks: list[TextChunk],
+    *,
+    kb_id: str,
+    version: int,
+) -> Bm25Index:
     docs = [
         Bm25Document(
             chunk_id=c.chunk_id,
-            kb_id=c.kb_id,
-            version=c.version,
+            kb_id=kb_id,
+            version=version,
             source_uri=c.source_uri,
             offset=c.offset,
             text=c.text,

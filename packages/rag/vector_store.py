@@ -176,13 +176,13 @@ class VectorStore:
         if version is not None:
             must.append(qm.FieldCondition(key="version", match=qm.MatchValue(value=version)))
 
-        hits = self._client.search(
+        hits = self._client.query_points(
             collection_name=self._collection,
-            query_vector=query_vector,
+            query=query_vector,
             limit=top_k,
             query_filter=qm.Filter(must=must),
             with_payload=True,
-        )
+        ).points
         results: list[dict[str, Any]] = []
         for hit in hits:
             payload = hit.payload or {}

@@ -76,10 +76,19 @@ if $WITH_LLM; then
     "$BASE_URL/internal/index")
   task_id=$(python3 -c "import json,sys; print(json.load(sys.stdin).get('task_id',''))" <<<"$resp")
   echo "    task_id=$task_id"
-  echo "==> rag query (may fail if index pending)"
+  for _ in $(seq 1 30); do
+    st=$(curl -sf "${hdr[@]}" "$BASE_URL/internal/index/tasks/$task_id" \
+      | python3 -c "import json,sys; print(json.load(sys.stdin).get('status',''))")
+    if [[ "$st" == "success" || "$st" == "failed" ]]; then
+      echo "    index status=$st"
+      break
+    fi
+    sleep 1
+  done
+  echo "==> rag query"
   curl -sf "${hdr[@]}" -H "Content-Type: application/json" \
-    -d "{\"tenant_id\":\"$TENANT\",\"kb_id\":\"lab-demo\",\"version\":1,\"query\":\"RAG\"}" \
-    "$BASE_URL/v1/rag/query" >/dev/null || echo "    (rag query skipped/failed — wait for index)"
+    -d "{\"tenant_id\":\"$TENANT\",\"kb_id\":\"lab-demo\",\"version\":1,\"query\":\"RAG 数据管道\"}" \
+    "$BASE_URL/v1/rag/query" >/dev/null || echo "    (rag query skipped/failed)"
 fi
 
 echo "==> sdk smoke"

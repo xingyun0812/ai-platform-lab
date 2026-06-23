@@ -98,7 +98,7 @@ def main() -> int:
         print("==> rag query")
         try:
             r = client.rag.query(
-                "hello",
+                "RAG 数据管道",
                 kb_id="lab-demo",
                 tenant_id=args.tenant,
                 version=1,
