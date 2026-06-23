@@ -50,6 +50,8 @@ def format_report_markdown(report) -> str:
     lines.append(f"| Failed | {report.failed} |")
     lines.append(f"| Skipped | {report.skipped} |")
     lines.append(f"| Pass Rate | {report.pass_rate:.2%} |")
+    if getattr(report, "grading_stats", None):
+        lines.append(f"| Grading Modes | {report.grading_stats} |")
     lines.append("")
 
     if report.by_category:

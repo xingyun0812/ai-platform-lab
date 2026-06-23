@@ -39,6 +39,7 @@ class CaseDetail:
     expected: Any
     actual: Any
     reason: str
+    grading_mode: str = ""
 
 
 @dataclass
@@ -64,6 +65,7 @@ class EvalReport:
     skipped: int
     pass_rate: float
     by_category: dict[str, CategoryResult] = field(default_factory=dict)
+    grading_stats: dict[str, int] = field(default_factory=dict)
     timestamp: float = field(default_factory=time.time)
     commit_sha: str = ""
 
@@ -106,6 +108,11 @@ class EvalPipeline:
         self.api_key = api_key or os.environ.get("EVAL_API_KEY") or os.environ.get("LLM_API_KEY")
         self.baselines_dir = baselines_dir or BASELINES_DIR
         self._has_api_key = bool(self.api_key)
+        self._grader = None
+        if self._has_api_key:
+            from eval.grader import CaseGrader
+
+            self._grader = CaseGrader(api_key=self.api_key)
 
     # ------------------------------------------------------------------
     # Loading
@@ -188,7 +195,7 @@ class EvalPipeline:
             # Live call (would call self.gateway_url + /v1/rag/query)
             try:
                 result = self._call_rag(case)
-                passed, reason = self._evaluate_rag(case, result)
+                passed, reason, grading_mode = self._evaluate_rag(case, result)
                 details.append(
                     CaseDetail(
                         case_id=case_id,
@@ -197,6 +204,7 @@ class EvalPipeline:
                         expected=case.get("expected_keywords", []),
                         actual=result.get("answer", ""),
                         reason=reason,
+                        grading_mode=grading_mode,
                     )
                 )
             except Exception as exc:
@@ -384,8 +392,15 @@ class EvalPipeline:
         with urllib.request.urlopen(req, timeout=30) as resp:
             return json.loads(resp.read().decode("utf-8"))
 
-    def _evaluate_rag(self, case: dict[str, Any], result: dict[str, Any]) -> tuple[bool, str]:
-        """Evaluate RAG response against expected keywords."""
+    def _evaluate_rag(self, case: dict[str, Any], result: dict[str, Any]) -> tuple[bool, str, str]:
+        """Evaluate RAG response — keyword 或 llm_judge（见 eval/grader.py）。"""
+        if self._grader is not None:
+            return self._grader.grade_rag(case, result)
+        passed, reason = self._evaluate_rag_keyword(case, result)
+        return passed, reason, "keyword"
+
+    def _evaluate_rag_keyword(self, case: dict[str, Any], result: dict[str, Any]) -> tuple[bool, str]:
+        """Keyword-only RAG grading (legacy)."""
         answer = result.get("answer", "") or ""
         keywords = case.get("expected_keywords", [])
         expect_no_answer = case.get("expect_no_answer", False)
@@ -469,6 +484,12 @@ class EvalPipeline:
 
         pass_rate = round(passed / max(total - skipped, 1), 4) if total > skipped else 0.0
 
+        grading_stats: dict[str, int] = {}
+        for cat_result in by_cat.values():
+            for detail in cat_result.cases:
+                mode = detail.grading_mode or "keyword"
+                grading_stats[mode] = grading_stats.get(mode, 0) + 1
+
         return EvalReport(
             total_cases=total,
             passed=passed,
@@ -476,6 +497,7 @@ class EvalPipeline:
             skipped=skipped,
             pass_rate=pass_rate,
             by_category=by_cat,
+            grading_stats=grading_stats,
             timestamp=time.time(),
             commit_sha=os.environ.get("GITHUB_SHA", "local"),
         )
