@@ -83,7 +83,11 @@ async def run_index_task(task_id: str) -> None:
             version=record.version,
         )
         if all_chunks:
-            bm25 = build_index_from_chunks(all_chunks)
+            bm25 = build_index_from_chunks(
+                all_chunks,
+                kb_id=record.kb_id,
+                version=record.version,
+            )
             save_index(bm25, record.kb_id, record.version)
         task_store.update(
             task_id,

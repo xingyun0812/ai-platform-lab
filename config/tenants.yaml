@@ -20,8 +20,11 @@ tenants:
       - "chat-fast"
       - "chat-thinking"
       - "chat-minimax"
-      - "deepseek-v4-flash-thinking"
+      - "chat-deepseek-r1"
+      - "chat-qwen3-32b"
+      - "chat-qwen3-235b"
       - "deepseek-v4-flash"
+      - "deepseek-v4-flash-thinking"
       - "minimax-m2.7"
     # 仅允许知识库检索与计算器（不可调用 httpbin_delay）
     allowed_tools:
