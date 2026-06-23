@@ -1,14 +1,31 @@
 # Phase D 及后续演进方向（规划稿）
 
-> **状态**：规划文档，**尚未实现**。  
-> **前置**：Phase A（可内测）→ Phase B（小流量生产）→ Phase C（平台化 API）均已交付，见 [roadmap.md](./roadmap.md)。  
-> **定位**：本仓库仍是 **学习 + 面试可讲的最小中台**；下文描述「若继续做，产品形态会往哪走」，不等于承诺全部落地。
+> **状态**：**历史规划文档**。Phase D～K **已按 roadmap 交付**（见 [roadmap.md](./roadmap.md)、[PROJECT_STATUS.md](./PROJECT_STATUS.md)）。  
+> **当前焦点**：Phase L — 工程深度与面试叙事（[phase-l-engineering-depth.md](./phase-l-engineering-depth.md)），把 stub / 未 live 验证能力做深。  
+> **定位**：本仓库仍是 **学习 + 面试可讲的最小中台**；下文 D～K 段落保留为 **当时的产品演进思路**，不等于待办清单。
 
 构建思路、使用链路与逐文件代码说明见 [phase-d-build-and-code-guide.md](./phase-d-build-and-code-guide.md)。
 
 ---
 
-## 1. 当前产品形态（Phase C 之后）
+## 0. Phase D～K 交付摘要（2026）
+
+| Phase | 主题 | 状态 |
+|-------|------|------|
+| D | 平台化 API / 租户硬化 | ✅ |
+| E | Agent 效果深化 | ✅ |
+| F | MCP + Prompt + Memory | ✅ |
+| G | 语义缓存 + Embedding | ✅ |
+| H | Orchestrator + Multi-Agent + HITL | ✅ |
+| I | PII + OAuth2/mTLS + 沙箱 | ✅ |
+| J | SDK + Console + Eval + 反馈飞轮 | ✅ |
+| K | 对象存储 + Helm + 多 AZ + GPU 模板 | ✅ |
+
+**仍待 Phase L 深化**：真 Rerank、LLM Judge、金丝雀自动回滚、Agent 三率、反馈飞轮 live E2E。
+
+---
+
+## 1. 当前产品形态（Phase K 之后，Phase L 进行中）
 
 | 维度 | 已有能力 | 仍缺（相对真产品） |
 |------|----------|-------------------|
