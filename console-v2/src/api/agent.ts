@@ -37,7 +37,9 @@ export interface DelegateResult {
 
 export const agentApi = {
   list: () =>
-    apiClient.get<AgentSpec[]>("/internal/agents").then((r) => r.data),
+    apiClient
+      .get<{ agents: AgentSpec[] }>("/internal/agents")
+      .then((r) => r.data.agents ?? []),
 
   get: (agentId: string) =>
     apiClient.get<AgentSpec>(`/internal/agents/${agentId}`).then((r) => r.data),

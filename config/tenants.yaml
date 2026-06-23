@@ -18,7 +18,11 @@ tenants:
     default_model: chat-fast
     allowed_models:
       - "chat-fast"
-      - "gpt-4o-mini"
+      - "chat-thinking"
+      - "chat-minimax"
+      - "deepseek-v4-flash-thinking"
+      - "deepseek-v4-flash"
+      - "minimax-m2.7"
     # 仅允许知识库检索与计算器（不可调用 httpbin_delay）
     allowed_tools:
       - "get_kb_snippet"
@@ -31,7 +35,8 @@ tenants:
     token_budget_daily: 500
     token_budget_monthly: 5000
     allowed_models:
-      - "gpt-4o-mini"
+      - "deepseek-v4-flash"
+      - "chat-fast"
     allowed_tools:
       - "calc"
   admin:

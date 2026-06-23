@@ -19,7 +19,7 @@ const queryClient = new QueryClient({
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <BrowserRouter>
+    <BrowserRouter basename={import.meta.env.BASE_URL.replace(/\/$/, "") || "/console"}>
       <QueryClientProvider client={queryClient}>
         <ConfigProvider
           locale={zhCN}

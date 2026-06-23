@@ -1,16 +1,23 @@
-# 模型路由（第 6 周）：别名映射 + 失败降级链
-# 请求 model 可为别名（如 chat-fast）或上游真实模型名。
+# 模型路由：别名映射 + 失败降级链
+# 上游：内网 OpenAI 兼容网关（见 .env LLM_BASE_URL）
+# 可用模型：deepseek-v4-flash-thinking | deepseek-v4-flash | minimax-m2.7
 
 aliases:
-  chat-fast: gpt-4o-mini
-  chat-strong: gpt-4o
+  chat-fast: deepseek-v4-flash
+  chat-strong: deepseek-v4-flash-thinking
+  chat-thinking: deepseek-v4-flash-thinking
+  chat-fast-v4: deepseek-v4-flash
+  chat-minimax: minimax-m2.7
 
-# 主模型失败（429/5xx/网络错误）时按顺序尝试；链首须与 resolve 后的主模型一致。
 fallback_chains:
-  gpt-4o-mini:
-    - gpt-4o-mini
-  gpt-4o:
-    - gpt-4o
-    - gpt-4o-mini
+  deepseek-v4-flash:
+    - deepseek-v4-flash
+    - minimax-m2.7
+  deepseek-v4-flash-thinking:
+    - deepseek-v4-flash-thinking
+    - deepseek-v4-flash
+  minimax-m2.7:
+    - minimax-m2.7
+    - deepseek-v4-flash
   default:
-    - gpt-4o-mini
+    - deepseek-v4-flash

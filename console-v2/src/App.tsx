@@ -47,7 +47,7 @@ function AppLayout() {
   const handleLogout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("tenant_id");
-    window.location.href = "/login";
+    window.location.href = `${import.meta.env.BASE_URL.replace(/\/$/, "") || "/console"}/login`;
   };
 
   return (
