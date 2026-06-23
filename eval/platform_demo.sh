@@ -87,7 +87,7 @@ if $WITH_LLM; then
   done
   echo "==> rag query"
   curl -sf "${hdr[@]}" -H "Content-Type: application/json" \
-    -d "{\"tenant_id\":\"$TENANT\",\"kb_id\":\"lab-demo\",\"version\":1,\"query\":\"RAG 数据管道\"}" \
+    -d "{\"tenant_id\":\"$TENANT\",\"kb_id\":\"lab-demo\",\"version\":1,\"query\":\"RAG 数据管道\",\"min_score\":0.2}" \
     "$BASE_URL/v1/rag/query" >/dev/null || echo "    (rag query skipped/failed)"
 fi
 
@@ -103,6 +103,10 @@ echo "==> feedback loop mock"
 python3 eval/feedback_loop_demo.py --mock
 
 echo "==> agent vertical smoke"
-python3 eval/agent_vertical_smoke.py
+if $WITH_LLM; then
+  python3 eval/agent_vertical_smoke.py --with-llm
+else
+  python3 eval/agent_vertical_smoke.py
+fi
 
 echo "OK platform_demo ($($WITH_LLM && echo with-llm || echo no-llm))"

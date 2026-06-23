@@ -102,6 +102,7 @@ def main() -> int:
                 kb_id="lab-demo",
                 tenant_id=args.tenant,
                 version=1,
+                min_score=0.2,
             )
             keys = list(r.keys())[:5] if isinstance(r, dict) else type(r).__name__
             print("    rag ok, keys:", keys)
