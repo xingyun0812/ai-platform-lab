@@ -7,8 +7,8 @@
 | Backlog | GitHub Issue |
 |---------|--------------|
 | 规划文档 | [#76](https://github.com/xingyun0812/ai-platform-lab/issues/76) |
-| N1 包元数据 | [#77](https://github.com/xingyun0812/ai-platform-lab/issues/77) |
-| N2 CI 发布 | [#78](https://github.com/xingyun0812/ai-platform-lab/issues/78) |
+| N1 包元数据 | [#77](https://github.com/xingyun0812/ai-platform-lab/issues/77) | ✅ #82 |
+| N2 CI 发布 | [#78](https://github.com/xingyun0812/ai-platform-lab/issues/78) | ⏳ |
 | N3 pip smoke | [#79](https://github.com/xingyun0812/ai-platform-lab/issues/79) |
 | N4 文档同步 | [#80](https://github.com/xingyun0812/ai-platform-lab/issues/80) |
 

@@ -45,9 +45,26 @@ flowchart LR
 
 ### N2 — CI 发布
 
-- `.github/workflows/publish-sdk.yml`：`workflow_dispatch` + `release`/`tag` 触发
-- 使用 PyPI **Trusted Publishing**（OIDC）或 `PYPI_API_TOKEN` secret
-- 仅当 `sdk/python/**` 变更或手动发布时构建
+- `.github/workflows/publish-sdk.yml`：`workflow_dispatch` + tag `sdk-v*` 触发
+- PyPI **Trusted Publishing**（OIDC，推荐）或仓库 Secret `PYPI_API_TOKEN`
+- PR 变更 `sdk/python/**` 时仅 **build** 不上传
+
+#### 维护者发布步骤
+
+1. **PyPI 配置**（一次性）
+   - [pypi.org](https://pypi.org) 注册项目 `ai-platform-lab`（若重名改用 `ai-platform-lab-sdk` 并改 `pyproject.toml`）
+   - Trusted Publisher：Owner `xingyun0812`，Repo `ai-platform-lab`，Workflow `publish-sdk.yml`，Environment `pypi`
+   - 或 Settings → Secrets → `PYPI_API_TOKEN`
+
+2. **GitHub Environments**（可选审批）
+   - `pypi` / `testpypi` environment，用于 `workflow_dispatch` 人工发版
+
+3. **发版**
+   ```bash
+   #  bump sdk/python/ai_platform_lab/__init__.py __version__
+   git tag sdk-v0.1.0 && git push origin sdk-v0.1.0
+   # 或 Actions → Publish Python SDK → Run workflow
+   ```
 
 ### N3 — Smoke
 
