@@ -5,7 +5,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        感谢贡献！这是 Phase J/K 规划的任务。
+        感谢贡献！这是 Phase J/K/L 规划的任务。
         请先在 [roadmap.md](../docs/roadmap.md) 确认 Issue 编号与内容。
   - type: input
     id: issue-number
@@ -22,7 +22,7 @@ body:
       options:
         - "Phase J — 平台开发者体验"
         - "Phase K — 生产基础设施"
-        - "Phase L — 未来规划"
+        - "Phase L — 工程深度与面试叙事"
     validations:
       required: true
   - type: textarea

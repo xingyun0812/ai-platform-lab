@@ -9,7 +9,7 @@
 
 ```bash
 cd /Users/zhangyue/IdeaProjects/ai-platform-lab
-cp .env.example .env          # 可选：填 LLM_API_KEY 以联调 chat/RAG/agent
+cp .env.example .env          # 填 LLM_BASE_URL + LLM_API_KEY，见 docs/local-llm-setup.md
 docker compose up -d --build  # postgres + redis + gateway :8000 + worker + qdrant
 curl -s http://127.0.0.1:8000/healthz
 ```
@@ -474,6 +474,11 @@ r = c.chat.completions.create(model="gpt-4o-mini", messages=[{"role":"user","con
 | 全路线 | [AI中台学习执行手册](docs/AI中台学习执行手册.md) | — |
 | 架构 | [architecture.md](docs/architecture.md) | [roadmap.md](docs/roadmap.md) |
 | Gap 分析 | [gap-analysis-diagram.md](docs/gap-analysis-diagram.md) | [roadmap-gantt.md](docs/roadmap-gantt.md) |
+| Phase L 工程深度 | [phase-l-engineering-depth.md](docs/phase-l-engineering-depth.md) | [phase-l-priority-roi.md](docs/phase-l-priority-roi.md) |
+| Phase L Console ✅ | [phase-l-console-integration.md](docs/phase-l-console-integration.md) | [demo-walkthrough.md](docs/demo-walkthrough.md) |
+| Phase L Wave1 ✅ | [interview-narrative.md](docs/interview-narrative.md) | `./eval/platform_demo.sh` · `eval/sdk_smoke.py` |
+| 本地 LLM 联调 | [local-llm-setup.md](docs/local-llm-setup.md) | `.env` + `config/models.yaml` |
+| Phase L Issues | [issues-backlog-phase-l.md](docs/issues-backlog-phase-l.md) | — |
 | Phase A 可内测 | [phase-a-internal-beta.md](docs/phase-a-internal-beta.md) | [phase-a-build-and-code-guide.md](docs/phase-a-build-and-code-guide.md) |
 | Phase B1 计费 | [phase-b-small-production.md](docs/phase-b-small-production.md) | [phase-b-build-and-code-guide.md](docs/phase-b-build-and-code-guide.md) |
 | Phase B2 并行 | [phase-b2-parallel.md](docs/phase-b2-parallel.md) | [phase-b-build-and-code-guide.md](docs/phase-b-build-and-code-guide.md) |

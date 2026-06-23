@@ -173,7 +173,33 @@
 
 ---
 
+## Phase L — 工程深度与面试叙事（规划中 ⏳）
+
+> **目标**：不扩新模块，把 stub / 未验证能力做深、做真、串成故事。  
+> **规划**：[phase-l-engineering-depth.md](./phase-l-engineering-depth.md) · Issue 正文：[issues-backlog-phase-l.md](./issues-backlog-phase-l.md)
+
+| Issue | 波次 | 内容 | 依赖 | 工期 | 状态 |
+|-------|------|------|------|------|------|
+| #53 | L0 | 文档状态对齐（roadmap / gap / 远期规划） | — | 2d | ✅ |
+| #54 | L1 | RAG 真 Rerank Provider | #53 | 1.5w | ⏳ |
+| #55 | L1 | RAG 增量索引 | — | 1w | ⏳ |
+| #56 | L1 | Eval LLM-as-Judge | #54 | 1.5w | ⏳ |
+| #57 | L1 | kb 金丝雀自动回滚 Job | #56 | 1w | ⏳ |
+| #58 | L2 | Agent 三率指标 | — | 1w | ⏳ |
+| #59 | L2 | Agent Vertical（Orchestrator + HITL） | #58 | 1.5w | ⏳ |
+| #60 | L2 | Agent Baseline 扩充 + CI 门禁 | #58 | 1w | ⏳ |
+| #61 | L3 | 反馈飞轮 E2E 实测 | #56, #60 | 1w | ⏳ |
+| #62-console | L3 | Console 集成跑真（build/挂载/API） | — | 3～5d | ✅ |
+| #62 | L3 | 平台 Demo 脚本 + 面试叙事手册 | #62-console | 1w | ✅ |
+| #63 | L3 | SDK 端到端 smoke | #62-console | 1～2d | ✅ |
+
+> ROI 说明：[phase-l-priority-roi.md](./phase-l-priority-roi.md) · Console 交付：[phase-l-console-integration.md](./phase-l-console-integration.md) · Demo：[demo-walkthrough.md](./demo-walkthrough.md)
+
+**Phase L 完成后打 tag**：`phase-l-engineering-depth`
+
 ## 已知限制（面试时主动说）
+
+> **说明**：Phase A～K 已交付大量能力（MCP、HITL、Multi-Agent、语义缓存、PII、Console V2 等），本节区分 **「已有但 opt-in / 实验级」** 与 **「仍缺或仍为 stub」**，避免与 README 矛盾。Phase L 目标是把 stub 做深，见 [phase-l-engineering-depth.md](./phase-l-engineering-depth.md)。
 
 ### 计费与用量
 
@@ -183,28 +209,46 @@
 
 ### 可用性与扩展
 
-- **单进程** Gateway；无水平扩展、无 leader 选举。
-- Qdrant 单节点 Compose，无副本、无跨 AZ。
+- **单进程** Gateway 为默认开发形态；Helm Chart 支持 K8s 部署，但 **未**在生产环境压测水平扩展与 leader 选举。
+- Qdrant 默认单节点 Compose；多 AZ 模板（`values-multi-az.yaml`）**配置级**，未实际跨 AZ 演练。
 - Model Router fallback 为 **同步串行**尝试。
 
 ### 安全与合规
 
-- 支持 **Env / Vault dev** 密钥引用；生产级 KMS / OAuth / mTLS 仍无。
-- **无**细粒度 RBAC（按用户/角色/资源），仅租户级工具与模型 ACL。
-- **无** PII 脱敏、内容安全策略、prompt 注入防护专项。
+- **OAuth2 / mTLS 已实现**（`OAUTH2_ENABLED` / `MTLS_ENABLED`），默认关闭；生产级 KMS/HSM、集中 SIEM **无**。
+- **RBAC 为租户级**：工具/模型 ACL + JWT；**无**细粒度用户/角色/资源策略。
+- **PII 脱敏已实现**（`packages/pii/`，REST + 策略 CRUD），非完整 DLP 产品；Guardrails 为规则 + stub 扩展点。
+- **沙箱已实现**（`SANDBOX_ENABLED`），默认关闭；无 gVisor/Firecracker 级隔离。
+
+### RAG（Phase L 深化中）
+
+- Hybrid 检索 + 金丝雀路由 **已有**；**Rerank 仍为词面 stub**（#54）。
+- 索引默认全量重建；**增量索引未做**（#55）。
+- Eval 默认 **关键词匹配**；LLM-as-Judge **未接**（#56）；金丝雀 **无自动回滚 Job**（#57）。
 
 ### Agent
 
-- 工具集为内置 demo（calc、httpbin、kb snippet），**非**可插拔 MCP 市场。
-- 无人工审批（human-in-the-loop）完整工作流、无长任务异步回调。
-- Session 内存存储，重启丢失（Redis Session 已支持，但无跨 Session 长记忆）。
-- **无** Multi-Agent 协作、无控制流编排引擎。
+- **内置工具 + MCP 桥接已有**（`config/mcp_tools.json` / `/internal/mcp/servers`），非公开市场/动态注册生态。
+- **HITL 完整工作流已有**（审批 REST + destructive 强制）；长任务异步回调 **无**。
+- **Redis Session 已支持**（`REDIS_URL`）；**Memory Store** 需 `MEMORY_STORE_ENABLED`；跨租户长记忆治理仍浅。
+- **Multi-Agent + Orchestrator 已实现**（opt-in）；Console Vertical 演示链 **Phase L #59 待补**。
+
+### 模型服务
+
+- **语义缓存已实现**（exact/embedding 模式，`SEMANTIC_CACHE_ENABLED`），默认关闭；命中率调优与生产验证 **有限**。
+- Embedding 随 Gateway 调用；**独立 Embedding 治理面**（配额/多租户计量）仍浅。
 
 ### 评测与 SRE
 
-- CI 跑 lint + 冒烟 + baseline 校验；全量 RAG eval 门禁需 LLM Key。
-- 无在线质量监控、无 Bad Case 反馈飞轮。
-- 无 SLO/错误预算、无 on-call runbook。
+- CI：lint + 冒烟 + baseline；全量 RAG/Agent live eval **需 LLM Key**。
+- **反馈飞轮代码已有**（bad_cases → eval → prompt 建议）；**端到端 live 闭环未验收**（#61）。
+- Prometheus/Grafana 面板 **已有**；SLO/错误预算/on-call runbook **无**。
+
+### 开发者体验
+
+- **Console V2 已挂载** → `/console/`（见 [phase-l-console-integration.md](./phase-l-console-integration.md)）。
+- **Python SDK 已有**（`pip install -e sdk/python`），未发 PyPI；TS SDK **无**。
+- Demo：`./eval/platform_demo.sh`、`eval/sdk_smoke.py`（Phase L #62/#63）。
 
 ---
 
@@ -216,8 +260,8 @@
 2. **RAG 版本**：`kb_id + version` 可回放；低分拒答避免幻觉；hybrid+rerank 效果进阶。
 3. **Agent 治理**：`allowed_tools` 在网关 enforce，轨迹可审计，HITL stub 可扩展。
 4. **评测回归**：`baseline.jsonl` + `eval/run.py compare` 防退化，轨迹 eval 覆盖工具选择准确性。
-5. **成本管控**：Token 计量 + 预算拦截 + 路由降级 + 语义缓存（规划中）形成飞轮。
-6. **诚实边界**：引用本文「已知限制」，说明下一阶段 Multi-Agent / 控制流编排 / 语义缓存的演进。
+5. **成本管控**：Token 计量 + 预算拦截 + 路由降级 + 语义缓存（opt-in）形成飞轮。
+6. **诚实边界**：引用本文「已知限制」— 强调 **模块齐、深度不足**（Rerank/Judge stub、反馈飞轮未 live 验收）。
 
 ---
 
@@ -240,3 +284,9 @@
 | [phase-e-agent-quality.md](./phase-e-agent-quality.md) | Phase E Agent 效果深化 |
 | [phase-d-future-evolution.md](./phase-d-future-evolution.md) | Phase D 远期规划 |
 | [enterprise-ai-platform-sop.md](./enterprise-ai-platform-sop.md) | 大厂 SOP 踩坑对照 |
+| [phase-l-engineering-depth.md](./phase-l-engineering-depth.md) | Phase L 工程深度与面试叙事（进行中） |
+| [interview-narrative.md](./interview-narrative.md) | 10 分钟面试口述稿 + Q&A |
+| [phase-l-priority-roi.md](./phase-l-priority-roi.md) | Phase L ROI 优先级与 Issue 对照 |
+| [phase-l-console-integration.md](./phase-l-console-integration.md) | Phase L Console 集成 ✅ |
+| [demo-walkthrough.md](./demo-walkthrough.md) | 15 分钟平台 Demo 脚本 |
+| [issues-backlog-phase-l.md](./issues-backlog-phase-l.md) | Phase L Issue 正文 #53～#63 |
