@@ -208,7 +208,7 @@ Issue 正文见 [issues-backlog-phase-m.md](./issues-backlog-phase-m.md)。
 
 ## 11. 核心面试讲法
 
-> **一句话**：这是一个从模型网关到生产基础设施的完整 AI 平台参考实现，按 Phase 渐进交付；Phase L 已补齐 Rerank/Judge/Agent 三率/反馈飞轮 live 验证。
+> **一句话**：这是一个从模型网关到生产基础设施的完整 AI 平台参考实现，按 Phase 渐进交付；Phase L 已补齐 Rerank/Judge/Agent 三率/反馈飞轮 live，Phase M 已补齐 **增量索引全链路**（BM25 差量、purge、metrics、demo 断言）。
 
 **分层讲法**：
 1. **模型服务层**：Gateway + 路由 + 熔断 + 计费 + 语义缓存 + Embedding 服务
@@ -220,7 +220,7 @@ Issue 正文见 [issues-backlog-phase-m.md](./issues-backlog-phase-m.md)。
 
 **诚实边界**：
 - 单进程 Gateway（K8s 可扩展）
-- 增量索引、细粒度 RBAC 仍浅
+- 细粒度 RBAC 仍浅（增量索引 Phase M 已做满）
 - 多 AZ/GPU 为 Helm 模板级，未真集群压测
 
 ---

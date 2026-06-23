@@ -3,7 +3,7 @@
 > **用途**：面试演示、内部分享、验收 Phase L 第一优先「端到端故事」。  
 > **前置**：[phase-l-console-integration.md](./phase-l-console-integration.md)（Console 已挂载）  
 > **自动化**：`./eval/platform_demo.sh --no-llm`（无 Key）/ `--with-llm`（需 Key + Qdrant）  
-> **Live 勾选**（2026-06-23）：healthz ✅ · Console API ✅ · chat/index ✅ · feedback loop live ✅ · agent vertical 6/6 ✅
+> **Live 勾选**（2026-06-23）：healthz ✅ · Console API ✅ · chat/index/rag ✅ · **二次索引 skipped_chunks=1** ✅ · feedback loop live ✅ · agent vertical 7/7 ✅
 
 ---
 
@@ -177,6 +177,24 @@ Console **Agents** 页可看注册 Agent / 委托（`MULTI_AGENT_ENABLED`）。
 
 > Phase L #59：见 [demo-agent-vertical.md](./demo-agent-vertical.md)（Orchestrator + HITL vertical curl 链，live 6/6 ✅）。
 
+### Phase M 增量索引（#63～#66）
+
+`./eval/platform_demo.sh --with-llm` 会自动：
+
+1. 首次索引 `samples/hello.txt`
+2. **二次索引**同一文件 → 任务 API 返回 `skipped_chunks >= 1`
+3. RAG query（`min_score=0.2` 适配 demo 向量分）
+
+```bash
+# 手动看任务详情
+curl -s -H "X-Tenant-Id: admin" -H "Authorization: Bearer sk-tenant-admin-change-me" \
+  "$BASE_URL/internal/index/tasks/<task_id>" | jq '{status, new_chunks, updated_chunks, skipped_chunks}'
+```
+
+Console 删除文档会调用 purge-source，同步清理 Qdrant + BM25（见 [phase-m-incremental-index.md](./phase-m-incremental-index.md)）。
+
+---
+
 ### 反馈飞轮（#61）
 
 ```bash
@@ -191,7 +209,7 @@ python eval/feedback_loop_demo.py --live --base-url http://127.0.0.1:8000
 
 主动说（见 [roadmap.md](./roadmap.md) §已知限制、[interview-narrative.md](./interview-narrative.md)）：
 
-- **仍浅**：增量索引（#55）、细粒度 RBAC、生产 DLP
+- **仍浅**：细粒度 RBAC、生产 DLP（**增量索引 Phase M 已做满**）
 - **opt-in 默认关**：沙箱、OAuth2、语义缓存、Memory Store
 - 多 AZ/GPU 为 Helm 模板级验证
 - 无真实支付/发票
@@ -219,7 +237,7 @@ python eval/sdk_smoke.py \
 
 ```bash
 ./eval/platform_demo.sh --no-llm          # 不依赖 LLM（含 feedback mock + agent vertical）
-./eval/platform_demo.sh --with-llm        # 需 Key + 索引
+./eval/platform_demo.sh --with-llm        # 含二次索引 skipped 断言 + RAG live
 python eval/acceptance_smoke.py --platform-demo
 python eval/sdk_smoke.py                  # SDK 三接口
 ```
@@ -230,6 +248,7 @@ python eval/sdk_smoke.py                  # SDK 三接口
 
 | Issue | 内容 |
 |-------|------|
+| #63～#66 | Phase M 增量索引 ✅ live |
 | #62-console | Console 集成 ✅ |
 | #62 | 本脚本 + 面试手册 | ✅ live 已验 |
 | #63 | SDK smoke |

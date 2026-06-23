@@ -241,7 +241,7 @@
 ### RAG（Phase L #54～#57 ✅）
 
 - Hybrid 检索 + 金丝雀路由 + **真 Rerank API**（`RAG_RERANK_MODE=api`）。
-- 索引仍以全量重建为主；**增量索引有限**（#55 部分交付）。
+- 向量层 chunk 指纹增量（#55）+ **BM25 按 source 差量、purge-source、Prometheus `rag_index_*`**（Phase M #63～#66）。
 - Eval 支持 **LLM-as-Judge**（#56）；金丝雀 **自动回滚 Job**（#57）。
 
 ### Agent（Phase L #58～#60 ✅）
@@ -279,7 +279,7 @@
 3. **Agent 治理**：`allowed_tools` 在网关 enforce，轨迹可审计，HITL stub 可扩展。
 4. **评测回归**：`baseline.jsonl` + `eval/run.py compare` 防退化，轨迹 eval 覆盖工具选择准确性。
 5. **成本管控**：Token 计量 + 预算拦截 + 路由降级 + 语义缓存（opt-in）形成飞轮。
-6. **诚实边界**：引用本文「已知限制」— 强调 **模块齐、增量索引/RBAC 仍浅**；Phase L 已补齐 Rerank/Judge/回滚/Agent 三率/飞轮 live。
+6. **诚实边界**：引用本文「已知限制」— RBAC 仍浅；Phase L/M 已补齐 Rerank/Judge/回滚/Agent 三率/飞轮/增量索引 live。
 
 ---
 
