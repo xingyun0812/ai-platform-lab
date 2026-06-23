@@ -188,7 +188,7 @@
 | #58 | L2 | Agent 三率指标 | — | 1w | ✅ |
 | #59 | L2 | Agent Vertical（Orchestrator + HITL） | #58 | 1.5w | ✅ |
 | #60 | L2 | Agent Baseline 扩充 + CI 门禁 | #58 | 1w | ✅ |
-| #61 | L3 | 反馈飞轮 E2E 实测 | #56, #60 | 1w | ⏳ |
+| #61 | L3 | 反馈飞轮 E2E 实测 | #56, #60 | 1w | ✅ |
 | #62-console | L3 | Console 集成跑真（build/挂载/API） | — | 3～5d | ✅ |
 | #62 | L3 | 平台 Demo 脚本 + 面试叙事手册 | #62-console | 1w | ✅ |
 | #63 | L3 | SDK 端到端 smoke | #62-console | 1～2d | ✅ |

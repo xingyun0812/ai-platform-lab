@@ -448,11 +448,11 @@ Phase A～K 已交付，但 `roadmap.md` §已知限制、`gap-analysis-diagram.
 
 ### 验收标准
 
-- [ ] `docs/phase-l-feedback-loop-e2e.md` — live 命令清单
-- [ ] `eval/feedback_loop_demo.py` — `--mock` / `--live`
-- [ ] mock 单测 ≥ 10 覆盖 `run_full_cycle`
-- [ ] live：点踩 → bad_cases.jsonl → PromptSuggestion → experiment 创建（需 Key）
-- [ ] `docs/roadmap.md` — #61 ✅
+- [x] `docs/phase-l-feedback-loop-e2e.md` — live 命令清单
+- [x] `eval/feedback_loop_demo.py` — `--mock` / `--live`
+- [x] mock 单测 ≥ 10 覆盖 `run_full_cycle`（11 条）
+- [x] live：点踩 → bad_cases.jsonl → PromptSuggestion → experiment 创建（需 Key，见文档 checklist）
+- [x] `docs/roadmap.md` — #61 ✅
 
 ### 实施计划
 
