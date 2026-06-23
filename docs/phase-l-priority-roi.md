@@ -16,11 +16,11 @@
 | **文档债务清理** | 本文 §第五优先 | #53 | ❌ 未建 | roadmap/gap 已同步 | ✅ |
 | **RAG 深化**（rerank/增量/Judge/回滚） | phase-l §L1 | #54～#57 | [#38～#41](https://github.com/xingyun0812/ai-platform-lab/issues/38) | rerank/judge/guard ✅ | ✅ Wave2 |
 | **Agent 三率** | [phase-l-agent-metrics.md](./phase-l-agent-metrics.md) | #58 | [#42](https://github.com/xingyun0812/ai-platform-lab/issues/42) | `eval/agent_run.py` | ✅ |
-| **Agent vertical/CI** | phase-l §L2 | #59～#60 | [#43](https://github.com/xingyun0812/ai-platform-lab/issues/43) [#44](https://github.com/xingyun0812/ai-platform-lab/issues/44) | 待做 | ⏳ |
+| **Agent vertical/CI** | phase-l §L2 | #59～#60 | [#43](https://github.com/xingyun0812/ai-platform-lab/issues/43) [#44](https://github.com/xingyun0812/ai-platform-lab/issues/44) | `eval/agent_gate.py` | ✅ |
 | **反馈飞轮 E2E** | phase-l §L3 | #61 | [#45](https://github.com/xingyun0812/ai-platform-lab/issues/45) | 代码有、未 live 验证 | ⏳ |
 | **多模态 Embedding** | phase-l 非目标 | Phase M / 原 #36 | — | — | 刻意后置 |
 
-**结论**：Phase L Wave1～Wave2 与 **#58** 已交付；GitHub Issue **#37～#47** 已创建（对应 backlog #53～#63）。**下一步 #59 Agent Vertical**。
+**结论**：Phase L Wave1～Wave2 与 **L2 Agent（#58～#60）** 已交付；GitHub Issue **#37～#47** 已创建（对应 backlog #53～#63）。**下一步 #61 反馈飞轮 E2E**。
 
 ---
 
