@@ -1755,6 +1755,7 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--with-llm", action="store_true", help="已配置 LLM_API_KEY 时跑全量")
     parser.add_argument("--agent-vertical", action="store_true", help="Phase L #59 Agent Vertical smoke")
+    parser.add_argument("--platform-demo", action="store_true", help="Phase L #62 platform_demo.sh --no-llm + feedback mock")
     args = parser.parse_args()
     checks = asyncio.run(run_checks(with_llm=args.with_llm))
 
@@ -1772,6 +1773,40 @@ def main() -> None:
                     blocked=v.blocked,
                 )
             )
+
+    if args.platform_demo:
+        repo = __import__("pathlib").Path(__file__).resolve().parents[1]
+        try:
+            proc = subprocess.run(
+                ["bash", "eval/platform_demo.sh", "--no-llm"],
+                cwd=str(repo),
+                capture_output=True,
+                text=True,
+                timeout=120,
+            )
+            ok = proc.returncode == 0
+            checks.append(
+                Check(
+                    "L62",
+                    "platform_demo --no-llm",
+                    ok,
+                    proc.stdout.strip()[-120:] if proc.stdout else proc.stderr[-120:],
+                )
+            )
+        except Exception as e:
+            checks.append(Check("L62", "platform_demo --no-llm", False, str(e)))
+        try:
+            proc = subprocess.run(
+                [sys.executable, "eval/feedback_loop_demo.py", "--mock"],
+                cwd=str(repo),
+                capture_output=True,
+                text=True,
+                timeout=60,
+            )
+            ok = proc.returncode == 0 and '"passed": true' in proc.stdout
+            checks.append(Check("L62", "feedback_loop_demo --mock", ok, proc.stdout[-80:] if proc.stdout else ""))
+        except Exception as e:
+            checks.append(Check("L62", "feedback_loop_demo --mock", False, str(e)))
 
     # load_smoke healthz
     try:

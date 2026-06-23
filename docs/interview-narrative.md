@@ -37,7 +37,7 @@ flowchart TB
     C["Console V2 运营面"]
   end
   subgraph L6["6. 诚实边界 ~1min"]
-    X["Rerank/Judge stub · 飞轮未 live"]
+    X["增量索引浅 · 多 AZ 模板级"]
   end
 
   L1 --> L2 --> L3 --> L4 --> L5 --> L6
@@ -67,7 +67,7 @@ flowchart TB
 3. `eval/run.py compare` 看 pass_rate
 4. 达标全量 / 不达标回滚 `canary_percent=0`
 
-**诚实说**：Rerank 仍是 stub（#54），Judge 仍是关键词（#56），自动回滚 Job 待做（#57）。
+**诚实说**：真 Rerank API（#54）、LLM Judge（#56）、金丝雀自动回滚（#57）已在 Phase L 落地；增量索引（#55）仍偏全量重建。
 
 **关键词**：`packages/rag/`、`config/rag.yaml`、`eval/run.py`
 
@@ -80,7 +80,7 @@ flowchart TB
 **亮点**：
 - MCP 工具桥接（config 注册 → `mcp_{server}_{tool}`）
 - destructive 工具 → HITL `202 pending_approval`
-- Orchestrator workflow + Multi-Agent 委托（opt-in）
+- Orchestrator workflow + Multi-Agent 委托 + **Vertical 演示链**（#59 `agent-vertical-rag` + HITL）
 
 **关键词**：`packages/agent/`、`packages/hitl/`、`packages/orchestrator/`
 
@@ -92,8 +92,8 @@ flowchart TB
 
 **亮点**：
 - OTel trace、Prometheus `/metrics`、Grafana dashboard
-- `baseline.jsonl` + CI 门禁
-- 反馈飞轮：点踩 → bad_cases → eval 失败 → prompt 建议（代码已有，#61 live 待验）
+- `baseline.jsonl` + CI 门禁（RAG + Agent 双 gate）
+- 反馈飞轮：**live 已验**（#61 `feedback_loop_demo --live`）
 
 **关键词**：`packages/observability/`、`eval/pipeline.py`、`packages/feedback/`
 
@@ -115,9 +115,9 @@ flowchart TB
 
 引用 [roadmap.md](./roadmap.md) §已知限制，核心三点：
 
-1. **模块齐、深度不足**：Rerank、LLM Judge、金丝雀自动回滚、Agent 三率
+1. **模块齐、深度不足**：增量索引、细粒度 RBAC、生产级 DLP
 2. **opt-in 默认关**：沙箱、OAuth2、语义缓存、Memory Store
-3. **非商业产品**：无发票、无细粒度 RBAC、单进程开发默认
+3. **非商业产品**：无发票、单进程开发默认；多 AZ/GPU 为 Helm 模板级
 
 ---
 
@@ -129,7 +129,7 @@ flowchart TB
 | 2～4 | 登录 Console Dashboard | 运营面，非业务 App |
 | 4～7 | RAG 索引 v1 + 查询 | version 可回放 |
 | 7～11 | v2 + 金丝雀 + eval compare | SOP 核心（需 Key） |
-| 11～13 | Audit / Agent run | 治理与工具轨迹 |
+| 11～13 | Audit / Agent vertical / 反馈飞轮 | 治理 + 闭环 |
 | 13～15 | `python eval/sdk_smoke.py` | SDK 三接口 + 诚实边界 |
 
 详见 [demo-walkthrough.md](./demo-walkthrough.md)。
@@ -151,13 +151,22 @@ flowchart TB
 
 学习仓库优先 **可读懂**；Helm 已支持 K8s 水平扩展，Redis 共享配额。面试主动说边界。
 
-### Q3：Rerank 为什么是 stub？
+### Q3：Rerank 为什么曾经是 stub？
 
-Phase A～K 先打通链路；Phase L #54 接真 provider，用 `eval compare` 证明收益——这正是工程深度叙事。
+Phase A～K 先打通链路；Phase L #54 已接真 provider，可用 `eval compare` 对比 stub vs api。
 
 ### Q4：测试怎么保证质量？
 
-484+ 单测、无外部依赖可跑；live eval 需 Key；CI 跑 lint + acceptance_smoke。
+484+ 单测、无外部依赖可跑；live eval 需 Key；CI 跑 lint + acceptance_smoke + RAG/Agent gate。
+
+### Q7：反馈飞轮怎么演示？
+
+```bash
+python eval/feedback_loop_demo.py --mock   # CI
+python eval/feedback_loop_demo.py --live   # Gateway + admin token
+```
+
+live 路径：点踩 → `cycle` → `suggestion_id`（experiment 需先 apply suggestion）。
 
 ### Q5：Multi-Agent 和 Orchestrator 区别？
 
@@ -171,6 +180,8 @@ destructive 工具调用返回 `202` + `approval_id`；审批后带 `approval_id
 ---
 
 ## 演示前检查清单
+
+> **Live 验证**（2026-06-23）：`feedback_loop_demo --live` ✅ · `agent_vertical_smoke` 6/6 ✅ · `platform_demo --no-llm` / `--with-llm` ✅
 
 > 环境细节：[local-llm-setup.md](./local-llm-setup.md)
 
@@ -193,7 +204,9 @@ python eval/sdk_smoke.py
 | `admin` 登录 | Dashboard 有指标 |
 | `platform_demo --no-llm` | exit 0 |
 | `sdk_smoke`（无 Key） | exit 0，chat/rag/agent skipped |
-| `sdk_smoke`（有 Key） | 三接口至少尝试 |
+| `platform_demo --with-llm` | exit 0（chat/agent；RAG 可能 LOW_CONFIDENCE） |
+| `feedback_loop_demo --live` | `passed` + suggestion_id |
+| `agent_vertical_smoke` | 6/6（无 Key 时 live vertical skip 不判失败） |
 
 ---
 

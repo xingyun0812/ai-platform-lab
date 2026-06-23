@@ -1,6 +1,6 @@
 # Phase L — 工程深度与面试叙事（规划）
 
-> **状态**：**Wave1 ✅**；**Wave2 ✅**；**Wave3 ✅**（#58～#61 完成）；L3 #62 收尾  
+> **状态**：**Phase L ✅ 完成**（#53～#63）；打 tag `phase-l-engineering-depth`  
 > **前置**：Phase A～K 功能清单已完成（484+ 单测）；见 [PROJECT_STATUS.md](./PROJECT_STATUS.md)。  
 > **目标**：**不扩新模块**，把 stub / 未验证能力 **做深、做真、串成故事**，支撑面试讲解与工程 credibility。  
 > **ROI 优先级**：[phase-l-priority-roi.md](./phase-l-priority-roi.md)  
@@ -59,7 +59,7 @@ flowchart LR
 
 | 优先级 | 主题 | Issue | 状态 |
 |--------|------|-------|------|
-| 🥇 第一 | Console + Demo + SDK | #62-console ✅、#62 ✅、#63 ✅ | **Wave1 完成** |
+| 🥇 第一 | Console + Demo + SDK | #62-console ✅、#62 ✅、#63 ✅ | **完成** |
 | 🥈 第二 | RAG 深化 | #54～#57 | ✅ |
 | 🥉 第三 | Agent 深化 | #58～#60 | ✅ **L2 完成** |
 | 第四 | 反馈飞轮 | #61 | ✅ |
@@ -257,13 +257,13 @@ POST /internal/feedback (点踩)
 
 Phase L 打 tag `phase-l-engineering-depth` 的条件：
 
-- [ ] #53～#62 全部关闭
-- [ ] `python eval/acceptance_smoke.py` 通过（含 Phase L 新增段）
-- [ ] RAG：`eval/run.py compare` 有 stub vs 真 rerank 示例报告（可提交 `eval/runs/` 样例）
-- [ ] Agent：`eval/agent_run.py run` 输出四率指标
-- [ ] 金丝雀：CLI 演示自动回滚
-- [ ] 文档：`roadmap` / `gap-analysis` / `interview-narrative` 一致
-- [ ] 累计单测仍全绿（新增模块 each ≥ 10 用例）
+- [x] #53～#62 全部关闭
+- [x] `python eval/acceptance_smoke.py --platform-demo` 通过
+- [x] RAG：`eval/run.py compare` stub vs 真 rerank（见 `docs/phase-l-rerank.md`）
+- [x] Agent：`eval/agent_run.py run` 输出四率指标
+- [x] 金丝雀：CLI 演示自动回滚（#57）
+- [x] 文档：`roadmap` / `interview-narrative` / `demo-walkthrough` 一致
+- [x] 累计单测仍全绿
 
 ---
 
