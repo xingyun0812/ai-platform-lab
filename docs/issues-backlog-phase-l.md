@@ -20,7 +20,7 @@ Milestone 建议：`Phase L — 工程深度与面试叙事`
 | 56 | [#40](https://github.com/xingyun0812/ai-platform-lab/issues/40) | P2 | LLM Judge | ✅ closed |
 | 57 | [#41](https://github.com/xingyun0812/ai-platform-lab/issues/41) | P2 | 金丝雀回滚 | ✅ closed |
 | 58 | [#42](https://github.com/xingyun0812/ai-platform-lab/issues/42) | P3 | Agent 三率 | ✅ closed |
-| 59 | [#43](https://github.com/xingyun0812/ai-platform-lab/issues/43) | P3 | Agent Vertical | ⏳ open |
+| 59 | [#43](https://github.com/xingyun0812/ai-platform-lab/issues/43) | P3 | Agent Vertical | ✅ closed |
 | 60 | [#44](https://github.com/xingyun0812/ai-platform-lab/issues/44) | P3 | Baseline + CI | ⏳ open |
 | 61 | [#45](https://github.com/xingyun0812/ai-platform-lab/issues/45) | P4 | 反馈飞轮 E2E | ⏳ open |
 | 62 | [#46](https://github.com/xingyun0812/ai-platform-lab/issues/46) | P1 | Demo + 面试手册 | ✅ closed |

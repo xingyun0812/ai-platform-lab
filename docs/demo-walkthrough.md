@@ -176,7 +176,7 @@ curl -s http://127.0.0.1:8000/v1/agent/run \
 
 Console **Agents** 页可看注册 Agent / 委托（`MULTI_AGENT_ENABLED`）。
 
-> Phase L #59 将补：Orchestrator + HITL vertical 一条 curl 链。
+> Phase L #59：见 [demo-agent-vertical.md](./demo-agent-vertical.md)（Orchestrator + HITL vertical curl 链）。
 
 ---
 

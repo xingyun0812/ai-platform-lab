@@ -1754,8 +1754,24 @@ async def run_checks(*, with_llm: bool) -> list[Check]:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--with-llm", action="store_true", help="已配置 LLM_API_KEY 时跑全量")
+    parser.add_argument("--agent-vertical", action="store_true", help="Phase L #59 Agent Vertical smoke")
     args = parser.parse_args()
     checks = asyncio.run(run_checks(with_llm=args.with_llm))
+
+    if args.agent_vertical:
+        from eval.agent_vertical_smoke import run_agent_vertical_smoke
+
+        vertical = asyncio.run(run_agent_vertical_smoke(with_llm=args.with_llm))
+        for v in vertical:
+            checks.append(
+                Check(
+                    "L59",
+                    v.name,
+                    v.passed,
+                    v.detail,
+                    blocked=v.blocked,
+                )
+            )
 
     # load_smoke healthz
     try:

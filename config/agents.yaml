@@ -1,4 +1,4 @@
-# Agents 定义 — Phase H #38
+# Agents 定义 — Phase H #38 / Phase L #59 vertical
 #
 # Agent 角色：
 #   primary   — 主 Agent（用户直接交互）
@@ -7,45 +7,17 @@
 #   router    — 路由 Agent（分发任务到其他 Agent）
 
 agents:
-  # 示例：RAG 专家 Agent
-  # - agent_id: rag_specialist
-  #   name: RAG 专家
-  #   role: specialist
-  #   description: "擅长知识库检索与回答"
-  #   system_prompt: |
-  #     你是 RAG 专家。基于检索到的知识片段回答用户问题。
-  #     若信息不足，明确说明而非编造。
-  #   model: null  # null = 用 default_model
-  #   allowed_tools:
-  #     - get_kb_snippet
-  #   can_delegate: false
-  #   can_be_delegated_to: true
-  #   max_delegation_depth: 3
-  #   enabled: true
-
-  # 示例：代码审核 Agent
-  # - agent_id: code_reviewer
-  #   name: 代码审核员
-  #   role: reviewer
-  #   description: "审核代码质量与安全"
-  #   system_prompt: |
-  #     你是代码审核专家。检查代码的：
-  #     1. 安全漏洞
-  #     2. 性能问题
-  #     3. 可维护性
-  #   allowed_tools: []
-  #   can_delegate: false
-  #   can_be_delegated_to: true
-  #   enabled: true
-
-  # 示例：路由 Agent
-  # - agent_id: router
-  #   name: 任务路由器
-  #   role: router
-  #   description: "根据用户意图分发到专家 Agent"
-  #   system_prompt: |
-  #     你是任务路由器。分析用户意图，决定分发到哪个专家 Agent。
-  #     可选 Agent：rag_specialist, code_reviewer
-  #   can_delegate: true
-  #   max_delegation_depth: 2
-  #   enabled: true
+  - agent_id: rag_specialist
+    name: RAG 专家
+    role: specialist
+    description: "擅长知识库检索与回答（Phase L #59 vertical）"
+    system_prompt: |
+      你是 RAG 专家。基于检索到的知识片段回答用户问题。
+      若信息不足，明确说明而非编造。
+    model: null
+    allowed_tools:
+      - get_kb_snippet
+    can_delegate: false
+    can_be_delegated_to: true
+    max_delegation_depth: 3
+    enabled: true
