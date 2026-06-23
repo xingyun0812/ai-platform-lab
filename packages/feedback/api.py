@@ -12,7 +12,6 @@ import uuid
 
 from packages.feedback.store import (
     Feedback,
-    FeedbackType,
     get_feedback_store,
     is_negative,
 )

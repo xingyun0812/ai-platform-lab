@@ -18,7 +18,6 @@ from typing import Any
 
 from apps.gateway.model_router import forward_with_model_router
 from apps.gateway.settings import get_settings
-from packages.observability.context import get_trace_id
 
 logger = logging.getLogger("ai_platform.memory.summarize")
 

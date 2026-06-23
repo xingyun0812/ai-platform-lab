@@ -9,10 +9,9 @@ import asyncio
 import logging
 import threading
 import time
-import uuid
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 logger = logging.getLogger("ai_platform.feedback.store")
@@ -21,7 +20,7 @@ logger = logging.getLogger("ai_platform.feedback.store")
 # ─────────────────────────── Enum ────────────────────────────
 
 
-class FeedbackType(str, Enum):
+class FeedbackType(StrEnum):
     THUMBS_UP = "thumbs_up"
     THUMBS_DOWN = "thumbs_down"
     RATING_1 = "rating_1"
@@ -213,7 +212,6 @@ class SqliteFeedbackStore(FeedbackStore):
 
     async def get(self, feedback_id: str) -> Feedback | None:
         await self._ensure_init()
-        import json as _json
         try:
             import aiosqlite
 

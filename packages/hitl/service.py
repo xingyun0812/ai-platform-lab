@@ -7,7 +7,6 @@ from __future__ import annotations
 import logging
 import time
 import uuid
-from typing import Optional
 
 from packages.hitl.store import (
     ApprovalDecision,
@@ -27,8 +26,8 @@ async def request_approval(
     tool_name: str,
     arguments: dict,
     timeout_seconds: int = 300,
-    webhook: Optional[WebhookConfig] = None,
-    metadata: Optional[dict] = None,
+    webhook: WebhookConfig | None = None,
+    metadata: dict | None = None,
 ) -> ApprovalRequest:
     """创建审批请求，发送 webhook（如配置），返回 ApprovalRequest。"""
     store = get_approval_store()
@@ -92,8 +91,8 @@ async def check_approval(request_id: str) -> ApprovalStatus:
 async def approve(
     request_id: str,
     decided_by: str,
-    reason: Optional[str] = None,
-) -> Optional[ApprovalRequest]:
+    reason: str | None = None,
+) -> ApprovalRequest | None:
     """批准审批请求。"""
     store = get_approval_store()
     if store is None:
@@ -114,8 +113,8 @@ async def approve(
 async def reject(
     request_id: str,
     decided_by: str,
-    reason: Optional[str] = None,
-) -> Optional[ApprovalRequest]:
+    reason: str | None = None,
+) -> ApprovalRequest | None:
     """拒绝审批请求。"""
     store = get_approval_store()
     if store is None:

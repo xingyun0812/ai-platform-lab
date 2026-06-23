@@ -7,9 +7,7 @@
 
 from __future__ import annotations
 
-import asyncio
 import json
-import os
 import sys
 import tempfile
 from pathlib import Path
@@ -20,7 +18,6 @@ sys.path.insert(0, str(REPO_ROOT))
 from packages.prompt import (  # noqa: E402
     PromptRegistry,
     PromptRegistryError,
-    PromptVersion,
     extract_variables,
     get_registry,
     init_registry,

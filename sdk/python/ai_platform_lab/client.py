@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 from types import TracebackType
-from typing import Any
 
 import httpx
 
@@ -76,7 +75,7 @@ class Client:
         """Close the underlying HTTP client."""
         self._http.close()
 
-    def __enter__(self) -> "Client":
+    def __enter__(self) -> Client:
         return self
 
     def __exit__(
@@ -145,7 +144,7 @@ class AsyncClient:
         """Close the underlying async HTTP client."""
         await self._http.aclose()
 
-    async def __aenter__(self) -> "AsyncClient":
+    async def __aenter__(self) -> AsyncClient:
         return self
 
     async def __aexit__(

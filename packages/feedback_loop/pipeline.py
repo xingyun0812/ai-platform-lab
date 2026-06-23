@@ -144,7 +144,7 @@ class FeedbackLoop:
             logger.info("suggestion %s not applied; skipping experiment", suggestion.suggestion_id)
             return None
         try:
-            from packages.prompt.experiment import ExperimentStore, Experiment, ExperimentVariant
+            from packages.prompt.experiment import Experiment, ExperimentStore, ExperimentVariant
 
             store = ExperimentStore()
             try:
@@ -281,7 +281,7 @@ class FeedbackLoop:
                 content = resp.json()["choices"][0]["message"]["content"]
 
             # 简单解析（按编号分段）
-            parts = content.split("\n", 6)
+            content.split("\n", 6)
             suggested = content[:400]
             reasoning = f"基于 {len(bad_case_summary.splitlines())} 条差评样本分析"
             impact = "预计满意度提升 5-15%"

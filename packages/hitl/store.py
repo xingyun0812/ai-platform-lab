@@ -8,17 +8,14 @@ from __future__ import annotations
 import sqlite3
 import threading
 import time
-import uuid
 from dataclasses import dataclass, field
-from enum import Enum
-from typing import Optional
-
+from enum import StrEnum
 
 # ---------------------------------------------------------------------------
 # 状态常量（StrEnum-兼容，同时向后兼容 packages/agent/hitl.py）
 # ---------------------------------------------------------------------------
 
-class ApprovalStatus(str, Enum):
+class ApprovalStatus(StrEnum):
     PENDING = "pending"
     APPROVED = "approved"
     REJECTED = "rejected"
@@ -42,9 +39,9 @@ class ApprovalRequest:
     created_at: float
     expires_at: float
     status: str = "pending"
-    decided_by: Optional[str] = None
-    decided_at: Optional[float] = None
-    decision_reason: Optional[str] = None
+    decided_by: str | None = None
+    decided_at: float | None = None
+    decision_reason: str | None = None
     webhook_sent: bool = False
     metadata: dict = field(default_factory=dict)
 
@@ -71,7 +68,7 @@ class ApprovalDecision:
     request_id: str
     status: str  # "approved" | "rejected" | "cancelled"
     decided_by: str
-    reason: Optional[str]
+    reason: str | None
     decided_at: float
 
 
@@ -93,13 +90,13 @@ class ApprovalStore:
     async def create(self, req: ApprovalRequest) -> str:
         raise NotImplementedError
 
-    async def get(self, request_id: str) -> Optional[ApprovalRequest]:
+    async def get(self, request_id: str) -> ApprovalRequest | None:
         raise NotImplementedError
 
     async def list_pending(self, tenant_id: str) -> list:
         raise NotImplementedError
 
-    async def decide(self, decision: ApprovalDecision) -> Optional[ApprovalRequest]:
+    async def decide(self, decision: ApprovalDecision) -> ApprovalRequest | None:
         raise NotImplementedError
 
     async def expire_stale(self) -> int:
@@ -125,7 +122,7 @@ class InMemoryApprovalStore(ApprovalStore):
             self._store[req.request_id] = req
         return req.request_id
 
-    async def get(self, request_id: str) -> Optional[ApprovalRequest]:
+    async def get(self, request_id: str) -> ApprovalRequest | None:
         with self._lock:
             return self._store.get(request_id)
 
@@ -136,7 +133,7 @@ class InMemoryApprovalStore(ApprovalStore):
                 if r.status == "pending" and r.tenant_id == tenant_id
             ]
 
-    async def decide(self, decision: ApprovalDecision) -> Optional[ApprovalRequest]:
+    async def decide(self, decision: ApprovalDecision) -> ApprovalRequest | None:
         with self._lock:
             req = self._store.get(decision.request_id)
             if req is None:
@@ -246,7 +243,7 @@ class SqliteApprovalStore(ApprovalStore):
             self._conn.commit()
         return req.request_id
 
-    async def get(self, request_id: str) -> Optional[ApprovalRequest]:
+    async def get(self, request_id: str) -> ApprovalRequest | None:
         with self._lock:
             cur = self._conn.execute(
                 "SELECT * FROM hitl_approvals WHERE request_id=?", (request_id,)
@@ -263,7 +260,7 @@ class SqliteApprovalStore(ApprovalStore):
             rows = cur.fetchall()
         return [self._row_to_req(r) for r in rows]
 
-    async def decide(self, decision: ApprovalDecision) -> Optional[ApprovalRequest]:
+    async def decide(self, decision: ApprovalDecision) -> ApprovalRequest | None:
         import json as _json  # noqa: F401
         with self._lock:
             cur = self._conn.execute(
@@ -313,11 +310,11 @@ class SqliteApprovalStore(ApprovalStore):
 # 全局单例
 # ---------------------------------------------------------------------------
 
-_store: Optional[ApprovalStore] = None
+_store: ApprovalStore | None = None
 _store_lock = threading.Lock()
 
 
-def init_approval_store(database_url: Optional[str] = None) -> ApprovalStore:
+def init_approval_store(database_url: str | None = None) -> ApprovalStore:
     """初始化并返回全局 ApprovalStore 单例。"""
     global _store
     with _store_lock:
@@ -328,7 +325,7 @@ def init_approval_store(database_url: Optional[str] = None) -> ApprovalStore:
     return _store
 
 
-def get_approval_store() -> Optional[ApprovalStore]:
+def get_approval_store() -> ApprovalStore | None:
     """获取全局 ApprovalStore；未初始化时返回 None。"""
     return _store
 

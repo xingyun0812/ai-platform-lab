@@ -314,7 +314,7 @@ class InMemorySemanticCache(SemanticCache):
         self._lock = threading.Lock()
         self._buckets: dict[str, OrderedDict[str, CacheEntry]] = {}
 
-    def _purge_expired(self, bucket: "OrderedDict[str, CacheEntry]") -> None:
+    def _purge_expired(self, bucket: OrderedDict[str, CacheEntry]) -> None:
         now = time.time()
         expired = [
             k

@@ -9,6 +9,7 @@ from __future__ import annotations
 import os
 import re
 import sys
+
 import yaml
 
 # ---- Resolve chart root relative to this file --------------------------
@@ -36,7 +37,7 @@ def strip_go_templates(text: str) -> str:
 
 def load_yaml_file(path: str) -> object:
     """Load a YAML file, returning None if empty after stripping templates."""
-    with open(path, "r") as fh:
+    with open(path) as fh:
         raw = fh.read()
     cleaned = strip_go_templates(raw)
     # Use safe_load_all to handle multi-document YAML
@@ -48,7 +49,7 @@ def load_yaml_file(path: str) -> object:
 
 
 def _read_raw(path: str) -> str:
-    with open(path, "r") as fh:
+    with open(path) as fh:
         return fh.read()
 
 

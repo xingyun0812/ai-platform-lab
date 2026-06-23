@@ -11,7 +11,6 @@ from __future__ import annotations
 import hashlib
 import logging
 import threading
-import time
 from collections import OrderedDict
 from pathlib import Path
 from typing import Any
@@ -173,7 +172,7 @@ class EmbeddingService:
     @staticmethod
     def _cache_key(model_id: str, text: str) -> str:
         """生成缓存键（model_id + text sha256）。"""
-        digest = hashlib.sha256(f"{model_id}:{text}".encode("utf-8")).hexdigest()
+        digest = hashlib.sha256(f"{model_id}:{text}".encode()).hexdigest()
         return digest
 
 

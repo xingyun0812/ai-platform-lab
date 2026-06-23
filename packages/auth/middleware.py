@@ -12,15 +12,14 @@ mTLSAuthDependency (FastAPI Depends):
     - 禁用时透传
 """
 
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable, Optional
 
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import Response
 
 from packages.auth.oauth2 import OAuth2UserInfo, get_oauth2_provider
-
 
 # ---------------------------------------------------------------------------
 # OAuth2 Middleware

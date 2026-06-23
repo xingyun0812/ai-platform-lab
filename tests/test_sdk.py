@@ -12,7 +12,7 @@ import asyncio
 import json
 import sys
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 # ---------------------------------------------------------------------------
 # Add sdk/python to import path so we can import the SDK without installing it
@@ -22,7 +22,6 @@ SDK_PATH = REPO_ROOT / "sdk" / "python"
 sys.path.insert(0, str(SDK_PATH))
 
 import httpx  # noqa: E402 — must be after path injection
-
 from ai_platform_lab import AsyncClient, Client, __version__  # noqa: E402
 from ai_platform_lab.exceptions import (  # noqa: E402
     AIPlatformError,

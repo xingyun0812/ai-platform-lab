@@ -10,7 +10,6 @@ import ssl
 import threading
 from dataclasses import dataclass, field
 
-
 # ---------------------------------------------------------------------------
 # Data model
 # ---------------------------------------------------------------------------
@@ -78,10 +77,9 @@ class MTLSContext:
             return bool(cert_pem and cert_pem.strip())
         # 计算 SHA-256 指纹
         try:
-            import hashlib
-
             # 去除 PEM 头尾，解码 DER
             import base64
+            import hashlib
             lines = [ln for ln in cert_pem.strip().splitlines() if not ln.startswith("-----")]
             der = base64.b64decode("".join(lines))
             fp = hashlib.sha256(der).hexdigest()

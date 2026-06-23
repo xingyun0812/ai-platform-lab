@@ -7,7 +7,6 @@
 
 from __future__ import annotations
 
-import asyncio
 import sys
 import tempfile
 from pathlib import Path
@@ -20,7 +19,6 @@ from packages.prompt import (  # noqa: E402
     ExperimentStore,
     ExperimentVariant,
     PromptRegistry,
-    VariantMetrics,
     init_experiment_store,
     init_registry,
     reset_experiment_store_for_tests,
@@ -132,7 +130,7 @@ def test_one_running_experiment_per_prompt():
 def test_pick_variant_deterministic():
     with tempfile.TemporaryDirectory() as d:
         reg, store = _setup(Path(d))
-        exp = store.create_experiment(
+        store.create_experiment(
             prompt_id="rag_query",
             variants=[
                 ExperimentVariant(version=1, percent=50),

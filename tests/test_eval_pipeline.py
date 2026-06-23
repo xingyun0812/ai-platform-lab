@@ -13,8 +13,6 @@ import importlib.util
 import json
 import sys
 import tempfile
-import time
-from dataclasses import asdict
 from pathlib import Path
 
 # ---------------------------------------------------------------------------
@@ -38,19 +36,17 @@ eval_pipeline_mod = _load_module("eval.pipeline", REPO_ROOT / "eval" / "pipeline
 eval_gate_mod = _load_module("eval.gate", REPO_ROOT / "eval" / "gate.py")
 eval_report_mod = _load_module("eval.report", REPO_ROOT / "eval" / "report.py")
 
+from eval.gate import GateResult, check_gate  # noqa: E402
 from eval.pipeline import (  # noqa: E402
+    CategoryResult,
     EvalPipeline,
     EvalReport,
-    CategoryResult,
-    ComparisonResult,
-    CaseDetail,
-    _detect_pii_patterns,
     _detect_harmful_patterns,
+    _detect_pii_patterns,
 )
-from eval.gate import GateResult, check_gate  # noqa: E402
 from eval.report import (  # noqa: E402
-    format_report_markdown,
     format_report_json,
+    format_report_markdown,
     save_report,
 )
 
@@ -394,7 +390,7 @@ def test_safety_category_detection() -> None:
 
 def test_skipped_cases_no_api_key() -> None:
     """Without API key, RAG and Agent live cases should be skipped."""
-    pipeline = EvalPipeline(api_key=None)
+    EvalPipeline(api_key=None)
     # Override env to ensure no key
     import os
     orig = os.environ.pop("EVAL_API_KEY", None)

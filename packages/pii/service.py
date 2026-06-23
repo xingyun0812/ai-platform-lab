@@ -14,19 +14,16 @@ from packages.pii.content_safety import (
     ContentSafetyChecker,
     ContentSafetyResult,
     init_safety_checker,
-    get_safety_checker,
 )
 from packages.pii.detectors import (
     PIIDetector,
     PIIMatch,
     init_detector,
-    get_detector,
 )
 from packages.pii.redactor import (
-    Redactor,
     RedactionResult,
+    Redactor,
     init_redactor,
-    get_redactor,
 )
 
 logger = logging.getLogger("ai_platform.pii.service")
@@ -115,9 +112,9 @@ def reset_for_tests() -> None:
     global _service
     with _service_lock:
         _service = None
+    from packages.pii.content_safety import reset_safety_checker_for_tests
     from packages.pii.detectors import reset_detector_for_tests
     from packages.pii.redactor import reset_redactor_for_tests
-    from packages.pii.content_safety import reset_safety_checker_for_tests
 
     reset_detector_for_tests()
     reset_redactor_for_tests()

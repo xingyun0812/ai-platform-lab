@@ -34,7 +34,7 @@ from typing import Any
 
 import yaml
 
-from packages.prompt.render import extract_variables, render, validate_template
+from packages.prompt.render import extract_variables, render
 
 logger = logging.getLogger("ai_platform.prompt")
 

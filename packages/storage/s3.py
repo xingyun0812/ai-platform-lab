@@ -8,10 +8,9 @@ from __future__ import annotations
 
 import asyncio
 import time
-from pathlib import Path
 from typing import Any
 
-from packages.storage.backend import StorageBackend, StorageConfig, StorageObject
+from packages.storage.backend import StorageBackend, StorageConfig
 
 
 def _import_boto3():

@@ -351,7 +351,7 @@ class ExperimentStore:
     @staticmethod
     def _gen_id(prompt_id: str, tenant_id: str) -> str:
         h = hashlib.sha1(
-            f"{prompt_id}|{tenant_id}|{time.time()}".encode("utf-8")
+            f"{prompt_id}|{tenant_id}|{time.time()}".encode()
         ).hexdigest()[:8]
         return f"exp-{prompt_id}-{h}"
 
@@ -368,7 +368,7 @@ class ExperimentStore:
             return None
         # 确定性分桶：hash(exp_id + bucket_key) → 0-99
         h = hashlib.sha256(
-            f"{exp.experiment_id}|{bucket_key}".encode("utf-8")
+            f"{exp.experiment_id}|{bucket_key}".encode()
         ).hexdigest()
         bucket = int(h[:8], 16) % 100
         cumulative = 0

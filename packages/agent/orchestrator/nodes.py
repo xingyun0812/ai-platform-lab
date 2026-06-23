@@ -5,8 +5,9 @@ from __future__ import annotations
 import asyncio
 import logging
 import re
-from dataclasses import dataclass, field
-from typing import Any, Awaitable, Callable
+from collections.abc import Awaitable, Callable
+from dataclasses import dataclass
+from typing import Any
 
 logger = logging.getLogger("ai_platform.orchestrator.nodes")
 
@@ -364,7 +365,6 @@ async def _execute_agent_call(config: dict[str, Any], ctx: Any) -> dict[str, Any
         timeout: float           # 超时（默认 60s）
     """
     from packages.agent.multi_agent import delegate_to_agent
-    from packages.agent.multi_agent.registry import get_agent_registry
 
     agent_id = str(config.get("agent_id", ""))
     if not agent_id:

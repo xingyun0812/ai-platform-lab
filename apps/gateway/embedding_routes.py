@@ -14,8 +14,7 @@
 
 from __future__ import annotations
 
-import time
-from typing import Annotated, Any
+from typing import Annotated
 
 from fastapi import APIRouter, Header, HTTPException
 from fastapi.responses import JSONResponse

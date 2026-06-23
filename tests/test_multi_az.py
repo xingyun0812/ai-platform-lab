@@ -8,6 +8,7 @@ from __future__ import annotations
 import os
 import re
 import sys
+
 import yaml
 
 _TESTS_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -48,7 +49,7 @@ def strip_go_templates(text):
 
 def load_all_yaml_docs(path):
     # type: (str) -> list
-    with open(path, "r") as fh:
+    with open(path) as fh:
         raw = fh.read()
     cleaned = strip_go_templates(raw)
     docs = list(yaml.safe_load_all(cleaned))
@@ -57,7 +58,7 @@ def load_all_yaml_docs(path):
 
 def _read_raw(path):
     # type: (str) -> str
-    with open(path, "r") as fh:
+    with open(path) as fh:
         return fh.read()
 
 
@@ -260,7 +261,7 @@ if __name__ == "__main__":
     run_test("16 docs/phase-k-multi-az.md exists with required sections", test_docs_exist)
 
     total = len(_passed) + len(_failed)
-    print("\n=== Results: {}/{} passed ===".format(len(_passed), total))
+    print(f"\n=== Results: {len(_passed)}/{total} passed ===")
     if _failed:
         print("Failed: " + str(_failed))
         sys.exit(1)

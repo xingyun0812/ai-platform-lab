@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 async def execute_tool_in_sandbox(
     tool_name: str,
     arguments: dict[str, Any],
-    config: "Any",  # SandboxConfig, 避免循环导入
+    config: Any,  # SandboxConfig, 避免循环导入
 ) -> str:
     """在沙箱中执行工具调用。
 

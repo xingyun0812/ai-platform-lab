@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
 import logging
 import time
 from dataclasses import dataclass, field
@@ -18,7 +17,6 @@ from packages.agent.orchestrator.nodes import (
     NodeExecutorError,
     evaluate_condition,
     get_executor,
-    render_template,
 )
 
 logger = logging.getLogger("ai_platform.orchestrator.engine")
@@ -87,7 +85,6 @@ async def execute_workflow(
     current = workflow.start_node
     steps = 0
     last_output: Any = None
-    error: str | None = None
 
     try:
         while current and steps < max_steps:
@@ -119,7 +116,6 @@ async def execute_workflow(
                     break
             except NodeExecutorError as e:
                 ctx.record_trace(current, "failed", {"error": e.message})
-                error = e.message
                 # 查找 error 边
                 error_target = _find_error_target(workflow, current)
                 if error_target:

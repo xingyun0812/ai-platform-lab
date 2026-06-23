@@ -9,7 +9,6 @@ import hashlib
 import hmac
 import json
 import logging
-import time
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -19,7 +18,7 @@ logger = logging.getLogger("ai_platform.hitl.webhook")
 
 
 async def send_webhook(
-    config: "WebhookConfig",
+    config: WebhookConfig,
     payload: dict,
     timeout: float = 5.0,
 ) -> bool:

@@ -148,7 +148,7 @@ class ActionClassifier:
         if yaml_path is None or not yaml_path.exists():
             return
         try:
-            with open(yaml_path, "r", encoding="utf-8") as f:
+            with open(yaml_path, encoding="utf-8") as f:
                 data = yaml.safe_load(f) or {}
             entries = data.get("classifications", [])
             with self._lock:
@@ -169,7 +169,7 @@ class ActionClassifier:
         if json_path is None or not json_path.exists():
             return
         try:
-            with open(json_path, "r", encoding="utf-8") as f:
+            with open(json_path, encoding="utf-8") as f:
                 entries = json.load(f)
             if isinstance(entries, list):
                 with self._lock:
