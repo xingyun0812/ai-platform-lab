@@ -36,3 +36,23 @@ providers:
         output_price_per_1k: 0.0
         latency_p50_ms: 400
         capabilities: [chat]
+
+  custom-internal:
+    base_url: http://10.212.129.94:8090/v1
+    api_key_env: CUSTOM_LLM_API_KEY
+    models:
+      deepseek-v4-flash-thinking:
+        input_price_per_1k: 0.15
+        output_price_per_1k: 0.60
+        latency_p50_ms: 800
+        capabilities: [chat, json]
+      deepseek-v4-flash:
+        input_price_per_1k: 0.15
+        output_price_per_1k: 0.60
+        latency_p50_ms: 600
+        capabilities: [chat, json]
+      minimax-m2.7:
+        input_price_per_1k: 0.20
+        output_price_per_1k: 0.80
+        latency_p50_ms: 900
+        capabilities: [chat]
