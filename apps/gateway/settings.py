@@ -74,6 +74,9 @@ class Settings(BaseSettings):
     rag_rerank_enabled: bool = Field(default=False, validation_alias="RAG_RERANK_ENABLED")
     rag_rerank_mode: str = Field(default="stub", validation_alias="RAG_RERANK_MODE")
     rag_rerank_top_n: int = Field(default=10, validation_alias="RAG_RERANK_TOP_N")
+    rag_rerank_api_url: str = Field(default="", validation_alias="RAG_RERANK_API_URL")
+    rag_rerank_model: str = Field(default="", validation_alias="RAG_RERANK_MODEL")
+    rag_rerank_api_key: str = Field(default="", validation_alias="RAG_RERANK_API_KEY")
 
     # Agent（第 4 周）
     agent_max_steps: int = Field(default=8, validation_alias="AGENT_MAX_STEPS")
@@ -800,6 +803,10 @@ def get_settings() -> Settings:
         overrides["rag_rerank_mode"] = rag_defaults["rerank_mode"]
     if isinstance(rag_defaults.get("rerank_top_n"), int):
         overrides["rag_rerank_top_n"] = rag_defaults["rerank_top_n"]
+    if isinstance(rag_defaults.get("rerank_api_url"), str):
+        overrides["rag_rerank_api_url"] = rag_defaults["rerank_api_url"]
+    if isinstance(rag_defaults.get("rerank_model"), str):
+        overrides["rag_rerank_model"] = rag_defaults["rerank_model"]
 
     settings = Settings(**overrides)
     if settings.llm_secret_ref:
