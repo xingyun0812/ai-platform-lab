@@ -1,8 +1,8 @@
 # ai-platform-lab 项目状态总览
 
-> **最后更新**：2026-06-22
-> **当前状态**：Phase A-K 全部完成，484 单测全通过，已推送 GitHub
-> **主分支**：`main` @ `98be9d1`
+> **最后更新**：2026-06-23
+> **当前状态**：Phase A～L 全部完成；tag `phase-l-engineering-depth`；PR #48～#59 + #61 已合并
+> **主分支**：`main` @ `60d1c8c`
 
 ---
 
@@ -19,7 +19,7 @@
 | 能力中台 | ~90% | RAG、Prompt 版本化+A/B、长记忆、MCP、上下文压缩 | — |
 | Agent 应用层 | ~90% | 控制流编排、Multi-Agent、生命周期、HITL | — |
 | AgentOps 治理 | ~90% | 沙箱、分级审计、PII、OAuth2/mTLS | 在线评测飞轮（已有反馈飞轮） |
-| 开发者体验 | ~90% | Python SDK、Console V2、评测 Pipeline、反馈飞轮 | Console Demo/SDK smoke 待补全 |
+| 开发者体验 | ~95% | Python SDK、Console V2、Demo 脚本、SDK smoke、面试叙事 | PyPI 发布、TS SDK |
 
 ## 3. Phase 完成历史线
 
@@ -37,6 +37,7 @@ Phase H — Agent 高阶能力    ✅ tag: phase-h-agent-advanced     ← 今日
 Phase I — 安全合规          ✅ tag: phase-i-security            ← 今日
 Phase J — 开发者体验        ✅ tag: phase-j-developer-experience + phase-jk-complete ← 今日
 Phase K — 生产基础设施      ✅ tag: phase-k-infra-base + phase-jk-complete            ← 今日
+Phase L — 工程深度与面试叙事 ✅ tag: phase-l-engineering-depth                      ← 2026-06-23
 ```
 
 ## 4. 代码规模
@@ -48,7 +49,7 @@ Phase K — 生产基础设施      ✅ tag: phase-k-infra-base + phase-jk-compl
 | **REST 路由文件** | 20 个 |
 | **测试套件** | 25 个 |
 | **Phase 设计文档** | 31 篇 |
-| **GitHub Tags** | 13 个 |
+| **GitHub Tags** | 14 个（含 `phase-l-engineering-depth`） |
 | **GitHub Issues** | 8 个（全部关闭） |
 
 ## 5. 能力清单（按 Phase）
@@ -184,29 +185,30 @@ roadmap.md → GitHub Issue → feature branch → PR → merge → tag
 
 ## 10. 下一步建议
 
-> **Phase L**：Wave1 ✅、Wave2 ✅、**#58 Agent 三率 ✅**；下一步 **#59 Vertical**。GitHub Issue [#37～#47](https://github.com/xingyun0812/ai-platform-lab/issues?q=label%3Aphase-l)。
+> **Phase L ✅ 完成**（tag: `phase-l-engineering-depth`）。GitHub PR [#48～#59](https://github.com/xingyun0812/ai-platform-lab/pulls?q=is%3Apr+is%3Amerged) + [#61 CI 修复](https://github.com/xingyun0812/ai-platform-lab/pull/61) 已合并。
 
-### 建议执行顺序（ROI）
+### Phase L 收尾（已完成）
 
-| 优先级 | Issue | 内容 | 状态 |
-|--------|-------|------|------|
-| 🥇 P1 | #62-console | Console 集成跑真 | ✅ |
-| 🥇 P1 | #62、#63 | Demo 脚本 + SDK smoke | ✅ |
-| P5 并行 | #53 | 文档状态对齐 | ✅ |
-| 🥈 P2 | #54～#57 | RAG 工程深度 | ✅ |
-| 🥉 P3 | #58 | Agent 三率指标 | ✅ |
-| 🥉 P3 | #59 | Agent Vertical | ✅ |
-| 🥉 P3 | #60 | Baseline + CI gate | ✅ |
-| P4 | #61 | 反馈飞轮 E2E | ✅ |
-| P4 | #62 | Demo + 面试叙事 | ✅ **Phase L 完成** |
+| 项 | 状态 |
+|----|------|
+| #53～#63 交付 | ✅ |
+| 标准 PR 流程合并 | ✅ |
+| `platform_demo --no-llm` | ✅ |
+| tag `phase-l-engineering-depth` | ✅ |
 
-Issue 正文与 GitHub 映射见 [issues-backlog-phase-l.md](./issues-backlog-phase-l.md)。
+### 下一阶段（Phase M，可选）
 
-> **Phase L**：#53～#63 全部交付，可打 tag `phase-l-engineering-depth`。
+| 方向 | 说明 |
+|------|------|
+| 多模态 Embedding | Phase L 刻意后置 |
+| TS SDK / PyPI | 开发者体验 |
+| 面试演练 | [interview-narrative.md](./interview-narrative.md) + [demo-walkthrough.md](./demo-walkthrough.md) live 勾选 |
+
+Issue 正文见 [issues-backlog-phase-l.md](./issues-backlog-phase-l.md)。
 
 ## 11. 核心面试讲法
 
-> **一句话**：这是一个从模型网关到生产基础设施的完整 AI 平台参考实现，按 Phase 渐进交付，484 个单测全通过。
+> **一句话**：这是一个从模型网关到生产基础设施的完整 AI 平台参考实现，按 Phase 渐进交付；Phase L 已补齐 Rerank/Judge/Agent 三率/反馈飞轮 live 验证。
 
 **分层讲法**：
 1. **模型服务层**：Gateway + 路由 + 熔断 + 计费 + 语义缓存 + Embedding 服务
@@ -218,8 +220,8 @@ Issue 正文与 GitHub 映射见 [issues-backlog-phase-l.md](./issues-backlog-ph
 
 **诚实边界**：
 - 单进程 Gateway（K8s 可扩展）
-- Rerank / LLM Judge 仍为 stub（Phase L #54～#56）
-- 多 AZ/GPU 配置未实际部署验证
+- 增量索引、细粒度 RBAC 仍浅
+- 多 AZ/GPU 为 Helm 模板级，未真集群压测
 
 ---
 

@@ -506,7 +506,7 @@ Phase A～K 已交付，但 `roadmap.md` §已知限制、`gap-analysis-diagram.
 - [ ] `console-v2`：`npm run build` 产出至 `apps/console/static/`，README 启动说明
 - [ ] `acceptance_smoke.py` — `--platform-demo` 段
 - [ ] `docs/roadmap.md` — Phase L 全部 ✅，打 tag 说明 `phase-l-engineering-depth`
-- [ ] `docs/phase-l-engineering-depth.md` — 头部状态改为已完成
+- [x] `docs/phase-l-engineering-depth.md` — 头部状态改为已完成
 
 ### 实施计划
 

@@ -173,10 +173,11 @@
 
 ---
 
-## Phase L — 工程深度与面试叙事（规划中 ⏳）
+## Phase L — 工程深度与面试叙事（✅ 已完成）
 
 > **目标**：不扩新模块，把 stub / 未验证能力做深、做真、串成故事。  
-> **规划**：[phase-l-engineering-depth.md](./phase-l-engineering-depth.md) · Issue 正文：[issues-backlog-phase-l.md](./issues-backlog-phase-l.md)
+> **规划**：[phase-l-engineering-depth.md](./phase-l-engineering-depth.md) · Issue 正文：[issues-backlog-phase-l.md](./issues-backlog-phase-l.md)  
+> **Tag**：`phase-l-engineering-depth`（2026-06-23）
 
 | Issue | 波次 | 内容 | 依赖 | 工期 | 状态 |
 |-------|------|------|------|------|------|
@@ -195,7 +196,7 @@
 
 > ROI 说明：[phase-l-priority-roi.md](./phase-l-priority-roi.md) · Console 交付：[phase-l-console-integration.md](./phase-l-console-integration.md) · Demo：[demo-walkthrough.md](./demo-walkthrough.md)
 
-**Phase L 完成后打 tag**：`phase-l-engineering-depth`
+**Phase L 全部完成！** 工程深度 + Demo + 面试叙事已交付；合并 PR #48～#59、#61。
 
 ## 已知限制（面试时主动说）
 
@@ -284,7 +285,7 @@
 | [phase-e-agent-quality.md](./phase-e-agent-quality.md) | Phase E Agent 效果深化 |
 | [phase-d-future-evolution.md](./phase-d-future-evolution.md) | Phase D 远期规划 |
 | [enterprise-ai-platform-sop.md](./enterprise-ai-platform-sop.md) | 大厂 SOP 踩坑对照 |
-| [phase-l-engineering-depth.md](./phase-l-engineering-depth.md) | Phase L 工程深度与面试叙事（进行中） |
+| [phase-l-engineering-depth.md](./phase-l-engineering-depth.md) | Phase L 工程深度与面试叙事 ✅ |
 | [interview-narrative.md](./interview-narrative.md) | 10 分钟面试口述稿 + Q&A |
 | [phase-l-priority-roi.md](./phase-l-priority-roi.md) | Phase L ROI 优先级与 Issue 对照 |
 | [phase-l-console-integration.md](./phase-l-console-integration.md) | Phase L Console 集成 ✅ |
