@@ -7,7 +7,7 @@
 
 ## 一句话定位
 
-这是一个 **从模型网关到生产基础设施的完整 AI 平台参考实现**：按 Phase A～K 渐进交付模块，Phase L 把「已有但偏 stub」的能力做深，形成 **可演示、可讲 SOP、可回归** 的面试故事。
+这是一个 **从模型网关到生产基础设施的完整 AI 平台参考实现**：按 Phase A～M 渐进交付；Phase L 把 stub 做深，Phase M 把 **RAG 增量索引** 做到可演示、可观测。
 
 ---
 
@@ -37,7 +37,7 @@ flowchart TB
     C["Console V2 运营面"]
   end
   subgraph L6["6. 诚实边界 ~1min"]
-    X["增量索引浅 · 多 AZ 模板级"]
+    X["RBAC 浅 · 多 AZ 模板级"]
   end
 
   L1 --> L2 --> L3 --> L4 --> L5 --> L6
@@ -67,9 +67,11 @@ flowchart TB
 3. `eval/run.py compare` 看 pass_rate
 4. 达标全量 / 不达标回滚 `canary_percent=0`
 
-**诚实说**：真 Rerank API（#54）、LLM Judge（#56）、金丝雀自动回滚（#57）已在 Phase L 落地；增量索引（#55）仍偏全量重建。
+**诚实说**：真 Rerank / LLM Judge / 金丝雀回滚已在 Phase L 落地；**Phase M** 补齐 BM25 按 source 差量、purge-source、`skipped_chunks` 指标与 demo 二次索引断言。
 
-**关键词**：`packages/rag/`、`config/rag.yaml`、`eval/run.py`
+**Phase M 一句话**：同文件二次索引 → `skipped_chunks>=1` → BM25 不 scroll 全库 → Console 删文档同步清向量。
+
+**关键词**：`packages/rag/source_index.py`、`packages/rag/index_metrics.py`、`eval/platform_demo.sh --with-llm`
 
 ---
 
@@ -91,7 +93,7 @@ flowchart TB
 **讲什么**：可观测 + 可回归 + 可改进。
 
 **亮点**：
-- OTel trace、Prometheus `/metrics`、Grafana dashboard
+- OTel trace、Prometheus `/metrics`（含 `rag_index_*` 增量指标）、Grafana dashboard
 - `baseline.jsonl` + CI 门禁（RAG + Agent 双 gate）
 - 反馈飞轮：**live 已验**（#61 `feedback_loop_demo --live`）
 
@@ -115,7 +117,7 @@ flowchart TB
 
 引用 [roadmap.md](./roadmap.md) §已知限制，核心三点：
 
-1. **模块齐、深度不足**：增量索引、细粒度 RBAC、生产级 DLP
+1. **模块齐、部分仍浅**：细粒度 RBAC、生产级 DLP（增量索引 Phase M 已做满）
 2. **opt-in 默认关**：沙箱、OAuth2、语义缓存、Memory Store
 3. **非商业产品**：无发票、单进程开发默认；多 AZ/GPU 为 Helm 模板级
 
@@ -127,8 +129,8 @@ flowchart TB
 |------|------|------|
 | 0～2 | `./eval/platform_demo.sh --no-llm` | 自动化冒烟，Console API 全 200 |
 | 2～4 | 登录 Console Dashboard | 运营面，非业务 App |
-| 4～7 | RAG 索引 v1 + 查询 | version 可回放 |
-| 7～11 | v2 + 金丝雀 + eval compare | SOP 核心（需 Key） |
+| 4～7 | RAG 索引 + **二次索引**（`skipped_chunks`） | Phase M 增量故事 |
+| 7～10 | v2 + 金丝雀 + eval compare | SOP 核心（需 Key） |
 | 11～13 | Audit / Agent vertical / 反馈飞轮 | 治理 + 闭环 |
 | 13～15 | `python eval/sdk_smoke.py` | SDK 三接口 + 诚实边界 |
 

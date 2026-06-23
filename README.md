@@ -1,6 +1,6 @@
 # ai-platform-lab
 
-最小 **AI 中台** 实验仓库（与 [《AI中台学习执行手册》](docs/AI中台学习执行手册.md) 配套）。当前完成 **Phase A-K 全部能力**：模型网关、RAG、Agent、观测评测、硬化、Prompt 版本化、长记忆、MCP、上下文压缩、语义缓存、Embedding 服务、控制流编排、Multi-Agent、HITL、沙箱、分级审计、PII 脱敏、OAuth2/mTLS、Python SDK、Console V2、评测 Pipeline、反馈飞轮、对象存储、K8s Helm、多 AZ、GPU 调度。
+最小 **AI 中台** 实验仓库（与 [《AI中台学习执行手册》](docs/AI中台学习执行手册.md) 配套）。当前完成 **Phase A～M**：模型网关、RAG（含增量索引）、Agent、观测评测、硬化、Prompt 版本化、长记忆、MCP、上下文压缩、语义缓存、Embedding 服务、控制流编排、Multi-Agent、HITL、沙箱、分级审计、PII 脱敏、OAuth2/mTLS、Python SDK、Console V2、评测 Pipeline、反馈飞轮、对象存储、K8s Helm、多 AZ、GPU 调度。
 
 > 📊 **当前状态**：Phase A～M 完成 · tag `phase-m-incremental-index` · PR #68～#71 已合并
 > 📋 **完整状态报告**：[docs/PROJECT_STATUS.md](docs/PROJECT_STATUS.md)
@@ -479,6 +479,7 @@ r = c.chat.completions.create(model="gpt-4o-mini", messages=[{"role":"user","con
 | Phase L Wave1 ✅ | [interview-narrative.md](docs/interview-narrative.md) | `./eval/platform_demo.sh` · `eval/sdk_smoke.py` |
 | 本地 LLM 联调 | [local-llm-setup.md](docs/local-llm-setup.md) | [config/upstream_models.yaml](config/upstream_models.yaml) |
 | Phase L Issues | [issues-backlog-phase-l.md](docs/issues-backlog-phase-l.md) | — |
+| Phase M 增量索引 ✅ | [phase-m-incremental-index.md](docs/phase-m-incremental-index.md) | [issues-backlog-phase-m.md](docs/issues-backlog-phase-m.md) |
 | Phase A 可内测 | [phase-a-internal-beta.md](docs/phase-a-internal-beta.md) | [phase-a-build-and-code-guide.md](docs/phase-a-build-and-code-guide.md) |
 | Phase B1 计费 | [phase-b-small-production.md](docs/phase-b-small-production.md) | [phase-b-build-and-code-guide.md](docs/phase-b-build-and-code-guide.md) |
 | Phase B2 并行 | [phase-b2-parallel.md](docs/phase-b2-parallel.md) | [phase-b-build-and-code-guide.md](docs/phase-b-build-and-code-guide.md) |
