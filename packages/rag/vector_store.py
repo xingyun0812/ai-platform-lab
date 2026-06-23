@@ -9,6 +9,7 @@ from qdrant_client.http import models as qm
 
 from apps.gateway.settings import get_settings
 from packages.rag.chunker import TextChunk
+from packages.rag.indexing import content_hash
 
 logger = logging.getLogger("ai_platform.rag.vector_store")
 
@@ -75,6 +76,7 @@ class VectorStore:
                 "source_uri": chunk.source_uri,
                 "offset": chunk.offset,
                 "text": chunk.text,
+                "content_hash": content_hash(chunk.text),
             }
             points.append(
                 qm.PointStruct(id=point_id, vector=vector, payload=payload),
@@ -82,6 +84,82 @@ class VectorStore:
         if points:
             self._client.upsert(collection_name=self._collection, points=points)
         return len(points)
+
+    def delete_points(self, point_ids: list[str]) -> None:
+        if not point_ids:
+            return
+        self.ensure_collection()
+        self._client.delete(collection_name=self._collection, points_selector=qm.PointIdsList(points=point_ids))
+
+    def list_source_chunks(self, *, kb_id: str, version: int, source_uri: str) -> list[dict[str, Any]]:
+        self.ensure_collection()
+        rows: list[dict[str, Any]] = []
+        offset = None
+        while True:
+            points, offset = self._client.scroll(
+                collection_name=self._collection,
+                scroll_filter=qm.Filter(
+                    must=[
+                        qm.FieldCondition(key="kb_id", match=qm.MatchValue(value=kb_id)),
+                        qm.FieldCondition(key="version", match=qm.MatchValue(value=version)),
+                        qm.FieldCondition(key="source_uri", match=qm.MatchValue(value=source_uri)),
+                    ]
+                ),
+                limit=256,
+                offset=offset,
+                with_payload=True,
+                with_vectors=False,
+            )
+            for point in points:
+                payload = point.payload or {}
+                rows.append(
+                    {
+                        "point_id": str(point.id),
+                        "chunk_id": payload.get("chunk_id"),
+                        "offset": payload.get("offset"),
+                        "content_hash": payload.get("content_hash"),
+                        "text": payload.get("text"),
+                        "source_uri": payload.get("source_uri", source_uri),
+                    }
+                )
+            if offset is None:
+                break
+        return rows
+
+    def list_source_chunks_as_text_chunks(self, *, kb_id: str, version: int) -> list[TextChunk]:
+        self.ensure_collection()
+        chunks: list[TextChunk] = []
+        offset = None
+        while True:
+            points, offset = self._client.scroll(
+                collection_name=self._collection,
+                scroll_filter=qm.Filter(
+                    must=[
+                        qm.FieldCondition(key="kb_id", match=qm.MatchValue(value=kb_id)),
+                        qm.FieldCondition(key="version", match=qm.MatchValue(value=version)),
+                    ]
+                ),
+                limit=256,
+                offset=offset,
+                with_payload=True,
+                with_vectors=False,
+            )
+            for point in points:
+                payload = point.payload or {}
+                text = payload.get("text")
+                if not isinstance(text, str) or not text.strip():
+                    continue
+                chunks.append(
+                    TextChunk(
+                        chunk_id=str(payload.get("chunk_id") or point.id),
+                        text=text,
+                        source_uri=str(payload.get("source_uri") or ""),
+                        offset=int(payload.get("offset") or 0),
+                    )
+                )
+            if offset is None:
+                break
+        return chunks
 
     def retrieve(
         self,

@@ -20,6 +20,9 @@ class IndexTaskRecord:
     status: TaskStatus = TaskStatus.pending
     error: str | None = None
     chunks_indexed: int | None = None
+    new_chunks: int | None = None
+    updated_chunks: int | None = None
+    skipped_chunks: int | None = None
     created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     updated_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
@@ -41,6 +44,9 @@ class IndexTaskStore(ABC):
         status: TaskStatus | None = None,
         error: str | None = None,
         chunks_indexed: int | None = None,
+        new_chunks: int | None = None,
+        updated_chunks: int | None = None,
+        skipped_chunks: int | None = None,
     ) -> IndexTaskRecord | None:
         raise NotImplementedError
 
@@ -75,6 +81,9 @@ class InMemoryIndexTaskStore(IndexTaskStore):
         status: TaskStatus | None = None,
         error: str | None = None,
         chunks_indexed: int | None = None,
+        new_chunks: int | None = None,
+        updated_chunks: int | None = None,
+        skipped_chunks: int | None = None,
     ) -> IndexTaskRecord | None:
         with self._lock:
             record = self._tasks.get(task_id)
@@ -86,6 +95,12 @@ class InMemoryIndexTaskStore(IndexTaskStore):
                 record.error = error
             if chunks_indexed is not None:
                 record.chunks_indexed = chunks_indexed
+            if new_chunks is not None:
+                record.new_chunks = new_chunks
+            if updated_chunks is not None:
+                record.updated_chunks = updated_chunks
+            if skipped_chunks is not None:
+                record.skipped_chunks = skipped_chunks
             record.updated_at = datetime.now(UTC)
             return record
 
@@ -108,6 +123,9 @@ def _record_from_json(raw: str) -> IndexTaskRecord:
         status=TaskStatus(data["status"]),
         error=data.get("error"),
         chunks_indexed=data.get("chunks_indexed"),
+        new_chunks=data.get("new_chunks"),
+        updated_chunks=data.get("updated_chunks"),
+        skipped_chunks=data.get("skipped_chunks"),
         created_at=datetime.fromisoformat(data["created_at"]),
         updated_at=datetime.fromisoformat(data["updated_at"]),
     )
@@ -150,6 +168,9 @@ class RedisIndexTaskStore(IndexTaskStore):
         status: TaskStatus | None = None,
         error: str | None = None,
         chunks_indexed: int | None = None,
+        new_chunks: int | None = None,
+        updated_chunks: int | None = None,
+        skipped_chunks: int | None = None,
     ) -> IndexTaskRecord | None:
         record = self.get(task_id)
         if not record:
@@ -160,6 +181,12 @@ class RedisIndexTaskStore(IndexTaskStore):
             record.error = error
         if chunks_indexed is not None:
             record.chunks_indexed = chunks_indexed
+        if new_chunks is not None:
+            record.new_chunks = new_chunks
+        if updated_chunks is not None:
+            record.updated_chunks = updated_chunks
+        if skipped_chunks is not None:
+            record.skipped_chunks = skipped_chunks
         record.updated_at = datetime.now(UTC)
         self._redis.set(self._key(task_id), _record_to_json(record), ex=self._ttl)
         return record
