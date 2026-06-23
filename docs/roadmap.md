@@ -198,6 +198,23 @@
 
 **Phase L 全部完成！** 工程深度 + Demo + 面试叙事已交付；合并 PR #48～#59、#61。
 
+---
+
+## Phase M — RAG 增量索引做满（✅ 已完成）
+
+> **目标**：向量增量之上，补齐 BM25 差量、purge-source、指标与 demo 断言。  
+> **规划**：[phase-m-incremental-index.md](./phase-m-incremental-index.md) · Issue 正文：[issues-backlog-phase-m.md](./issues-backlog-phase-m.md)  
+> **Tag**：`phase-m-incremental-index`（2026-06-23）
+
+| Issue | 内容 | 状态 |
+|-------|------|------|
+| #63 | BM25 按 source 增量 merge | ✅ |
+| #64 | purge-source 清理向量+BM25 | ✅ |
+| #65 | 任务 API + Prometheus 指标 | ✅ |
+| #66 | platform_demo 二次索引断言 | ✅ |
+
+**Phase M 全部完成！** 堆叠 PR #68～#71。
+
 ## 已知限制（面试时主动说）
 
 > **说明**：Phase A～K 已交付大量能力（MCP、HITL、Multi-Agent、语义缓存、PII、Console V2 等），本节区分 **「已有但 opt-in / 实验级」** 与 **「仍缺或仍为 stub」**，避免与 README 矛盾。Phase L 目标是把 stub 做深，见 [phase-l-engineering-depth.md](./phase-l-engineering-depth.md)。
