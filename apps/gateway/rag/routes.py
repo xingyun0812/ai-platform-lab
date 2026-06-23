@@ -29,6 +29,7 @@ from packages.contracts.rag_schemas import (
     RetrieveRequest,
     RetrieveResponse,
 )
+from packages.rag.index_metrics import get_index_metrics
 from packages.rag.source_index import purge_source_index
 from packages.rag.rerank import rerank_chunks
 from packages.rag.rerank_providers import provider_config_from_settings
@@ -70,6 +71,9 @@ def _task_view(record) -> IndexTaskView:
         source_uri=record.source_uri,
         error=record.error,
         chunks_indexed=record.chunks_indexed,
+        new_chunks=record.new_chunks,
+        updated_chunks=record.updated_chunks,
+        skipped_chunks=record.skipped_chunks,
         created_at=record.created_at,
         updated_at=record.updated_at,
     )
@@ -191,6 +195,7 @@ async def purge_index_source(
             source_uri=body.source_uri,
             delete_file=body.delete_file,
         )
+        get_index_metrics().record_purge(kb_id=body.kb_id, version=body.version)
     except Exception as e:
         logger.exception("purge source failed kb_id=%s source=%s", body.kb_id, body.source_uri)
         return json_error(503, "PURGE_SOURCE_ERROR", str(e))

@@ -39,6 +39,9 @@ class IndexTaskView(BaseModel):
     source_uri: str
     error: str | None = None
     chunks_indexed: int | None = None
+    new_chunks: int | None = None
+    updated_chunks: int | None = None
+    skipped_chunks: int | None = None
     created_at: datetime
     updated_at: datetime
 

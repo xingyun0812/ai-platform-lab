@@ -8,6 +8,7 @@ from apps.gateway.settings import get_settings
 from packages.contracts.rag_schemas import TaskStatus
 from packages.rag.chunker import chunk_text
 from packages.rag.embeddings import embed_texts
+from packages.rag.index_metrics import get_index_metrics
 from packages.rag.indexing import plan_incremental_index
 from packages.rag.source_index import refresh_bm25_after_source_index
 from packages.rag.routing import parse_kb_routing, pick_query_version
@@ -84,6 +85,13 @@ async def run_index_task(task_id: str) -> None:
             version=record.version,
             source_uri=record.source_uri,
             chunks=chunks,
+        )
+        get_index_metrics().record_index_success(
+            kb_id=record.kb_id,
+            version=record.version,
+            new_chunks=plan.new_chunks,
+            updated_chunks=plan.updated_chunks,
+            skipped_chunks=plan.skipped_chunks,
         )
         task_store.update(
             task_id,
