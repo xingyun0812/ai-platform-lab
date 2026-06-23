@@ -196,8 +196,8 @@ roadmap.md → GitHub Issue → feature branch → PR → merge → tag
 | 🥈 P2 | #54～#57 | RAG 工程深度 | ✅ |
 | 🥉 P3 | #58 | Agent 三率指标 | ✅ |
 | 🥉 P3 | #59 | Agent Vertical | ✅ |
-| 🥉 P3 | #60 | Baseline + CI gate | ⏳ **下一步** |
-| P4 | #61 | 反馈飞轮 E2E | ⏳ |
+| 🥉 P3 | #60 | Baseline + CI gate | ✅ |
+| P4 | #61 | 反馈飞轮 E2E | ⏳ **下一步** |
 
 Issue 正文与 GitHub 映射见 [issues-backlog-phase-l.md](./issues-backlog-phase-l.md)。
 

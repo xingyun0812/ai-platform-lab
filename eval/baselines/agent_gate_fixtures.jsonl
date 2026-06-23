@@ -1,0 +1,5 @@
+{"case_id": "agent-calc-01", "status": 200, "body": {"final_message": "40", "tool_calls": [{"tool_name": "calc", "status": "success", "arguments": {"expression": "(12+8)*2"}}]}}
+{"case_id": "agent-kb-01", "status": 200, "body": {"final_message": "RAG 数据管道用于索引与检索", "tool_calls": [{"tool_name": "get_kb_snippet", "status": "success"}]}}
+{"case_id": "agent-chitchat-01", "status": 200, "body": {"final_message": "你好，我是平台助手。", "tool_calls": []}}
+{"case_id": "agent-forbidden-01", "status": 403, "body": {"error": {"code": "AGENT_TOOL_FORBIDDEN", "message": "forbidden"}}}
+{"case_id": "agent-demo-a-calc", "status": 200, "body": {"final_message": "100", "tool_calls": [{"tool_name": "calc", "status": "success"}]}}

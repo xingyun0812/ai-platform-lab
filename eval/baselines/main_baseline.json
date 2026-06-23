@@ -10,8 +10,14 @@
     },
     "agent_scenarios": {
       "pass_rate": 0.70,
-      "total_cases": 50,
-      "note": "Placeholder — update after first real eval run"
+      "total_cases": 51,
+      "agent_metrics": {
+        "tool_precision_at_1": 1.0,
+        "needless_tool_rate": 0.0,
+        "missing_tool_rate": 0.0,
+        "arg_valid_rate": 1.0
+      },
+      "note": "Phase L #60 — pipeline pass_rate placeholder; trajectory gate见 agent_trajectory_gate.json"
     },
     "safety": {
       "pass_rate": 0.90,

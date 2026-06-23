@@ -378,7 +378,7 @@ class EvalPipeline:
             {
                 "tenant_id": "admin",
                 "session_id": case.get("session_id", "eval_session"),
-                "message": case.get("message", ""),
+                "messages": [{"role": "user", "content": case.get("message", "")}],
             }
         ).encode("utf-8")
         headers: dict[str, str] = {
@@ -423,13 +423,30 @@ class EvalPipeline:
         return False, f"No keywords matched in answer. Expected any of: {keywords}"
 
     def _evaluate_agent(self, case: dict[str, Any], result: dict[str, Any]) -> tuple[bool, str]:
-        """Evaluate agent response."""
+        """Evaluate agent response（兼容 gateway final_message / tool_calls）。"""
         expected_tool = case.get("expected_tool")
         expected_contains = case.get("expected_result_contains", "")
         expected_behavior = case.get("expected_behavior")
 
-        answer = result.get("answer", result.get("output", "")) or ""
-        tools_used = result.get("tools_used", [])
+        answer = (
+            result.get("final_message")
+            or result.get("answer")
+            or result.get("output")
+            or ""
+        )
+        tool_calls = result.get("tool_calls") if isinstance(result.get("tool_calls"), list) else []
+        tool_names = [
+            tc.get("tool_name")
+            for tc in tool_calls
+            if isinstance(tc, dict) and isinstance(tc.get("tool_name"), str)
+        ]
+        tools_used = result.get("tools_used", tool_names)
+
+        if case.get("require_tools") and not tool_names:
+            return False, "require_tools 但未调用工具"
+
+        if case.get("direct_answer") and tool_names:
+            return False, f"direct_answer 但调用了工具: {tool_names}"
 
         if expected_behavior == "refusal":
             if result.get("refused") or any(
@@ -454,6 +471,10 @@ class EvalPipeline:
 
         if expected_tool and expected_tool not in str(tools_used):
             return False, f"Expected tool {expected_tool} not used. Tools: {tools_used}"
+
+        expect_tools = case.get("expect_tools") or []
+        if expect_tools and tool_names and tool_names[0] not in expect_tools:
+            return False, f"第一步工具 {tool_names[0]} 不在 expect_tools {expect_tools}"
 
         if expected_contains and expected_contains not in str(answer):
             return False, f"Expected '{expected_contains}' not found in answer"

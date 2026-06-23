@@ -404,13 +404,13 @@ Phase A～K 已交付，但 `roadmap.md` §已知限制、`gap-analysis-diagram.
 
 ### 验收标准
 
-- [ ] `eval/baselines/agent_scenarios.jsonl` ≥ 30 条，覆盖三率场景
-- [ ] `eval/agent_gate.py` 或扩展 `eval/gate.py`
-- [ ] `.github/workflows/eval.yml` — agent job
-- [ ] `eval/baselines/main_baseline.json` 更新 agent 基线
-- [ ] 单测 ≥ 8
-- [ ] `docs/phase-l-agent-eval-gate.md`
-- [ ] `docs/roadmap.md` — #60 ✅
+- [x] `eval/baselines/agent_scenarios.jsonl` ≥ 30 条，覆盖三率场景
+- [x] `eval/agent_gate.py` 或扩展 `eval/gate.py`
+- [x] `.github/workflows/eval.yml` — agent job
+- [x] `eval/baselines/main_baseline.json` 更新 agent 基线
+- [x] 单测 ≥ 8（`tests/test_agent_gate.py` 9 条）
+- [x] `docs/phase-l-agent-eval-gate.md`
+- [x] `docs/roadmap.md` — #60 ✅
 
 ### 实施计划
 
