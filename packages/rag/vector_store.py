@@ -91,6 +91,26 @@ class VectorStore:
         self.ensure_collection()
         self._client.delete(collection_name=self._collection, points_selector=qm.PointIdsList(points=point_ids))
 
+    def delete_source(self, *, kb_id: str, version: int, source_uri: str) -> int:
+        """按 kb+version+source_uri 删除向量点，返回删除前估算数量。"""
+        self.ensure_collection()
+        existing = self.list_source_chunks(kb_id=kb_id, version=version, source_uri=source_uri)
+        if not existing:
+            return 0
+        self._client.delete(
+            collection_name=self._collection,
+            points_selector=qm.FilterSelector(
+                filter=qm.Filter(
+                    must=[
+                        qm.FieldCondition(key="kb_id", match=qm.MatchValue(value=kb_id)),
+                        qm.FieldCondition(key="version", match=qm.MatchValue(value=version)),
+                        qm.FieldCondition(key="source_uri", match=qm.MatchValue(value=source_uri)),
+                    ]
+                )
+            ),
+        )
+        return len(existing)
+
     def list_source_chunks(self, *, kb_id: str, version: int, source_uri: str) -> list[dict[str, Any]]:
         self.ensure_collection()
         rows: list[dict[str, Any]] = []

@@ -24,9 +24,13 @@ from packages.contracts.rag_schemas import (
     IndexUploadResponse,
     KbRoutingResponse,
     KbVersionsResponse,
+    PurgeSourceRequest,
+    PurgeSourceResponse,
     RetrieveRequest,
     RetrieveResponse,
 )
+from packages.rag.index_metrics import get_index_metrics
+from packages.rag.source_index import purge_source_index
 from packages.rag.rerank import rerank_chunks
 from packages.rag.rerank_providers import provider_config_from_settings
 from packages.rag.retrieval import retrieve_chunks
@@ -67,6 +71,9 @@ def _task_view(record) -> IndexTaskView:
         source_uri=record.source_uri,
         error=record.error,
         chunks_indexed=record.chunks_indexed,
+        new_chunks=record.new_chunks,
+        updated_chunks=record.updated_chunks,
+        skipped_chunks=record.skipped_chunks,
         created_at=record.created_at,
         updated_at=record.updated_at,
     )
@@ -168,6 +175,39 @@ async def get_index_task(
     if not record:
         return json_error(404, "NOT_FOUND", f"任务不存在: {task_id}")
     return _task_view(record)
+
+
+@router.post("/index/purge-source", response_model=PurgeSourceResponse)
+async def purge_index_source(
+    body: PurgeSourceRequest,
+    x_tenant_id: Annotated[str | None, Header(alias="X-Tenant-Id")] = None,
+    authorization: Annotated[str | None, Header()] = None,
+) -> Any:
+    tenants = load_tenants()
+    tenant = _require_tenant(x_tenant_id, authorization, tenants)
+    if isinstance(tenant, JSONResponse):
+        return tenant
+
+    try:
+        result = purge_source_index(
+            kb_id=body.kb_id,
+            version=body.version,
+            source_uri=body.source_uri,
+            delete_file=body.delete_file,
+        )
+        get_index_metrics().record_purge(kb_id=body.kb_id, version=body.version)
+    except Exception as e:
+        logger.exception("purge source failed kb_id=%s source=%s", body.kb_id, body.source_uri)
+        return json_error(503, "PURGE_SOURCE_ERROR", str(e))
+
+    return PurgeSourceResponse(
+        kb_id=body.kb_id,
+        version=body.version,
+        source_uri=body.source_uri,
+        deleted_vectors=int(result["deleted_vectors"]),
+        bm25_docs_remaining=int(result["bm25_docs_remaining"]),
+        file_deleted=bool(result["file_deleted"]),
+    )
 
 
 @router.get("/kb/{kb_id}/versions", response_model=KbVersionsResponse)

@@ -385,6 +385,8 @@ async def upload_kb_document(
 async def delete_kb_document(
     kb_id: str,
     doc_id: str,
+    version: int = 1,
+    delete_file: bool = True,
     x_tenant_id: Annotated[str | None, Header(alias="X-Tenant-Id")] = None,
     authorization: Annotated[str | None, Header()] = None,
 ) -> JSONResponse:
@@ -394,12 +396,43 @@ async def delete_kb_document(
     denied = _require_admin(tenant)
     if denied is not None:
         return denied
+
+    settings = get_settings()
+    root = settings.rag_data_root
+    source_uri: str | None = None
+    for path in root.rglob("*"):
+        if not path.is_file():
+            continue
+        rel = path.relative_to(root).as_posix()
+        if rel.replace("/", "_") == doc_id:
+            source_uri = rel
+            break
+    if source_uri is None:
+        return json_error(404, "NOT_FOUND", f"文档不存在: {doc_id}")
+
+    from packages.rag.index_metrics import get_index_metrics
+    from packages.rag.source_index import purge_source_index
+
+    try:
+        result = purge_source_index(
+            kb_id=kb_id,
+            version=version,
+            source_uri=source_uri,
+            delete_file=delete_file,
+        )
+        get_index_metrics().record_purge(kb_id=kb_id, version=version)
+    except Exception as e:
+        return json_error(503, "PURGE_SOURCE_ERROR", str(e))
+
     return JSONResponse(
         {
             "kb_id": kb_id,
             "doc_id": doc_id,
-            "deleted": False,
-            "message": "仅移除 Console 元数据；向量索引需另行清理",
+            "source_uri": source_uri,
+            "deleted": True,
+            "deleted_vectors": result["deleted_vectors"],
+            "bm25_docs_remaining": result["bm25_docs_remaining"],
+            "file_deleted": result["file_deleted"],
         }
     )
 

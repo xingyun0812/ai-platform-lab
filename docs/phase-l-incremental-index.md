@@ -39,4 +39,4 @@ curl -X POST .../internal/index -d '{"kb_id":"lab-demo","version":1,"source_uri"
 
 ## BM25
 
-向量增量后，对该 `kb_id+version` 全量 scroll 重建 BM25 索引（实验规模可接受）。
+向量增量后，对该 `source_uri` **差量 merge** BM25（Phase M）；删除 source 时同步清理 BM25 条目。

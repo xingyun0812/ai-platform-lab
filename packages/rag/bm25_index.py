@@ -92,7 +92,16 @@ def build_index_from_chunks(
     kb_id: str,
     version: int,
 ) -> Bm25Index:
-    docs = [
+    return Bm25Index(documents_from_chunks(chunks, kb_id=kb_id, version=version))
+
+
+def documents_from_chunks(
+    chunks: list[TextChunk],
+    *,
+    kb_id: str,
+    version: int,
+) -> list[Bm25Document]:
+    return [
         Bm25Document(
             chunk_id=c.chunk_id,
             kb_id=kb_id,
@@ -104,7 +113,29 @@ def build_index_from_chunks(
         )
         for c in chunks
     ]
-    return Bm25Index(docs)
+
+
+def merge_source_into_index(
+    existing: Bm25Index | None,
+    chunks: list[TextChunk],
+    *,
+    kb_id: str,
+    version: int,
+    source_uri: str,
+) -> Bm25Index:
+    """替换单个 source 的 BM25 文档，保留其他 source。"""
+    kept: list[Bm25Document] = []
+    if existing is not None:
+        kept = [d for d in existing.documents if d.source_uri != source_uri]
+    incoming = documents_from_chunks(chunks, kb_id=kb_id, version=version)
+    return Bm25Index(kept + incoming)
+
+
+def remove_source_from_index(existing: Bm25Index, *, source_uri: str) -> Bm25Index | None:
+    kept = [d for d in existing.documents if d.source_uri != source_uri]
+    if not kept:
+        return None
+    return Bm25Index(kept)
 
 
 def save_index(index: Bm25Index, kb_id: str, version: int) -> Path:
