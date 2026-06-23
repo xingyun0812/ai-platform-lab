@@ -6,10 +6,10 @@ from apps.gateway.rag.paths import resolve_source_path
 from apps.gateway.rag.task_store import get_task_store
 from apps.gateway.settings import get_settings
 from packages.contracts.rag_schemas import TaskStatus
-from packages.rag.bm25_index import build_index_from_chunks, save_index
 from packages.rag.chunker import chunk_text
 from packages.rag.embeddings import embed_texts
 from packages.rag.indexing import plan_incremental_index
+from packages.rag.source_index import refresh_bm25_after_source_index
 from packages.rag.routing import parse_kb_routing, pick_query_version
 from packages.rag.vector_store import VectorStore
 
@@ -78,17 +78,13 @@ async def run_index_task(task_id: str) -> None:
             )
 
         count = plan.new_chunks + plan.updated_chunks + plan.skipped_chunks
-        all_chunks = store.list_source_chunks_as_text_chunks(
+        refresh_bm25_after_source_index(
+            store,
             kb_id=record.kb_id,
             version=record.version,
+            source_uri=record.source_uri,
+            chunks=chunks,
         )
-        if all_chunks:
-            bm25 = build_index_from_chunks(
-                all_chunks,
-                kb_id=record.kb_id,
-                version=record.version,
-            )
-            save_index(bm25, record.kb_id, record.version)
         task_store.update(
             task_id,
             status=TaskStatus.success,
