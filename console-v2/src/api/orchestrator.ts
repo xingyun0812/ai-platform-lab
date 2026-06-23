@@ -46,7 +46,9 @@ export interface ExecuteWorkflowResult {
 
 export const orchestratorApi = {
   list: () =>
-    apiClient.get<WorkflowDefinition[]>("/internal/orchestrator/workflows").then((r) => r.data),
+    apiClient
+      .get<{ workflows: WorkflowDefinition[] }>("/internal/orchestrator/workflows")
+      .then((r) => r.data.workflows ?? []),
 
   get: (workflowId: string) =>
     apiClient.get<WorkflowDefinition>(`/internal/orchestrator/workflows/${workflowId}`).then((r) => r.data),

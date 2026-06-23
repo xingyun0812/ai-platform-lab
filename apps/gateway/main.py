@@ -16,6 +16,8 @@ from apps.gateway.audit_action_routes import router as audit_action_router
 from apps.gateway.audit_routes import router as audit_router
 from apps.gateway.auth_routes import router as auth_router
 from apps.gateway.billing_routes import router as billing_router
+from apps.gateway.console_routes import rag_router as console_rag_router
+from apps.gateway.console_routes import router as console_router
 from apps.gateway.embedding_routes import router as embedding_router
 from apps.gateway.hitl_routes import router as hitl_router
 from apps.gateway.http_utils import json_error, resolve_tenant
@@ -321,9 +323,15 @@ def create_app() -> FastAPI:
     app.include_router(feedback_router)
     app.include_router(quality_router)
     app.include_router(feedback_loop_router)
-    console_dir = Path(__file__).resolve().parents[2] / "apps" / "console"
-    if console_dir.is_dir():
-        app.mount("/console", StaticFiles(directory=str(console_dir), html=True), name="console")
+    app.include_router(console_router)
+    app.include_router(console_rag_router)
+    console_static = Path(__file__).resolve().parents[2] / "apps" / "console" / "static"
+    if console_static.is_dir() and (console_static / "index.html").is_file():
+        app.mount("/console", StaticFiles(directory=str(console_static), html=True), name="console")
+    else:
+        console_dir = Path(__file__).resolve().parents[2] / "apps" / "console"
+        if console_dir.is_dir():
+            app.mount("/console", StaticFiles(directory=str(console_dir), html=True), name="console")
 
     @app.middleware("http")
     async def access_log(request: Request, call_next):

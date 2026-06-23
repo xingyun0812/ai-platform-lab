@@ -1,7 +1,10 @@
 import axios, { AxiosError } from "axios";
 import { message } from "antd";
 
-const BASE_URL = (import.meta as Record<string, unknown> & { env?: Record<string, string> }).env?.VITE_API_BASE ?? "/";
+const BASE_URL = import.meta.env.VITE_API_BASE ?? "/";
+const CONSOLE_BASE = import.meta.env.BASE_URL.replace(/\/$/, "") || "/console";
+
+const loginPath = () => `${CONSOLE_BASE}/login`;
 
 const apiClient = axios.create({
   baseURL: BASE_URL,
@@ -35,7 +38,7 @@ apiClient.interceptors.response.use(
     if (error.response?.status === 401) {
       localStorage.removeItem("token");
       localStorage.removeItem("tenant_id");
-      window.location.href = "/login";
+      window.location.href = loginPath();
       return Promise.reject(error);
     }
 

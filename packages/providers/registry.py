@@ -7,6 +7,20 @@ from pathlib import Path
 from typing import Any
 
 import yaml
+from dotenv import load_dotenv
+
+# Load .env into os.environ so api_key_env lookups work for any env var name
+_dotenv_loaded = False
+
+
+def _ensure_dotenv():
+    global _dotenv_loaded
+    if not _dotenv_loaded:
+        _dotenv_loaded = True
+        env_path = Path(__file__).resolve().parents[2] / ".env"
+        if env_path.is_file():
+            load_dotenv(dotenv_path=env_path)
+
 
 from apps.gateway.settings import REPO_ROOT, get_settings
 
@@ -36,6 +50,15 @@ def _read_yaml(path: Path) -> dict[str, Any]:
     return data if isinstance(data, dict) else {}
 
 
+def _resolve_api_key(key_env: str) -> str:
+    """Resolve API key from environment (includes .env via dotenv)."""
+    _ensure_dotenv()
+    api_key = os.environ.get(key_env, "") if key_env else ""
+    if not api_key and key_env == "LLM_API_KEY":
+        api_key = (get_settings().llm_api_key or "").strip()
+    return api_key
+
+
 @lru_cache
 def get_provider_matrix() -> ProviderMatrix:
     path = REPO_ROOT / "config" / "providers.yaml"
@@ -49,9 +72,7 @@ def get_provider_matrix() -> ProviderMatrix:
                 continue
             base_url = str(cfg.get("base_url", "")).rstrip("/")
             key_env = str(cfg.get("api_key_env", "LLM_API_KEY"))
-            api_key = os.environ.get(key_env, "") if key_env else ""
-            if not api_key and key_env == "LLM_API_KEY":
-                api_key = (get_settings().llm_api_key or "").strip()
+            api_key = _resolve_api_key(key_env)
             models = cfg.get("models") or {}
             if not isinstance(models, dict):
                 continue

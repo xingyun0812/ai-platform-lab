@@ -21,14 +21,14 @@ Object.defineProperty(window, "matchMedia", {
 });
 
 // Mock ResizeObserver (required by recharts)
-global.ResizeObserver = class ResizeObserver {
+globalThis.ResizeObserver = class ResizeObserver {
   observe() {}
   unobserve() {}
   disconnect() {}
-};
+} as typeof ResizeObserver;
 
 // Mock IntersectionObserver
-global.IntersectionObserver = class IntersectionObserver {
+globalThis.IntersectionObserver = class IntersectionObserver {
   observe() {}
   unobserve() {}
   disconnect() {}
@@ -38,7 +38,7 @@ global.IntersectionObserver = class IntersectionObserver {
   root = null;
   rootMargin = "";
   thresholds = [];
-};
+} as typeof IntersectionObserver;
 
 // Mock localStorage
 const localStorageMock = (() => {
