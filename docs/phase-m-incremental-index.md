@@ -1,10 +1,10 @@
 # Phase M — RAG 增量索引做满
 
-> **状态**：✅ 已交付（堆叠 PR #68–#71 补录；待 tag `phase-m-incremental-index`）  
-> **GitHub**：#63–#66 · Milestone `Phase M — 增量索引`  
+> **状态**：✅ 已完成 · tag: `phase-m-incremental-index`（2026-06-23）  
+> **GitHub**：#63–#66 · PR #68–#71 · Milestone `Phase M — 增量索引`  
 > **备份**：`backup/phase-m-pre-split`
-> **前置**：Phase L #55 向量侧 chunk 指纹增量 ✅；BM25 仍全量 scroll 重建  
-> **Tag**（完成后）：`phase-m-incremental-index`
+> **前置**：Phase L #55 向量侧 chunk 指纹增量 ✅  
+> **Tag**：`phase-m-incremental-index`
 
 ## 目标
 
