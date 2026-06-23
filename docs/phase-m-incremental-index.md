@@ -1,6 +1,6 @@
 # Phase M — RAG 增量索引做满
 
-> **状态**：进行中（堆叠 PR 补录）  
+> **状态**：✅ 已交付（堆叠 PR #68–#71 补录；待 tag `phase-m-incremental-index`）  
 > **GitHub**：#63–#66 · Milestone `Phase M — 增量索引`  
 > **备份**：`backup/phase-m-pre-split`
 > **前置**：Phase L #55 向量侧 chunk 指纹增量 ✅；BM25 仍全量 scroll 重建  
@@ -19,10 +19,10 @@
 
 | # | 标题 | 状态 |
 |---|------|------|
-| M1 | BM25 按 source 增量 merge | ⏳ #63 |
-| M2 | purge-source 清理向量+BM25 | ⏳ #64 |
-| M3 | 任务 API + 指标暴露增量统计 | ⏳ #65 |
-| M4 | demo 二次索引断言 + 单测 | ⏳ #66 |
+| M1 | BM25 按 source 增量 merge | ✅ #63 |
+| M2 | purge-source 清理向量+BM25 | ✅ #64 |
+| M3 | 任务 API + 指标暴露增量统计 | ✅ #65 |
+| M4 | demo 二次索引断言 + 单测 | ✅ #66 |
 
 ## 原理
 
