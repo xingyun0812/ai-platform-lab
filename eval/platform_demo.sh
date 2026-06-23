@@ -85,6 +85,27 @@ if $WITH_LLM; then
     fi
     sleep 1
   done
+  echo "==> re-index lab-demo v1 (incremental skip)"
+  resp2=$(curl -sf "${hdr[@]}" -H "Content-Type: application/json" \
+    -d '{"kb_id":"lab-demo","version":1,"source_uri":"samples/hello.txt"}' \
+    "$BASE_URL/internal/index")
+  task_id2=$(python3 -c "import json,sys; print(json.load(sys.stdin).get('task_id',''))" <<<"$resp2")
+  echo "    task_id=$task_id2"
+  skipped=0
+  for _ in $(seq 1 30); do
+    body=$(curl -sf "${hdr[@]}" "$BASE_URL/internal/index/tasks/$task_id2")
+    st=$(python3 -c "import json,sys; print(json.load(sys.stdin).get('status',''))" <<<"$body")
+    if [[ "$st" == "success" || "$st" == "failed" ]]; then
+      skipped=$(python3 -c "import json,sys; d=json.load(sys.stdin); print(int(d.get('skipped_chunks') or 0))" <<<"$body")
+      echo "    re-index status=$st skipped_chunks=$skipped"
+      break
+    fi
+    sleep 1
+  done
+  if [[ "${skipped:-0}" -lt 1 ]]; then
+    echo "ERROR: 二次索引期望 skipped_chunks >= 1，实际=$skipped" >&2
+    exit 1
+  fi
   echo "==> rag query"
   curl -sf "${hdr[@]}" -H "Content-Type: application/json" \
     -d "{\"tenant_id\":\"$TENANT\",\"kb_id\":\"lab-demo\",\"version\":1,\"query\":\"RAG 数据管道\",\"min_score\":0.2}" \
