@@ -1,7 +1,8 @@
 # 本地 LLM 联调配置
 
-> **用途**：把 Gateway / Agent / SDK 接到内网 OpenAI 兼容聚合网关。  
-> **安全**：真实 Key 只写在根目录 `.env`（已 gitignore），勿提交仓库。
+> **用途**：把 Gateway / Agent / SDK / RAG 接到内网 OpenAI 兼容聚合网关。  
+> **模型清单**：[`config/upstream_models.yaml`](../config/upstream_models.yaml)  
+> **安全**：真实 Key 只写在根目录 `.env`（已 gitignore）。
 
 ---
 
@@ -10,108 +11,95 @@
 | 项 | 值 |
 |----|-----|
 | Base URL | `http://10.212.129.94:8090/v1` |
-| 协议 | OpenAI 兼容 `POST /v1/chat/completions` |
-| 鉴权 | `Authorization: Bearer <LLM_API_KEY>` |
-
-`.env` 最小配置：
-
-```bash
-cp .env.example .env
-# 编辑 .env：
-LLM_BASE_URL=http://10.212.129.94:8090/v1
-LLM_API_KEY=sk-your-key-here
-DEFAULT_MODEL=deepseek-v4-flash
-AGENT_MODEL=deepseek-v4-flash
-RAG_QUERY_MODEL=deepseek-v4-flash
-```
+| Chat | `POST /v1/chat/completions` |
+| Embedding | `POST /v1/embeddings` |
+| Rerank | `POST /v1/rerank` |
 
 ---
 
-## 可用模型（已实测 2026-06）
+## `.env` 推荐配置
 
-| 上游模型名 | 网关别名 | 场景 |
-|-----------|---------|------|
-| `deepseek-v4-flash` | `chat-fast` / `chat-fast-v4` | 默认快模型，Demo / Agent / RAG 生成 |
-| `deepseek-v4-flash-thinking` | `chat-thinking` / `chat-strong` | 推理增强 |
-| `minimax-m2.7` | `chat-minimax` | 备选模型 |
+```bash
+LLM_BASE_URL=http://10.212.129.94:8090/v1
+LLM_API_KEY=sk-your-key-here
 
-映射定义：`config/models.yaml`  
-租户白名单：`config/tenants.yaml`（`demo-a` / `admin` 已包含上述模型）
+# Chat 默认
+DEFAULT_MODEL=deepseek-v4-flash
+AGENT_MODEL=deepseek-v4-flash
+RAG_QUERY_MODEL=deepseek-v4-flash
+
+# Embedding（RAG 索引/检索）
+EMBEDDING_MODEL=Qwen/Qwen3-Embedding-8B
+EMBEDDING_DIMENSIONS=4096
+QDRANT_COLLECTION=ai_platform_lab_qwen8b
+
+# Rerank（可选）
+RAG_RERANK_API_URL=http://10.212.129.94:8090/v1/rerank
+RAG_RERANK_MODEL=Qwen3-Reranker-8B
+# RAG_RERANK_ENABLED=true
+# RAG_RERANK_MODE=api
+```
+
+> **注意**：Embedding 为 **4096 维**，与旧 `text-embedding-3-small`（1536）不兼容。换新 `QDRANT_COLLECTION` 或清空 Qdrant 后重新索引。
+
+---
+
+## 模型一览
+
+### Chat（别名 → 上游 id）
+
+| 别名 | 上游模型 | 用途 |
+|------|---------|------|
+| `chat-fast` | `deepseek-v4-flash` | 默认快模型 |
+| `chat-thinking` | `deepseek-v4-flash-thinking` | 推理 |
+| `chat-minimax` | `minimax-m2.7` | 备选 |
+| `chat-deepseek-r1` | `deepseek-ai/DeepSeek-R1` | 强推理 |
+| `chat-qwen3-32b` | `Qwen/Qwen3-32B` | Qwen 文本 |
+| `chat-qwen3-235b` | `Qwen/Qwen3-235B-A22B-Instruct` | 大模型 |
+| … | 见 `config/models.yaml` | |
+
+### Embedding
+
+| 模型 | 维度 | API |
+|------|------|-----|
+| `Qwen/Qwen3-Embedding-8B` | **4096** | `/v1/embeddings` |
+
+### Rerank
+
+| 模型 | API | 说明 |
+|------|-----|------|
+| `Qwen3-Reranker-8B` | `/v1/rerank` | 勿用 `Qwen/` 前缀 |
 
 ---
 
 ## 快速验证
 
-### 1. 直连上游
-
 ```bash
-curl -s http://10.212.129.94:8090/v1/chat/completions \
+# Embedding
+curl -s http://10.212.129.94:8090/v1/embeddings \
   -H "Authorization: Bearer $LLM_API_KEY" \
   -H "Content-Type: application/json" \
-  -d '{"model":"deepseek-v4-flash","messages":[{"role":"user","content":"ping"}],"max_tokens":16}'
-```
+  -d '{"model":"Qwen/Qwen3-Embedding-8B","input":"hello"}' | python3 -c "import json,sys;d=json.load(sys.stdin);print(len(d['data'][0]['embedding']))"
+# 期望输出: 4096
 
-### 2. 经本仓库 Gateway
-
-```bash
-uvicorn apps.gateway.main:app --host 127.0.0.1 --port 8000
-
-curl -s http://127.0.0.1:8000/v1/chat/completions \
+# Rerank
+curl -s http://10.212.129.94:8090/v1/rerank \
+  -H "Authorization: Bearer $LLM_API_KEY" \
   -H "Content-Type: application/json" \
-  -H "X-Tenant-Id: admin" \
-  -H "Authorization: Bearer sk-tenant-admin-change-me" \
-  -d '{"model":"chat-fast","messages":[{"role":"user","content":"ping"}],"max_tokens":16}'
-```
+  -d '{"model":"Qwen3-Reranker-8B","query":"hello","documents":["hi","bye"]}'
 
-### 3. 平台冒烟（有 Key）
-
-```bash
-export LLM_API_KEY=sk-your-key-here   # 或已在 .env
+# Chat（经 Gateway）
+uvicorn apps.gateway.main:app --host 127.0.0.1 --port 8000
 ./eval/platform_demo.sh --with-llm
-python eval/sdk_smoke.py
 ```
 
 ---
 
-## 能力边界（重要）
+## 相关文件
 
-| 能力 | 该网关 | 说明 |
-|------|--------|------|
-| Chat | ✅ | 三模型均可 |
-| Agent | ✅ | 建议 `deepseek-v4-flash`，需 function calling 支持 |
-| Embeddings | ❌ | `/v1/embeddings` 返回 `invalid_model` |
-| RAG 索引/检索 | ⚠️ | 依赖 embedding；**当前网关下 RAG live 段会失败** |
-| Console / 治理 API | ✅ | 不依赖上游 |
-
-**面试 Demo 建议**：
-
-- **有 Key**：Console + Chat + Agent + Audit（跳过或口头说明 RAG embedding 限制）
-- **完整 RAG 故事**：需另配 embedding 服务，或等 Phase L 增量方案
-
----
-
-## 模型别名一览
-
-```mermaid
-%%{init: {'theme': 'dark', 'themeVariables': { 'primaryColor': '#1e3a5f', 'primaryTextColor': '#e6edf3', 'lineColor': '#8b949e'}}}%%
-flowchart LR
-  U["客户端 model 参数"]
-  A["config/models.yaml 别名"]
-  G["Gateway 路由"]
-  P["10.212.129.94:8090"]
-
-  U --> A --> G --> P
-
-  U -.->|"chat-fast"| A
-  A -.->|"deepseek-v4-flash"| G
-```
-
----
-
-## 相关文档
-
-| 文档 | 说明 |
+| 文件 | 内容 |
 |------|------|
-| [demo-walkthrough.md](./demo-walkthrough.md) | 15 分钟演示 |
-| [interview-narrative.md](./interview-narrative.md) | 面试口述 |
-| [.env.example](../.env.example) | 全量环境变量 |
+| `config/upstream_models.yaml` | 网关模型全集 + 说明 |
+| `config/models.yaml` | Chat 别名与 fallback |
+| `config/embedding_models.yaml` | Embedding 注册表 |
+| `config/rag.yaml` | Rerank 默认 model 名 |

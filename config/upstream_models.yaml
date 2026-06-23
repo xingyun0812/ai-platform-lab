@@ -1,0 +1,60 @@
+# 内网聚合网关可用模型清单（10.212.129.94:8090）
+# 仅文档 + 脚本参考；路由别名见 config/models.yaml
+# Key 走 .env LLM_API_KEY，勿写入本文件
+
+gateway:
+  base_url: http://10.212.129.94:8090/v1
+
+# --- Chat / LLM → POST /v1/chat/completions ---
+chat:
+  default: deepseek-v4-flash
+  recommended:
+    - id: deepseek-v4-flash
+      alias: chat-fast
+      notes: 默认快模型，1M context，工具调用
+    - id: deepseek-v4-flash-thinking
+      alias: chat-thinking
+      notes: 推理增强，300K context
+    - id: minimax-m2.7
+      alias: chat-minimax
+      notes: 200K context，工具调用
+  extended:
+    - id: ShanDongHeDian/DeepSeek-V3.1
+      alias: chat-deepseek-v3.1
+    - id: deepseek-ai/DeepSeek-V3
+      alias: chat-deepseek-v3
+    - id: deepseek-ai/DeepSeek-V3.2
+      alias: chat-deepseek-v3.2
+    - id: deepseek-ai/DeepSeek-R1
+      alias: chat-deepseek-r1
+    - id: Qwen/Qwen3-32B
+      alias: chat-qwen3-32b
+    - id: Qwen/Qwen3-235B-A22B-Instruct
+      alias: chat-qwen3-235b
+    - id: HeBeiGongSi/Qwen3-32B
+      alias: chat-qwen3-32b-hebei
+    - id: HeBeiGongSi/Qwen3-30B-A3B-Instruct
+      alias: chat-qwen3-30b-moe
+    - id: Pro/MiniMaxAI/MiniMax-M2.5
+      alias: chat-minimax-m2.5
+  vision:
+    - id: Qwen/Qwen3.6-27B
+      alias: chat-qwen3.6-vl
+    - id: Qwen/Qwen2.5-VL-72B-Instruct
+      alias: chat-qwen2.5-vl
+
+# --- Embedding → POST /v1/embeddings ---
+embedding:
+  default: Qwen/Qwen3-Embedding-8B
+  dimensions: 4096
+  models:
+    - id: Qwen/Qwen3-Embedding-8B
+      dimensions: 4096
+
+# --- Rerank → POST /v1/rerank ---
+rerank:
+  default: Qwen3-Reranker-8B
+  api_path: /v1/rerank
+  models:
+    - id: Qwen3-Reranker-8B
+      notes: 勿用 Qwen/Qwen3-Reranker-8B（网关报 invalid_model）

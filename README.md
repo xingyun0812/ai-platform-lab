@@ -477,7 +477,7 @@ r = c.chat.completions.create(model="gpt-4o-mini", messages=[{"role":"user","con
 | Phase L 工程深度 | [phase-l-engineering-depth.md](docs/phase-l-engineering-depth.md) | [phase-l-priority-roi.md](docs/phase-l-priority-roi.md) |
 | Phase L Console ✅ | [phase-l-console-integration.md](docs/phase-l-console-integration.md) | [demo-walkthrough.md](docs/demo-walkthrough.md) |
 | Phase L Wave1 ✅ | [interview-narrative.md](docs/interview-narrative.md) | `./eval/platform_demo.sh` · `eval/sdk_smoke.py` |
-| 本地 LLM 联调 | [local-llm-setup.md](docs/local-llm-setup.md) | `.env` + `config/models.yaml` |
+| 本地 LLM 联调 | [local-llm-setup.md](docs/local-llm-setup.md) | [config/upstream_models.yaml](config/upstream_models.yaml) |
 | Phase L Issues | [issues-backlog-phase-l.md](docs/issues-backlog-phase-l.md) | — |
 | Phase A 可内测 | [phase-a-internal-beta.md](docs/phase-a-internal-beta.md) | [phase-a-build-and-code-guide.md](docs/phase-a-build-and-code-guide.md) |
 | Phase B1 计费 | [phase-b-small-production.md](docs/phase-b-small-production.md) | [phase-b-build-and-code-guide.md](docs/phase-b-build-and-code-guide.md) |

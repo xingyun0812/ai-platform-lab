@@ -15,9 +15,10 @@ hybrid_rrf_k: 60
 rerank_enabled: false
 rerank_mode: stub
 rerank_top_n: 10
-# rerank_mode=api 时使用（Key 走环境变量 RAG_RERANK_API_KEY 或 LLM_API_KEY）
+# rerank_mode=api 时使用（Key 走 RAG_RERANK_API_KEY 或 LLM_API_KEY）
+# 内网网关：POST {LLM_BASE_URL}/rerank ，模型名 Qwen3-Reranker-8B
 rerank_api_url: ""
-rerank_model: ""
+rerank_model: Qwen3-Reranker-8B
 
 # 按 kb_id 配置金丝雀；canary_percent=0 时 100% stable_version（或 latest）
 kb_routing:

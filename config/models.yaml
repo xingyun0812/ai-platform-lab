@@ -1,13 +1,32 @@
-# 模型路由：别名映射 + 失败降级链
-# 上游：内网 OpenAI 兼容网关（见 .env LLM_BASE_URL）
-# 可用模型：deepseek-v4-flash-thinking | deepseek-v4-flash | minimax-m2.7
+# 模型路由：别名 → 内网网关真实 model id
+# 网关：http://10.212.129.94:8090/v1（见 .env / config/upstream_models.yaml）
 
 aliases:
+  # 推荐默认 trio
   chat-fast: deepseek-v4-flash
   chat-strong: deepseek-v4-flash-thinking
   chat-thinking: deepseek-v4-flash-thinking
   chat-fast-v4: deepseek-v4-flash
   chat-minimax: minimax-m2.7
+
+  # DeepSeek 系列
+  chat-deepseek-v3.1: ShanDongHeDian/DeepSeek-V3.1
+  chat-deepseek-v3: deepseek-ai/DeepSeek-V3
+  chat-deepseek-v3.2: deepseek-ai/DeepSeek-V3.2
+  chat-deepseek-r1: deepseek-ai/DeepSeek-R1
+
+  # Qwen 文本
+  chat-qwen3-32b: Qwen/Qwen3-32B
+  chat-qwen3-235b: Qwen/Qwen3-235B-A22B-Instruct
+  chat-qwen3-32b-hebei: HeBeiGongSi/Qwen3-32B
+  chat-qwen3-30b-moe: HeBeiGongSi/Qwen3-30B-A3B-Instruct
+
+  # MiniMax
+  chat-minimax-m2.5: Pro/MiniMaxAI/MiniMax-M2.5
+
+  # 视觉（需多模态消息，RAG 默认未接）
+  chat-qwen3.6-vl: Qwen/Qwen3.6-27B
+  chat-qwen2.5-vl: Qwen/Qwen2.5-VL-72B-Instruct
 
 fallback_chains:
   deepseek-v4-flash:
@@ -19,5 +38,11 @@ fallback_chains:
   minimax-m2.7:
     - minimax-m2.7
     - deepseek-v4-flash
+  Qwen/Qwen3-32B:
+    - Qwen/Qwen3-32B
+    - deepseek-v4-flash
+  deepseek-ai/DeepSeek-R1:
+    - deepseek-ai/DeepSeek-R1
+    - deepseek-v4-flash-thinking
   default:
     - deepseek-v4-flash
