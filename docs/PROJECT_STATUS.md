@@ -198,8 +198,11 @@ roadmap.md → GitHub Issue → feature branch → PR → merge → tag
 | 🥉 P3 | #59 | Agent Vertical | ✅ |
 | 🥉 P3 | #60 | Baseline + CI gate | ✅ |
 | P4 | #61 | 反馈飞轮 E2E | ✅ |
+| P4 | #62 | Demo + 面试叙事 | ✅ **Phase L 完成** |
 
 Issue 正文与 GitHub 映射见 [issues-backlog-phase-l.md](./issues-backlog-phase-l.md)。
+
+> **Phase L**：#53～#63 全部交付，可打 tag `phase-l-engineering-depth`。
 
 ## 11. 核心面试讲法
 

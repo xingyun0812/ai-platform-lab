@@ -21,8 +21,8 @@ Milestone 建议：`Phase L — 工程深度与面试叙事`
 | 57 | [#41](https://github.com/xingyun0812/ai-platform-lab/issues/41) | P2 | 金丝雀回滚 | ✅ closed |
 | 58 | [#42](https://github.com/xingyun0812/ai-platform-lab/issues/42) | P3 | Agent 三率 | ✅ closed |
 | 59 | [#43](https://github.com/xingyun0812/ai-platform-lab/issues/43) | P3 | Agent Vertical | ✅ closed |
-| 60 | [#44](https://github.com/xingyun0812/ai-platform-lab/issues/44) | P3 | Baseline + CI | ⏳ open |
-| 61 | [#45](https://github.com/xingyun0812/ai-platform-lab/issues/45) | P4 | 反馈飞轮 E2E | ⏳ open |
+| 60 | [#44](https://github.com/xingyun0812/ai-platform-lab/issues/44) | P3 | Baseline + CI | ✅ closed |
+| 61 | [#45](https://github.com/xingyun0812/ai-platform-lab/issues/45) | P4 | 反馈飞轮 E2E | ✅ closed |
 | 62 | [#46](https://github.com/xingyun0812/ai-platform-lab/issues/46) | P1 | Demo + 面试手册 | ✅ closed |
 | 63 | [#47](https://github.com/xingyun0812/ai-platform-lab/issues/47) | P1 | SDK smoke | ✅ closed |
 
@@ -491,11 +491,11 @@ Phase A～K 已交付，但 `roadmap.md` §已知限制、`gap-analysis-diagram.
 ### 验收标准
 
 - [x] Console build + 挂载（#62-console，已完成）
-- [ ] `docs/demo-walkthrough.md` — 全链路步骤与话术（已建骨架，需 live 勾选）
-- [ ] `docs/interview-narrative.md` — 10 分钟口述 + Q&A + 诚实边界
-- [ ] `eval/platform_demo.sh` — `--no-llm` / `--with-llm` 全绿
-- [ ] `acceptance_smoke.py` 可选 `--platform-demo` 段
-- [ ] `docs/roadmap.md` — #62 ✅
+- [x] `docs/demo-walkthrough.md` — 全链路步骤与话术（live 勾选 2026-06-23）
+- [x] `docs/interview-narrative.md` — 10 分钟口述 + Q&A + 诚实边界
+- [x] `eval/platform_demo.sh` — `--no-llm` / `--with-llm` 全绿
+- [x] `acceptance_smoke.py` 可选 `--platform-demo` 段
+- [x] `docs/roadmap.md` — #62 ✅
 
 ### 依赖
 
