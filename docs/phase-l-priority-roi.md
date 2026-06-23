@@ -14,7 +14,7 @@
 | **SDK 端到端 smoke** | 本文 §第一优先 | #63 | ❌ 未建 | `eval/sdk_smoke.py` | ✅ |
 | **面试叙事手册** | [interview-narrative.md](./interview-narrative.md) | #62 | ❌ 未建 | — | ✅ |
 | **文档债务清理** | 本文 §第五优先 | #53 | ❌ 未建 | roadmap/gap 已同步 | ✅ |
-| **RAG 深化**（rerank/增量/Judge/回滚） | phase-l §L1 | #54～#57 | ❌ 未建 | 仍为 stub | ⏳ Wave2 |
+| **RAG 深化**（rerank/增量/Judge/回滚） | phase-l §L1 | #54～#57 | ❌ 未建 | rerank/judge/guard ✅ | ✅ Wave2 |
 | **Agent 深化**（三率/vertical） | phase-l §L2 | #58～#60 | ❌ 未建 | 部分有 | ⏳ |
 | **反馈飞轮 E2E** | phase-l §L3 | #61 | ❌ 未建 | 代码有、未 live 验证 | ⏳ |
 | **多模态 Embedding** | phase-l 非目标 | Phase M / 原 #36 | — | — | 刻意后置 |
