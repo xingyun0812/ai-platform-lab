@@ -1,0 +1,32 @@
+# Phase L #59 — Agent Vertical 预置工作流
+# 启动时由 ORCHESTRATOR_WORKFLOWS_PATH 加载
+
+workflows:
+  - workflow_id: agent-vertical-rag
+    name: "Agent Vertical — RAG 委托"
+    description: "Orchestrator 委托 rag_specialist 检索（#59 演示链第 1 段）"
+    created_by: system
+    start_node: start
+    end_node: end
+    nodes:
+      - node_id: start
+        node_type: start
+      - node_id: delegate_rag
+        node_type: agent_call
+        config:
+          agent_id: rag_specialist
+          task: "检索与「${input.query}」相关的知识库片段并简要总结"
+          timeout: 90
+      - node_id: out
+        node_type: output
+        config:
+          value: "${delegate_rag.output}"
+      - node_id: end
+        node_type: end
+    edges:
+      - from_node: start
+        to_node: delegate_rag
+      - from_node: delegate_rag
+        to_node: out
+      - from_node: out
+        to_node: end

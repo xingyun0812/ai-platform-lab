@@ -40,6 +40,46 @@ from packages.observability.context import get_trace_id
 logger = logging.getLogger("ai_platform.agent.runner")
 
 
+async def _audit_tool_action(
+    *,
+    tenant_id: str,
+    session_id: str,
+    tool_name: str,
+    arguments: dict[str, Any],
+    status: str,
+    result_summary: str = "",
+    approval_id: str | None = None,
+    decided_by: str | None = None,
+) -> None:
+    """记录工具动作审计（失败时静默，不阻塞 Agent 主流程）。"""
+    try:
+        import uuid
+
+        from packages.audit.action_levels import get_classifier
+        from packages.audit.action_logger import ActionAuditEntry, get_action_logger
+
+        audit_logger = get_action_logger()
+        if audit_logger is None:
+            return
+        classifier = get_classifier()
+        level = classifier.classify(tool_name, arguments) if classifier else "unknown"
+        entry = ActionAuditEntry(
+            entry_id=str(uuid.uuid4()),
+            tenant_id=tenant_id,
+            session_id=session_id,
+            tool_name=tool_name,
+            action_level=level,
+            arguments=arguments,
+            result_summary=result_summary[:200],
+            status=status,
+            decided_by=decided_by,
+            approval_id=approval_id,
+        )
+        await audit_logger.log_action(entry)
+    except Exception as exc:
+        logger.debug("audit log skipped: %s", exc)
+
+
 class AgentRunError(Exception):
     def __init__(self, code: str, message: str, detail: dict[str, Any] | None = None) -> None:
         self.code = code
@@ -150,6 +190,14 @@ async def _execute_tool(
             tool_name=tool_name,
             arguments=args,
         )
+        await _audit_tool_action(
+            tenant_id=tenant_id,
+            session_id=session_id,
+            tool_name=tool_name,
+            arguments=args,
+            status="pending",
+            approval_id=approval.approval_id,
+        )
         raise AgentRunError(
             "AGENT_PENDING_APPROVAL",
             f"高风险工具需人工确认: {tool_name}",
@@ -174,6 +222,14 @@ async def _execute_tool(
                 error=None,
                 latency_ms=round(elapsed, 2),
                 attempt=attempt,
+            )
+            await _audit_tool_action(
+                tenant_id=tenant_id,
+                session_id=session_id,
+                tool_name=tool_name,
+                arguments=args,
+                status="success",
+                result_summary=str(result)[:200] if result else "",
             )
             return result, record
         except TimeoutError:
@@ -243,6 +299,16 @@ async def resume_approved_tool(
         min_score=settings.agent_quality_min_score,
     )
     record = record.model_copy(update={"quality_gate": quality_gate})
+    await _audit_tool_action(
+        tenant_id=tenant_id,
+        session_id=session_id,
+        tool_name=approval.tool_name,
+        arguments=approval.arguments,
+        status="success",
+        result_summary=str(result)[:200] if result else "",
+        approval_id=approval_id,
+        decided_by=approval.reviewer,
+    )
 
     state = session_store.get_session_state(tenant_id, session_id)
     tool_msg = {"role": "tool", "tool_call_id": f"resume_{approval_id[:8]}", "content": result}
