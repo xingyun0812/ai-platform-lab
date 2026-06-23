@@ -43,6 +43,22 @@ class IndexTaskView(BaseModel):
     updated_at: datetime
 
 
+class PurgeSourceRequest(BaseModel):
+    kb_id: str = Field(..., min_length=1)
+    version: int = Field(..., ge=1)
+    source_uri: str = Field(..., min_length=1)
+    delete_file: bool = Field(default=False, description="是否同时删除 RAG_DATA_ROOT 下源文件")
+
+
+class PurgeSourceResponse(BaseModel):
+    kb_id: str
+    version: int
+    source_uri: str
+    deleted_vectors: int
+    bm25_docs_remaining: int
+    file_deleted: bool
+
+
 class RetrieveRequest(BaseModel):
     kb_id: str = Field(..., min_length=1)
     version: int | None = Field(default=None, description="省略则使用已索引的最新版本")
