@@ -97,7 +97,12 @@ def main() -> int:
     if not args.skip_rag:
         print("==> rag query")
         try:
-            r = client.rag.query(kb_id="lab-demo", query="hello", version=1)
+            r = client.rag.query(
+                "hello",
+                kb_id="lab-demo",
+                tenant_id=args.tenant,
+                version=1,
+            )
             keys = list(r.keys())[:5] if isinstance(r, dict) else type(r).__name__
             print("    rag ok, keys:", keys)
         except Exception as e:

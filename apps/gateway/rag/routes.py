@@ -28,6 +28,7 @@ from packages.contracts.rag_schemas import (
     RetrieveResponse,
 )
 from packages.rag.rerank import rerank_chunks
+from packages.rag.rerank_providers import provider_config_from_settings
 from packages.rag.retrieval import retrieve_chunks
 from packages.rag.routing import describe_routing
 from packages.rag.vector_store import VectorStore
@@ -254,11 +255,13 @@ async def retrieve(
         return json_error(503, "RETRIEVE_ERROR", str(e))
 
     if settings.rag_rerank_enabled and chunks:
+        rerank_cfg = provider_config_from_settings(settings)
         chunks, _ = rerank_chunks(
             body.query,
             chunks,
             top_n=settings.rag_rerank_top_n,
             mode=settings.rag_rerank_mode,
+            provider_config=rerank_cfg,
         )
 
     return RetrieveResponse(
