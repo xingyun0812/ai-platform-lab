@@ -2,7 +2,8 @@
 
 > **用途**：面试演示、内部分享、验收 Phase L 第一优先「端到端故事」。  
 > **前置**：[phase-l-console-integration.md](./phase-l-console-integration.md)（Console 已挂载）  
-> **自动化**：`./eval/platform_demo.sh --no-llm`（无 Key）/ `--with-llm`（需 Key + Qdrant）
+> **自动化**：`./eval/platform_demo.sh --no-llm`（无 Key）/ `--with-llm`（需 Key + Qdrant）  
+> **Live 勾选**（2026-06-23）：healthz ✅ · Console API ✅ · chat/index ✅ · feedback loop live ✅ · agent vertical 6/6 ✅
 
 ---
 
@@ -146,9 +147,7 @@ python eval/run.py run --run-id demo-v2
 python eval/run.py compare eval/runs/demo-v1.json eval/runs/demo-v2.json
 ```
 
-**话术要点**：大厂 SOP = version bump + 金丝雀 + eval 对比再全量；回滚 `canary_percent=0`。
-
-> Phase L #57 将补：pass_rate 跌破阈值自动回滚。
+**话术要点**：大厂 SOP = version bump + 金丝雀 + eval 对比再全量；回滚 `canary_percent=0` 或自动回滚 Job（#57 ✅）。
 
 ---
 
@@ -176,7 +175,15 @@ curl -s http://127.0.0.1:8000/v1/agent/run \
 
 Console **Agents** 页可看注册 Agent / 委托（`MULTI_AGENT_ENABLED`）。
 
-> Phase L #59：见 [demo-agent-vertical.md](./demo-agent-vertical.md)（Orchestrator + HITL vertical curl 链）。
+> Phase L #59：见 [demo-agent-vertical.md](./demo-agent-vertical.md)（Orchestrator + HITL vertical curl 链，live 6/6 ✅）。
+
+### 反馈飞轮（#61）
+
+```bash
+python eval/feedback_loop_demo.py --live --base-url http://127.0.0.1:8000
+```
+
+点踩 2 条 → `cycle` → 得到 `suggestion_id`（详见 [phase-l-feedback-loop-e2e.md](./phase-l-feedback-loop-e2e.md)）。
 
 ---
 
@@ -184,7 +191,7 @@ Console **Agents** 页可看注册 Agent / 委托（`MULTI_AGENT_ENABLED`）。
 
 主动说（见 [roadmap.md](./roadmap.md) §已知限制、[interview-narrative.md](./interview-narrative.md)）：
 
-- **模块齐、深度不足**：Rerank stub（#54）、Eval 关键词（#56）、金丝雀无自动回滚（#57）
+- **仍浅**：增量索引（#55）、细粒度 RBAC、生产 DLP
 - **opt-in 默认关**：沙箱、OAuth2、语义缓存、Memory Store
 - 多 AZ/GPU 为 Helm 模板级验证
 - 无真实支付/发票
@@ -211,8 +218,9 @@ python eval/sdk_smoke.py \
 ## 一键冒烟
 
 ```bash
-./eval/platform_demo.sh --no-llm          # 不依赖 LLM
+./eval/platform_demo.sh --no-llm          # 不依赖 LLM（含 feedback mock + agent vertical）
 ./eval/platform_demo.sh --with-llm        # 需 Key + 索引
+python eval/acceptance_smoke.py --platform-demo
 python eval/sdk_smoke.py                  # SDK 三接口
 ```
 
@@ -223,6 +231,6 @@ python eval/sdk_smoke.py                  # SDK 三接口
 | Issue | 内容 |
 |-------|------|
 | #62-console | Console 集成 ✅ |
-| #62 | 本脚本 + 面试手册完善 |
+| #62 | 本脚本 + 面试手册 | ✅ live 已验 |
 | #63 | SDK smoke |
 | #54～#57 | RAG 深化后本 Demo 更有说服力 |

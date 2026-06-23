@@ -36,14 +36,14 @@ python eval/feedback_loop_demo.py --live --base-url http://127.0.0.1:8000
 
 ## Live Walkthrough Checklist
 
-- [ ] `curl /healthz` → 200
-- [ ] `POST /internal/feedback/` thumbs_down ×2（admin 租户）
-- [ ] `POST /internal/feedback-loop/cycle/admin` body `{"prompt_id":"rag_query"}`
-  - [ ] `bad_cases_collected` ≥ 1
-  - [ ] `ingested_count` ≥ 1
-  - [ ] `suggestion_id` 非空
-- [ ] `POST /internal/feedback-loop/experiment/{suggestion_id}`（先 apply 或 `--auto-experiment`）
-- [ ] `eval/baselines/bad_cases.jsonl` 有新行（可选核对）
+- [x] `curl /healthz` → 200
+- [x] `POST /internal/feedback/` thumbs_down ×2（admin 租户）
+- [x] `POST /internal/feedback-loop/cycle/admin` body `{"prompt_id":"rag_query"}`
+  - [x] `bad_cases_collected` ≥ 1
+  - [x] `ingested_count` ≥ 1
+  - [x] `suggestion_id` 非空
+- [ ] `POST /internal/feedback-loop/experiment/{suggestion_id}`（需 gateway 内 apply suggestion，或 `--auto-experiment`）
+- [x] `eval/baselines/bad_cases.jsonl` 有新行（live ingest）
 
 ## 验收对照
 

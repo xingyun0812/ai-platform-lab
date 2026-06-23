@@ -220,18 +220,18 @@
 - **PII 脱敏已实现**（`packages/pii/`，REST + 策略 CRUD），非完整 DLP 产品；Guardrails 为规则 + stub 扩展点。
 - **沙箱已实现**（`SANDBOX_ENABLED`），默认关闭；无 gVisor/Firecracker 级隔离。
 
-### RAG（Phase L 深化中）
+### RAG（Phase L #54～#57 ✅）
 
-- Hybrid 检索 + 金丝雀路由 **已有**；**Rerank 仍为词面 stub**（#54）。
-- 索引默认全量重建；**增量索引未做**（#55）。
-- Eval 默认 **关键词匹配**；LLM-as-Judge **未接**（#56）；金丝雀 **无自动回滚 Job**（#57）。
+- Hybrid 检索 + 金丝雀路由 + **真 Rerank API**（`RAG_RERANK_MODE=api`）。
+- 索引仍以全量重建为主；**增量索引有限**（#55 部分交付）。
+- Eval 支持 **LLM-as-Judge**（#56）；金丝雀 **自动回滚 Job**（#57）。
 
-### Agent
+### Agent（Phase L #58～#60 ✅）
 
 - **内置工具 + MCP 桥接已有**（`config/mcp_tools.json` / `/internal/mcp/servers`），非公开市场/动态注册生态。
 - **HITL 完整工作流已有**（审批 REST + destructive 强制）；长任务异步回调 **无**。
 - **Redis Session 已支持**（`REDIS_URL`）；**Memory Store** 需 `MEMORY_STORE_ENABLED`；跨租户长记忆治理仍浅。
-- **Multi-Agent + Orchestrator 已实现**（opt-in）；Console Vertical 演示链 **Phase L #59 待补**。
+- **Multi-Agent + Orchestrator + Vertical 演示链**（#59）；Agent 四率 + CI gate（#58/#60）。
 
 ### 模型服务
 
@@ -240,8 +240,8 @@
 
 ### 评测与 SRE
 
-- CI：lint + 冒烟 + baseline；全量 RAG/Agent live eval **需 LLM Key**。
-- **反馈飞轮代码已有**（bad_cases → eval → prompt 建议）；**端到端 live 闭环未验收**（#61）。
+- CI：lint + 冒烟 + RAG/Agent baseline gate；全量 live eval **需 LLM Key**。
+- **反馈飞轮 live 闭环已验收**（#61 `feedback_loop_demo --live`）。
 - Prometheus/Grafana 面板 **已有**；SLO/错误预算/on-call runbook **无**。
 
 ### 开发者体验
@@ -261,7 +261,7 @@
 3. **Agent 治理**：`allowed_tools` 在网关 enforce，轨迹可审计，HITL stub 可扩展。
 4. **评测回归**：`baseline.jsonl` + `eval/run.py compare` 防退化，轨迹 eval 覆盖工具选择准确性。
 5. **成本管控**：Token 计量 + 预算拦截 + 路由降级 + 语义缓存（opt-in）形成飞轮。
-6. **诚实边界**：引用本文「已知限制」— 强调 **模块齐、深度不足**（Rerank/Judge stub、反馈飞轮未 live 验收）。
+6. **诚实边界**：引用本文「已知限制」— 强调 **模块齐、增量索引/RBAC 仍浅**；Phase L 已补齐 Rerank/Judge/回滚/Agent 三率/飞轮 live。
 
 ---
 

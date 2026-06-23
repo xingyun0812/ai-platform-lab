@@ -99,4 +99,10 @@ else
     --skip-chat --skip-rag --skip-agent
 fi
 
+echo "==> feedback loop mock"
+python3 eval/feedback_loop_demo.py --mock
+
+echo "==> agent vertical smoke"
+python3 eval/agent_vertical_smoke.py
+
 echo "OK platform_demo ($($WITH_LLM && echo with-llm || echo no-llm))"
