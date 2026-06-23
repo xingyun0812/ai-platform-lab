@@ -2,23 +2,37 @@
 
 感谢你愿意为 ai-platform-lab 贡献代码！本文档说明协作流程，让每位贡献者都能高效、规范地推进。
 
+> **硬性规定**：所有功能、修复、重构 **必须** 走 Issue → feature branch → PR → merge。**禁止** 直接向 `main` push 业务代码（维护者、贡献者、AI Agent 均适用）。Cursor 规则见 [.cursor/rules/issue-driven-workflow.mdc](.cursor/rules/issue-driven-workflow.mdc)。
+
 ---
 
-## 1. Issue 驱动开发（核心流程）
+## 1. Issue 驱动开发（核心流程 — 强制执行）
 
 本项目采用 **Issue 驱动开发**：每个功能 / 修复都先开 Issue，再开 PR，最后打 Tag。
 
 ```
-roadmap.md (规划)
+docs/roadmap.md / issues-backlog-*.md（规划）
     ↓
-GitHub Issue (认领)
+GitHub Issue（创建 + 认领，含验收标准）
     ↓
-feature branch (开发)
+feature branch（从最新 main 拉出）
     ↓
-Pull Request (评审)
+Pull Request（CI 绿 + Review）
     ↓
-main + tag (合并打标)
+merge main（禁止直推 main）
+    ↓
+phase-<name> tag（Phase 完成时）
 ```
+
+### 1.0 红线（违反则 PR 关闭 / revert）
+
+| 行为 | 是否允许 |
+|------|----------|
+| 无 Issue 开功能 PR | ❌ |
+| `git push origin main` 提交功能/修复 | ❌ |
+| 一个 PR 关闭多个无关 Issue（无依赖关系） | ❌ |
+| 先合 main 再补 Issue「记账」 | ❌（历史补录见 §1.6） |
+| 文档 typo、纯标点 | ✅ 可直 PR，仍建议关联 Issue |
 
 ### 1.1 认领 Issue
 
@@ -84,8 +98,20 @@ git commit -m "refactor: 抽取 PII 检测的公共 pattern 加载逻辑"
 
 ### 1.5 合并打 Tag
 
-- PR 合并到 `main` 后，Issue 自动关闭
+- PR 合并到 `main` 后，Issue 由 `closes #N` 自动关闭
 - 一个 Phase 全部 Issue 完成后，维护者打 `phase-<letter>-<name>` 标签
+- **Tag 打在 merge 后的 `main` 上**，不打在 feature branch
+
+### 1.6 历史补录（仅维护者一次性操作）
+
+若因失误已直推 `main`，**不得** 仅补 Issue 了事。维护者应：
+
+1. 在 GitHub 补开对应 Issue（正文来自 `docs/issues-backlog-*.md`）
+2. 从直推前 commit 建 `backup/*` 分支保留现场
+3. `main` 回退到直推前，按 Issue **拆成堆叠 PR** 重新合并
+4. 在 Issue 评论中附上备份分支与最终 PR 链接
+
+Phase M（增量索引）按此流程补录：`backup/phase-m-pre-split`，Issue #63–#66。
 
 ---
 
@@ -156,10 +182,10 @@ python3 eval/acceptance_smoke.py
 | G (#35) | 历史已合并 | ✅ tag `phase-g-embedding` |
 | H (#37-#40) | 历史已合并 | ✅ tag `phase-h-agent-advanced` |
 | I (#41-#44) | 历史已合并 | ✅ tag `phase-i-security` |
-| **J (#45-#48)** | **待创建 Issue** | ⏳ |
-| **K (#49-#52)** | **待创建 Issue** | ⏳ |
+| **L (#53-#63)** | #37-#47 等 | ✅ tag `phase-l-engineering-depth` |
+| **M (M1-M4)** | [#63](https://github.com/xingyun0812/ai-platform-lab/issues/63)–[#66](https://github.com/xingyun0812/ai-platform-lab/issues/66) | ⏳ 堆叠 PR 补录中 |
 
-> **注意**：roadmap.md 中的 `#29`-`#52` 是规划编号。从 Phase J 开始，GitHub Issue 编号 = GitHub 实际分配的编号（不一定是 45）。
+> **注意**：roadmap 中的 `#NN` 为规划编号；GitHub Issue 以实际分配为准。从 Phase J 起，**每个 Issue 必须对应一个 PR**。
 
 ---
 
@@ -205,7 +231,13 @@ python3 eval/acceptance_smoke.py
 ## 7. FAQ
 
 **Q: 我可以不开 Issue 直接提 PR 吗？**
-A: 小修复（typo、文档错字）可以。功能/修复必须先开 Issue，否则 PR 会被关闭。
+A: **不可以**（功能/修复/重构）。仅文档错别字等极小改动可例外，仍建议开 Issue 或 Discussion。AI Agent 同样必须遵守。
+
+**Q: 我可以直接 push 到 main 吗？**
+A: **不可以**。必须 feature branch → PR → merge。维护者也不例外。
+
+**Q: 已经误推到 main 了怎么办？**
+A: 见 §1.6 历史补录：backup 分支 + 回退 main + 堆叠 PR 重放。
 
 **Q: 一个 Issue 多人想做怎么办？**
 A: 先评论认领，维护者按时间顺序分配。重复 PR 以先分配者为准。
