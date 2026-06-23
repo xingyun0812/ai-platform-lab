@@ -13,6 +13,7 @@ sys.path.insert(0, str(REPO_ROOT))
 
 from packages.rag.bm25_index import build_index_from_chunks, index_path, load_index, save_index
 from packages.rag.chunker import TextChunk
+from packages.rag.index_metrics import get_index_metrics, reset_index_metrics_for_tests
 from packages.rag.source_index import purge_source_index
 
 
@@ -20,7 +21,34 @@ def _chunk(text: str, source: str) -> TextChunk:
     return TextChunk(chunk_id=f"{source}:0", text=text, source_uri=source, offset=0)
 
 
+class TestIndexMetrics(unittest.TestCase):
+    def setUp(self) -> None:
+        reset_index_metrics_for_tests()
+
+    def tearDown(self) -> None:
+        reset_index_metrics_for_tests()
+
+    def test_prometheus_includes_skipped(self) -> None:
+        m = get_index_metrics()
+        m.record_index_success(
+            kb_id="lab-demo",
+            version=1,
+            new_chunks=0,
+            updated_chunks=0,
+            skipped_chunks=3,
+        )
+        text = m.prometheus_text()
+        self.assertIn("rag_index_skipped_chunks_total", text)
+        self.assertIn('kb_id="lab-demo"', text)
+
+
 class TestPurgeSourceIndex(unittest.TestCase):
+    def setUp(self) -> None:
+        reset_index_metrics_for_tests()
+
+    def tearDown(self) -> None:
+        reset_index_metrics_for_tests()
+
     @patch("packages.rag.source_index.VectorStore")
     def test_purge_removes_bm25_source(self, mock_store_cls: MagicMock) -> None:
         mock_store = mock_store_cls.return_value
