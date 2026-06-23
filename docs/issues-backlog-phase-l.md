@@ -18,7 +18,7 @@ Milestone 建议：`Phase L — 工程深度与面试叙事`
 | 62 | 🥇 P1 | Demo 脚本 + 面试手册 | [demo-walkthrough.md](./demo-walkthrough.md) | `eval/platform_demo.sh` | ✅ |
 | 63 | 🥇 P1 | SDK 端到端 smoke | [interview-narrative.md](./interview-narrative.md) §SDK | `eval/sdk_smoke.py` | ✅ |
 | 53 | P5 并行 | 文档状态对齐 | roadmap/gap/phase-d | — | ✅ |
-| 54～57 | 🥈 P2 | RAG 深化 | phase-l §L1 | stub | ⏳ |
+| 54～57 | 🥈 P2 | RAG 深化 | phase-l §L1 | #54/#56/#55/#57 | ✅ |
 | 58～60 | 🥉 P3 | Agent 深化 | phase-l §L2 | 部分 | ⏳ |
 | 61 | P4 | 反馈飞轮 E2E | phase-j-feedback-loop | 未 live | ⏳ |
 

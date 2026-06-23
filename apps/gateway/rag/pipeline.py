@@ -9,6 +9,7 @@ from packages.contracts.rag_schemas import TaskStatus
 from packages.rag.bm25_index import build_index_from_chunks, save_index
 from packages.rag.chunker import chunk_text
 from packages.rag.embeddings import embed_texts
+from packages.rag.indexing import plan_incremental_index
 from packages.rag.routing import parse_kb_routing, pick_query_version
 from packages.rag.vector_store import VectorStore
 
@@ -51,36 +52,57 @@ async def run_index_task(task_id: str) -> None:
             raise ValueError(f"切分后无有效 chunk: {record.source_uri}")
 
         store = VectorStore()
-        store.delete_kb_version(record.kb_id, record.version)
-
-        batch_size = max(1, settings.embedding_batch_size)
-        all_vectors: list[list[float]] = []
-        texts = [c.text for c in chunks]
-        for i in range(0, len(texts), batch_size):
-            batch = texts[i : i + batch_size]
-            vectors = await embed_texts(batch)
-            all_vectors.extend(vectors)
-
-        count = store.upsert_chunks(
+        existing = store.list_source_chunks(
             kb_id=record.kb_id,
             version=record.version,
-            chunks=chunks,
-            vectors=all_vectors,
+            source_uri=record.source_uri,
         )
-        bm25 = build_index_from_chunks(chunks)
-        save_index(bm25, record.kb_id, record.version)
+        plan = plan_incremental_index(chunks, existing)
+        if plan.point_ids_to_delete:
+            store.delete_points(plan.point_ids_to_delete)
+
+        batch_size = max(1, settings.embedding_batch_size)
+        to_embed = plan.chunks_to_embed
+        all_vectors: list[list[float]] = []
+        if to_embed:
+            texts = [c.text for c in to_embed]
+            for i in range(0, len(texts), batch_size):
+                batch = texts[i : i + batch_size]
+                vectors = await embed_texts(batch)
+                all_vectors.extend(vectors)
+            store.upsert_chunks(
+                kb_id=record.kb_id,
+                version=record.version,
+                chunks=to_embed,
+                vectors=all_vectors,
+            )
+
+        count = plan.new_chunks + plan.updated_chunks + plan.skipped_chunks
+        all_chunks = store.list_source_chunks_as_text_chunks(
+            kb_id=record.kb_id,
+            version=record.version,
+        )
+        if all_chunks:
+            bm25 = build_index_from_chunks(all_chunks)
+            save_index(bm25, record.kb_id, record.version)
         task_store.update(
             task_id,
             status=TaskStatus.success,
             chunks_indexed=count,
+            new_chunks=plan.new_chunks,
+            updated_chunks=plan.updated_chunks,
+            skipped_chunks=plan.skipped_chunks,
             error=None,
         )
         logger.info(
-            "index success task_id=%s kb_id=%s version=%s chunks=%s",
+            "index success task_id=%s kb_id=%s version=%s total=%s new=%s updated=%s skipped=%s",
             task_id,
             record.kb_id,
             record.version,
             count,
+            plan.new_chunks,
+            plan.updated_chunks,
+            plan.skipped_chunks,
         )
     except Exception as e:
         logger.exception("index failed task_id=%s", task_id)
@@ -92,13 +114,8 @@ def _list_kb_versions(kb_id: str) -> list[int]:
 
 
 def _kb_routing_rules():
-    from packages.rag.canary_guard import apply_auto_rollback, get_kb_routing_override
+    from packages.rag.canary_guard import get_kb_routing_override
 
-    settings = get_settings()
-    apply_auto_rollback(
-        kb_id="lab-demo",
-        min_pass_rate=settings.canary_auto_rollback_min_pass_rate,
-    )
     raw = _load_rag_yaml().get("kb_routing")
     rules = parse_kb_routing(raw if isinstance(raw, dict) else None)
     for kb_id, rule in list(rules.items()):
