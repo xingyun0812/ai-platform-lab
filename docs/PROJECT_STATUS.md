@@ -184,22 +184,21 @@ roadmap.md → GitHub Issue → feature branch → PR → merge → tag
 
 ## 10. 下一步建议
 
-> **Phase L Wave1 进行中**：#53 文档对齐 ✅、#62/#63 Demo+SDK ✅（本地）；详见 [phase-l-priority-roi.md](./phase-l-priority-roi.md)。
+> **Phase L**：Wave1 ✅、Wave2 ✅、**#58 Agent 三率 ✅**；下一步 **#59 Vertical**。GitHub Issue [#37～#47](https://github.com/xingyun0812/ai-platform-lab/issues?q=label%3Aphase-l)。
 
 ### 建议执行顺序（ROI）
 
 | 优先级 | Issue | 内容 | 状态 |
 |--------|-------|------|------|
 | 🥇 P1 | #62-console | Console 集成跑真 | ✅ |
-| 🥇 P1 | #62、#63 | Demo 脚本 + SDK smoke | ✅ Wave1 |
-| P5 并行 | #53 | 文档状态对齐 | ✅ Wave1 |
-| 🥈 P2 | #54～#57 | RAG 工程深度 | ⏳ 下一步 |
-| 🥉 P3 | #58～#60 | Agent 工程深度 | ⏳ |
+| 🥇 P1 | #62、#63 | Demo 脚本 + SDK smoke | ✅ |
+| P5 并行 | #53 | 文档状态对齐 | ✅ |
+| 🥈 P2 | #54～#57 | RAG 工程深度 | ✅ |
+| 🥉 P3 | #58 | Agent 三率指标 | ✅ |
+| 🥉 P3 | #59～#60 | Vertical + CI gate | ⏳ **下一步** |
 | P4 | #61 | 反馈飞轮 E2E | ⏳ |
 
-### 创建 GitHub Issue 前
-
-先在 GitHub 创建 Milestone `Phase L — 工程深度与面试叙事`，再按 [issues-backlog-phase-l.md](./issues-backlog-phase-l.md) 粘贴 #53～#63 正文。
+Issue 正文与 GitHub 映射见 [issues-backlog-phase-l.md](./issues-backlog-phase-l.md)。
 
 ## 11. 核心面试讲法
 

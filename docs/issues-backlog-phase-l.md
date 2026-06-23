@@ -10,17 +10,21 @@ Milestone 建议：`Phase L — 工程深度与面试叙事`
 
 ---
 
-## 实施状态一览（本地，GitHub Issue 均未创建）
+## 实施状态一览（GitHub #37～#47 ↔ backlog #53～#63）
 
-| # | ROI 优先 | 标题 | 文档 | 代码 | 状态 |
-|---|----------|------|------|------|------|
-| — | 🥇 P1 | **Console 集成跑真** | [phase-l-console-integration.md](./phase-l-console-integration.md) | `console_routes.py` | ✅ **已完成** |
-| 62 | 🥇 P1 | Demo 脚本 + 面试手册 | [demo-walkthrough.md](./demo-walkthrough.md) | `eval/platform_demo.sh` | ✅ |
-| 63 | 🥇 P1 | SDK 端到端 smoke | [interview-narrative.md](./interview-narrative.md) §SDK | `eval/sdk_smoke.py` | ✅ |
-| 53 | P5 并行 | 文档状态对齐 | roadmap/gap/phase-d | — | ✅ |
-| 54～57 | 🥈 P2 | RAG 深化 | phase-l §L1 | #54/#56/#55/#57 | ✅ |
-| 58～60 | 🥉 P3 | Agent 深化 | phase-l §L2 | 部分 | ⏳ |
-| 61 | P4 | 反馈飞轮 E2E | phase-j-feedback-loop | 未 live | ⏳ |
+| backlog | GitHub | ROI 优先 | 标题 | 状态 |
+|---------|--------|----------|------|------|
+| 53 | [#37](https://github.com/xingyun0812/ai-platform-lab/issues/37) | P5 | 文档状态对齐 | ✅ closed |
+| 54 | [#38](https://github.com/xingyun0812/ai-platform-lab/issues/38) | P2 | RAG 真 Rerank | ✅ closed |
+| 55 | [#39](https://github.com/xingyun0812/ai-platform-lab/issues/39) | P2 | 增量索引 | ✅ closed |
+| 56 | [#40](https://github.com/xingyun0812/ai-platform-lab/issues/40) | P2 | LLM Judge | ✅ closed |
+| 57 | [#41](https://github.com/xingyun0812/ai-platform-lab/issues/41) | P2 | 金丝雀回滚 | ✅ closed |
+| 58 | [#42](https://github.com/xingyun0812/ai-platform-lab/issues/42) | P3 | Agent 三率 | ✅ closed |
+| 59 | [#43](https://github.com/xingyun0812/ai-platform-lab/issues/43) | P3 | Agent Vertical | ⏳ open |
+| 60 | [#44](https://github.com/xingyun0812/ai-platform-lab/issues/44) | P3 | Baseline + CI | ⏳ open |
+| 61 | [#45](https://github.com/xingyun0812/ai-platform-lab/issues/45) | P4 | 反馈飞轮 E2E | ⏳ open |
+| 62 | [#46](https://github.com/xingyun0812/ai-platform-lab/issues/46) | P1 | Demo + 面试手册 | ✅ closed |
+| 63 | [#47](https://github.com/xingyun0812/ai-platform-lab/issues/47) | P1 | SDK smoke | ✅ closed |
 
 创建顺序建议：`#53`（可并行）→ `#62`/`#63` 补全 → `#54/#55` → … → `#61` → `#62` 面试手册定稿。
 
