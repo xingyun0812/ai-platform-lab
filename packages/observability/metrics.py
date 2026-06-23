@@ -14,6 +14,7 @@ class MetricsStore:
         self._max_samples = max_latency_samples
         self._request_total: defaultdict[tuple[str, str, str], int] = defaultdict(int)
         self._latency_ms: defaultdict[tuple[str, str], list[float]] = defaultdict(list)
+        self._canary_auto_rollback_total: defaultdict[str, int] = defaultdict(int)
 
     def record_request(
         self,
@@ -33,6 +34,10 @@ class MetricsStore:
             bucket.append(latency_ms)
             if len(bucket) > self._max_samples:
                 del bucket[: len(bucket) - self._max_samples]
+
+    def record_canary_auto_rollback(self, *, kb_id: str) -> None:
+        with self._lock:
+            self._canary_auto_rollback_total[kb_id or "unknown"] += 1
 
     @staticmethod
     def _p95(values: list[float]) -> float:
@@ -90,6 +95,7 @@ class MetricsStore:
         with self._lock:
             totals = dict(self._request_total)
             latencies = {k: list(v) for k, v in self._latency_ms.items()}
+            rollbacks = dict(self._canary_auto_rollback_total)
 
         lines.append("# HELP http_requests_total Total HTTP requests")
         lines.append("# TYPE http_requests_total counter")
@@ -105,6 +111,11 @@ class MetricsStore:
             lines.append(
                 f'http_request_duration_ms_p95{{path="{path}",tenant_id="{tenant}"}} {p95:.2f}'
             )
+
+        lines.append("# HELP canary_auto_rollback_total Auto rollbacks triggered by canary guard")
+        lines.append("# TYPE canary_auto_rollback_total counter")
+        for kb_id, count in sorted(rollbacks.items()):
+            lines.append(f'canary_auto_rollback_total{{kb_id="{kb_id}"}} {count}')
 
         lines.append("# HELP metrics_generated_timestamp Unix timestamp")
         lines.append("# TYPE metrics_generated_timestamp gauge")

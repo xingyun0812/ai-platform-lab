@@ -1431,11 +1431,11 @@ async def run_checks(*, with_llm: bool) -> list[Check]:
             out.append(Check("PF", "OAuth2/mTLS", False, str(e)))
 
         try:
-            from packages.rag.canary_guard import apply_auto_rollback
+            from packages.rag.canary_guard import check_canary_guard, get_kb_routing_override
 
             r = await c.get("/internal/providers/matrix", headers=ADMIN_HEADERS)
             out.append(Check("PD", "GET providers matrix", r.status_code == 200, str(r.status_code)))
-            _ = apply_auto_rollback  # 函数可导入
+            _ = check_canary_guard, get_kb_routing_override
         except Exception as e:
             out.append(Check("PD", "providers API", False, str(e)))
 
