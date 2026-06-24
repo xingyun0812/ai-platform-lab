@@ -1,9 +1,9 @@
 # ai-platform-lab
 
-最小 **AI 中台** 实验仓库（与 [《AI中台学习执行手册》](docs/AI中台学习执行手册.md) 配套）。当前完成 **Phase A～M**：模型网关、RAG（含增量索引）、Agent、观测评测、硬化、Prompt 版本化、长记忆、MCP、上下文压缩、语义缓存、Embedding 服务、控制流编排、Multi-Agent、HITL、沙箱、分级审计、PII 脱敏、OAuth2/mTLS、Python SDK、Console V2、评测 Pipeline、反馈飞轮、对象存储、K8s Helm、多 AZ、GPU 调度。
+最小 **AI 中台** 实验仓库（与 [《AI中台学习执行手册》](docs/AI中台学习执行手册.md) 配套）。当前完成 **Phase A～P**：模型网关、RAG（含增量与图文）、Agent（Planner/CoT/Multi-Agent）、观测评测、硬化、Prompt、MCP、Embedding、HITL、安全合规、SDK/PyPI、Console V2、生产 Helm 等。
 
-> 📊 **当前状态**：Phase A～N 代码完成 · tag `phase-m-incremental-index` · Phase N PyPI 见 [phase-n-pypi-sdk.md](docs/phase-n-pypi-sdk.md)
-> 📋 **完整状态报告**：[docs/PROJECT_STATUS.md](docs/PROJECT_STATUS.md)
+> 📊 **当前状态**：Phase A～P ✅ · tags：`phase-o-agent-jd2`、`phase-p-multimodal`、`phase-n-pypi-sdk` · Phase Q 规划中  
+> 📋 **完整状态报告**：[docs/PROJECT_STATUS.md](docs/PROJECT_STATUS.md) · **Live 手验**：[docs/demo-walkthrough.md](docs/demo-walkthrough.md)
 
 ## 15 分钟快速跑通
 

@@ -174,11 +174,11 @@
 
 **目标**：一条可演示链路：web_search（mock）→ sql_query → calc → 报告摘要。
 
-**验收**：
-- [ ] `config/workflows/data_analysis.yaml` 或 agent spec
-- [ ] `eval/data_analysis_vertical.sh --mock` exit 0
-- [ ] `--live` 文档说明
-- [ ] Console 轨迹可展示 plan/blackboard
+**验收**（✅ PR #105 · O1 闭环见 `auto_plan_vertical.sh --mock`）：
+- [x] `config/workflows/data_analysis.yaml` 或 agent spec
+- [x] `eval/data_analysis_vertical.sh --mock` exit 0
+- [x] `--live` 文档说明（`demo-walkthrough.md` Live 表）
+- [ ] Console 轨迹可展示 plan（API 有 plan 字段；Console UI 待补）
 
 **依赖**：O1、O6、O7（O4 可选）
 
@@ -194,10 +194,10 @@
 
 **目标**：`tool_call_strategy`；并行 tool asyncio；Prometheus 新指标。
 
-**验收**：
-- [ ] 并行/顺序单测
-- [ ] `/metrics` 新 counter/histogram
-- [ ] 长上下文策略文档化
+**验收**（✅ PR #106）：
+- [x] 并行/顺序单测（`tests/test_agent_perf.py`）
+- [x] `/metrics` 新 counter/histogram（`agent_plan_steps` 等）
+- [x] 长上下文策略文档化（`docs/phase-o-agent-perf.md`）
 
 **依赖**：无
 

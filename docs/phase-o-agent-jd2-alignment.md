@@ -135,6 +135,7 @@ flowchart LR
 - [x] 单测 ≥12：空 goal、单步、多步依赖、循环依赖拒绝
 - [x] `eval/agent_planner_smoke.py` mock LLM 通过
 - [x] live：`auto_plan=true` 完成「查 KB → calc → 汇总」三步
+- [x] **O1 + vertical 闭环**：`eval/auto_plan_vertical.py --mock`（Plan 驱动 web_search → sql_query → calc）
 
 **关键文件**：
 - `packages/agent/planner.py`
@@ -308,6 +309,8 @@ flowchart LR
 | 命令 | 覆盖 Issue |
 |------|------------|
 | `pytest tests/test_agent_planner.py` | O1 |
+| `python eval/auto_plan_vertical.py --mock` | O1 + O9 闭环 |
+| `python eval/auto_plan_vertical.py --live` | O1 + O9 live（软断言，待手验 ⚠️） |
 | `pytest tests/test_agent_reasoning.py` | O2 |
 | `pytest tests/test_multi_agent_blackboard.py` | O4 |
 | `pytest tests/test_agent_plugins.py` | O5 |
@@ -331,6 +334,8 @@ flowchart LR
 | 8 | 未授权 `web_search` | AGENT_TOOL_FORBIDDEN |
 | 9 | 插件 echo | 注册并成功调用 |
 | 10 | data analysis vertical | 报告摘要含 SQL 聚合结果 |
+| 11 | `auto_plan_vertical --mock` | Plan 三步 + web_search/sql/calc 真实 handler |
+| 12 | `auto_plan_vertical --live` | plan≥2 步 + 有 tool 或 final（⚠️ 不保证三步全中） |
 
 ---
 

@@ -7,7 +7,7 @@
 
 | Backlog | GitHub Issue | 状态 |
 |---------|--------------|------|
-| Q0 规划文档 | [#115](https://github.com/xingyun0812/ai-platform-lab/issues/115) | 📋 |
+| Q0 规划文档 | [#115](https://github.com/xingyun0812/ai-platform-lab/issues/115) | ✅ |
 | Q1 Structured Plan | [#116](https://github.com/xingyun0812/ai-platform-lab/issues/116) | 📋 |
 | Q2 DAG 并行执行 | [#117](https://github.com/xingyun0812/ai-platform-lab/issues/117) | 📋 |
 | Q3 失败重规划 | [#118](https://github.com/xingyun0812/ai-platform-lab/issues/118) | 📋 |
@@ -24,9 +24,9 @@
 **目标**：评审 `docs/phase-q-advanced-planning.md`，创建 Q1～Q6 Issue，更新 `roadmap.md`。
 
 **验收**：
-- [ ] `docs/phase-q-advanced-planning.md` 评审通过
-- [ ] Milestone Phase Q 内 Q1～Q6 Issue 创建完毕
-- [ ] `roadmap.md` 增加 Phase Q 章节
+- [x] `docs/phase-q-advanced-planning.md` 评审通过
+- [x] Milestone Phase Q 内 Q1～Q6 Issue 创建完毕（#116～#121）
+- [x] `roadmap.md` 增加 Phase Q 章节
 
 **非目标**：LangGraph 依赖绑定、ToT 搜索、亿级在线
 

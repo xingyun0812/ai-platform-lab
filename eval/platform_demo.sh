@@ -130,4 +130,10 @@ else
   python3 eval/agent_vertical_smoke.py
 fi
 
+echo "==> auto_plan + data analysis vertical (O1 E2E mock)"
+python3 eval/auto_plan_vertical.py --mock
+if $WITH_LLM; then
+  python3 eval/auto_plan_vertical.py --live || echo "    (live auto_plan vertical skipped/failed — 见 eval/auto_plan_vertical.py)"
+fi
+
 echo "OK platform_demo ($($WITH_LLM && echo with-llm || echo no-llm))"

@@ -3,7 +3,20 @@
 > **用途**：面试演示、内部分享、验收 Phase L 第一优先「端到端故事」。  
 > **前置**：[phase-l-console-integration.md](./phase-l-console-integration.md)（Console 已挂载）  
 > **自动化**：`./eval/platform_demo.sh --no-llm`（无 Key）/ `--with-llm`（需 Key + Qdrant）  
-> **Live 勾选**（2026-06-23）：healthz ✅ · Console API ✅ · chat/index/rag ✅ · **二次索引 skipped_chunks=1** ✅ · feedback loop live ✅ · agent vertical 7/7 ✅
+> **Live 勾选**（2026-05-19 更新）：见下表 · 离线闭环以 `agent_jd2_gate` / `platform_demo --no-llm` 为准
+
+| 项 | 命令 | 状态 |
+|----|------|------|
+| healthz / Console API | `./eval/platform_demo.sh --no-llm` | ✅ |
+| chat / index / RAG | `platform_demo --with-llm` | ✅ |
+| 二次索引 `skipped_chunks≥1` | `platform_demo --with-llm` | ✅ |
+| 反馈飞轮 live | `python eval/feedback_loop_demo.py --live` | ✅ |
+| Agent vertical（Orchestrator+HITL） | `eval/agent_vertical_smoke.py --with-llm` | ✅ 7/7 |
+| **O1+vertical mock**（Plan→web/sql/calc） | `./eval/auto_plan_vertical.sh --mock` | ✅ CI |
+| O1+vertical live（`auto_plan`） | `./eval/auto_plan_vertical.sh --live` | ⚠️ 待手验 |
+| 数据分析 Orchestrator live | `./eval/data_analysis_vertical.sh --live` | ⚠️ 待手验 |
+| Phase O CoT live | `demo-walkthrough` §JD2 curl | ⚠️ 待手验 |
+| 多模态图文 RAG live | `eval/multimodal_embedding_gate.py` + 图文索引 | ❌ 未写脚本 |
 
 ---
 
@@ -184,6 +197,7 @@ Console **Agents** 页可看注册 Agent / 委托（`MULTI_AGENT_ENABLED`）。
 ```bash
 python eval/agent_jd2_gate.py run
 ./eval/data_analysis_vertical.sh --mock
+./eval/auto_plan_vertical.sh --mock
 python eval/agent_planner_smoke.py
 python eval/agent_cot_smoke.py
 ```
@@ -191,19 +205,34 @@ python eval/agent_cot_smoke.py
 有 Key 时可追加：
 
 ```bash
-# Task Planner
+# Task Planner — 仅生成 Plan
 curl -s http://127.0.0.1:8000/v1/agent/plan \
   -H "Content-Type: application/json" \
   -H "X-Tenant-Id: admin" \
   -H "Authorization: Bearer sk-tenant-admin-change-me" \
-  -d '{"goal":"查资料并计算 1+2","session_id":"jd2-demo"}'
+  -d '{"tenant_id":"admin","goal":"查资料并计算 1+2"}'
+
+# O1 + Vertical 端到端 — auto_plan 驱动 web_search → sql → calc
+curl -s http://127.0.0.1:8000/v1/agent/run \
+  -H "Content-Type: application/json" \
+  -H "X-Tenant-Id: admin" \
+  -H "Authorization: Bearer sk-tenant-admin-change-me" \
+  -d '{
+    "tenant_id":"admin",
+    "session_id":"jd2-auto-plan-vertical",
+    "auto_plan":true,
+    "goal":"数据分析：搜索 AI analytics 背景，对 demo_sales SQL 聚合，再 calc 算同比"
+  }'
+
+# 离线验收（CI 同款，无需 Gateway）
+./eval/auto_plan_vertical.sh --mock
 
 # CoT 推理
 curl -s http://127.0.0.1:8000/v1/agent/run \
   -H "Content-Type: application/json" \
   -H "X-Tenant-Id: admin" \
   -H "Authorization: Bearer sk-tenant-admin-change-me" \
-  -d '{"messages":[{"role":"user","content":"解释 2+2"}],"session_id":"jd2-cot","reasoning_mode":"cot"}'
+  -d '{"tenant_id":"admin","messages":[{"role":"user","content":"解释 2+2"}],"session_id":"jd2-cot","reasoning_mode":"cot"}'
 
 # Multi-Agent 黑板（委托后）
 curl -s http://127.0.0.1:8000/v1/agent/blackboard/jd2-demo \
@@ -211,7 +240,7 @@ curl -s http://127.0.0.1:8000/v1/agent/blackboard/jd2-demo \
   -H "Authorization: Bearer sk-tenant-admin-change-me"
 ```
 
-**话术要点**：Phase O 把 JD2 §4.1 从「ReAct 能调工具」升级为 **可规划、可显式推理、可协作、可接搜索/SQL、可跑 vertical**；门禁见 `eval/agent_jd2_gate.py`。
+**话术要点**：Phase O 把 JD2 §4.1 从「ReAct 能调工具」升级为 **可规划、可显式推理、可协作、可接搜索/SQL、可跑 vertical**；**O1 + vertical 闭环**见 `./eval/auto_plan_vertical.sh`；门禁见 `eval/agent_jd2_gate.py`。
 
 ### Phase M 增量索引（#63～#66）
 

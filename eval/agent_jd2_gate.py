@@ -48,6 +48,12 @@ CHECKS: tuple[Jd2GateCheck, ...] = (
         "Planner mock smoke",
     ),
     Jd2GateCheck(
+        "auto_plan_vertical",
+        "O1+O9",
+        (PYTHON, str(REPO_ROOT / "eval" / "auto_plan_vertical.py"), "--mock"),
+        "O1 auto_plan + 数据分析 vertical 闭环",
+    ),
+    Jd2GateCheck(
         "reasoning_unit",
         "O2",
         (PYTHON, "-m", "unittest", "tests.test_agent_reasoning", "-q"),

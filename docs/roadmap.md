@@ -281,7 +281,7 @@
 
 | Issue | 内容 | 状态 |
 |-------|------|------|
-| [#115](https://github.com/xingyun0812/ai-platform-lab/issues/115) | 规划文档 + milestone | 📋 |
+| [#115](https://github.com/xingyun0812/ai-platform-lab/issues/115) | 规划文档 + milestone | ✅ |
 | [#116](https://github.com/xingyun0812/ai-platform-lab/issues/116) | Structured Plan 输出 | 📋 |
 | [#117](https://github.com/xingyun0812/ai-platform-lab/issues/117) | DAG 并行 step 执行 | 📋 |
 | [#118](https://github.com/xingyun0812/ai-platform-lab/issues/118) | 失败重规划 Critic | 📋 |

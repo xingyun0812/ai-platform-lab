@@ -1,8 +1,8 @@
 # ai-platform-lab 项目状态总览
 
-> **最后更新**：2026-06-24
-> **当前状态**：Phase A～P 代码交付；tag `phase-p-multimodal` · Phase N 待 tag `phase-n-pypi-sdk`
-> **主分支**：`main` @ `ecc625a`
+> **最后更新**：2026-05-19  
+> **当前状态**：Phase A～P 已交付 · tags：`phase-o-agent-jd2`、`phase-p-multimodal`、`phase-n-pypi-sdk` · Phase Q 规划中  
+> **主分支**：`main`
 
 ---
 
@@ -17,9 +17,9 @@
 | 模型服务层 | ~98% | Gateway、路由、熔断、计费、语义缓存、**多模态 Embedding** | 真 CLIP 本地推理 |
 | 基础设施层 | ~90% | 对象存储、K8s Helm、多 AZ、GPU 调度 | 跨 Region、Service Mesh |
 | 能力中台 | ~90% | RAG、Prompt 版本化+A/B、长记忆、MCP、上下文压缩 | — |
-| Agent 应用层 | ~90% | 控制流编排、Multi-Agent、生命周期、HITL | — |
+| Agent 应用层 | ~92% | Planner、CoT、Multi-Agent 黑板、O1+vertical mock 闭环 | Planner/Orchestrator 统一（Phase Q） |
 | AgentOps 治理 | ~90% | 沙箱、分级审计、PII、OAuth2/mTLS | 在线评测飞轮（已有反馈飞轮） |
-| 开发者体验 | ~95% | Python SDK、**PyPI 发布流程**、Console V2、Demo、SDK smoke | TS SDK |
+| 开发者体验 | ~95% | Python SDK、PyPI 发布流程、Console V2、Demo、门禁 | TS SDK · live 全链手验表 |
 
 ## 3. Phase 完成历史线
 
@@ -39,20 +39,22 @@ Phase J — 开发者体验        ✅ tag: phase-j-developer-experience + phase
 Phase K — 生产基础设施      ✅ tag: phase-k-infra-base + phase-jk-complete            ← 今日
 Phase L — 工程深度与面试叙事 ✅ tag: phase-l-engineering-depth                      ← 2026-06-23
 Phase M — RAG 增量索引做满    ✅ tag: phase-m-incremental-index                      ← 2026-06-23
-Phase N — Python SDK PyPI       ✅ PR #82～#84 · tag phase-n-pypi-sdk 待打            ← 2026-06-24
-Phase O — Agent JD2 对齐        ✅ tag phase-o-agent-jd2                               ← 2026-06-24
-Phase P — 多模态 Embedding      ✅ tag phase-p-multimodal                              ← 2026-06-24
+Phase N — Python SDK PyPI       ✅ tag: phase-n-pypi-sdk
+Phase O — Agent JD2 对齐        ✅ tag: phase-o-agent-jd2
+Phase P — 多模态 Embedding      ✅ tag: phase-p-multimodal
+Phase Q — 任务规划前沿对齐      📋 规划完成（#115～#121），未开发
 ```
 
 ## 4. 代码规模
 
 | 指标 | 数量 |
 |------|------|
-| **累计单测** | **484 个全通过**（25 套件） |
+| **累计单测** | **616**（`pytest` 全量） |
 | **packages 模块 Python 文件** | 130 个 |
 | **REST 路由文件** | 20 个 |
 | **测试套件** | 25 个 |
-| **Phase 设计文档** | 31 篇 |
+| **Phase 设计文档** | 60+ 篇 |
+| **离线门禁** | `agent_jd2_gate`（12 项）、`multimodal_embedding_gate`、`agent_gate` |
 | **GitHub Tags** | 15 个（含 `phase-m-incremental-index`） |
 | **GitHub Issues** | 8 个（全部关闭） |
 
@@ -182,32 +184,30 @@ roadmap.md → GitHub Issue → feature branch → PR → merge → tag
 
 ### 开发者体验
 - Console V2：**已 build + 挂载** → http://127.0.0.1:8000/console/
-- Demo + SDK smoke：**已可跑** → `./eval/platform_demo.sh --no-llm`、`eval/sdk_smoke.py`（见 [demo-walkthrough.md](./demo-walkthrough.md)）
-- 面试口述稿：[interview-narrative.md](./interview-narrative.md)
-- SDK 未发布到 PyPI（需 `pip install -e sdk/python`）
-- 评测 Pipeline 的 live 用例需 LLM API key
+- Demo：`./eval/platform_demo.sh --no-llm` / `--with-llm`（含 **O1+vertical mock**）
+- 离线门禁：`python eval/agent_jd2_gate.py run`（12/12，含 `auto_plan_vertical`）
+- SDK：`pip install ai-platform-lab`（见 [phase-n-pypi-sdk.md](./phase-n-pypi-sdk.md)）或 `pip install -e sdk/python`
+- **Live 手验清单**：[demo-walkthrough.md](./demo-walkthrough.md) 顶部表（部分项 ⚠️ 待手验）
+- 评测 Pipeline 的 live 用例需 `EVAL_API_KEY`
 
 ## 10. 下一步建议
 
-> **Phase M ✅ 完成**（tag: `phase-m-incremental-index`）。GitHub PR [#68～#71](https://github.com/xingyun0812/ai-platform-lab/pulls?q=is%3Apr+is%3Amerged+phase-m) 关闭 #63～#66。
+### 文档 / 验收闭环（优先）
 
-### Phase M 收尾（已完成）
+| 项 | 说明 | 状态 |
+|----|------|------|
+| O1+vertical mock E2E | `eval/auto_plan_vertical.sh --mock` + `agent_jd2_gate` | ✅ |
+| Live 手验表 | [demo-walkthrough.md](./demo-walkthrough.md) | ⚠️ 部分待手验 |
+| Backlog 勾选同步 | `issues-backlog-phase-o/q` | ✅ 2026-05-19 |
+| CI 主流程跑 jd2 gate | `.github/workflows/ci.yml` | 见近期 commit |
 
-| 项 | 状态 |
-|----|------|
-| M1～M4 交付 | ✅ |
-| 堆叠 PR 补录 | ✅ |
-| tag `phase-m-incremental-index` | ✅ |
-
-### 下一阶段（可选）
+### 可选开发
 
 | 方向 | 说明 |
 |------|------|
-| PyPI 发布 Python SDK | 开发者体验 |
-| 多模态 Embedding | 模型服务层缺口 |
+| Phase Q（#116～#121） | 结构化 Plan、DAG 并行、replan；冲技术深度时开 |
+| Console Plan 展示 | O9 剩余 UI 项 |
 | 面试演练 | [interview-narrative.md](./interview-narrative.md) + [demo-walkthrough.md](./demo-walkthrough.md) |
-
-Issue 正文见 [issues-backlog-phase-m.md](./issues-backlog-phase-m.md)。
 
 ## 11. 核心面试讲法
 
