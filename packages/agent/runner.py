@@ -35,7 +35,7 @@ from packages.agent.risk import tool_requires_hitl
 from packages.agent.session import SessionStore
 from packages.agent.session_state import SessionState, count_user_messages
 from packages.agent.shadow import shadow_tool_record
-from packages.agent.tool_envelope import with_quality_hint
+from packages.agent.tool_envelope import parse_tool_result, with_quality_hint
 from packages.agent.tool_router import routing_meta, select_tools_from_messages
 from packages.billing.budget import budget_platform_meta, get_budget_snapshot
 from packages.billing.recorder import record_upstream_usage
@@ -218,6 +218,18 @@ async def _execute_tool(
         try:
             t0 = time.perf_counter()
             result = await asyncio.wait_for(tool.handler(args), timeout=tool_timeout)
+            env = parse_tool_result(result)
+            if not env.ok and env.error_code == "AGENT_TOOL_FORBIDDEN":
+                msg = (
+                    env.data.get("message")
+                    if isinstance(env.data, dict)
+                    else str(env.data or "forbidden")
+                )
+                raise AgentRunError(
+                    "AGENT_TOOL_FORBIDDEN",
+                    msg,
+                    detail={"tool_name": tool_name},
+                )
             elapsed = (time.perf_counter() - t0) * 1000
             record = ToolCallRecord(
                 tool_name=tool_name,

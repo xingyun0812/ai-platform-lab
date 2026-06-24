@@ -115,6 +115,12 @@ _DEFAULT_CLASSIFICATIONS: list[ToolActionClassification] = [
         description="外部网页搜索",
     ),
     ToolActionClassification(
+        tool_name="sql_query",
+        action_level=ActionLevel.READ_ONLY,
+        requires_approval=False,
+        description="只读 SQL 查询",
+    ),
+    ToolActionClassification(
         tool_name="httpbin_delay",
         action_level=ActionLevel.NETWORK,
         requires_approval=False,
