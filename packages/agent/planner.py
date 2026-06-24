@@ -18,6 +18,31 @@ from packages.observability.context import get_trace_id
 
 logger = logging.getLogger("ai_platform.agent.planner")
 
+
+# ---------------------------------------------------------------------------
+# Q4 Plan-level HITL — format helper
+# ---------------------------------------------------------------------------
+
+
+def format_plan_summary(plan: Any) -> str:
+    """格式化 Plan 为审批摘要文本（含 goal + steps 列表）。
+
+    Args:
+        plan: AgentPlan 实例（或含 goal/steps 属性的对象）。
+
+    Returns:
+        供人工阅读的多行字符串。
+    """
+    lines: list[str] = [f"Goal: {plan.goal}", "", "Steps:"]
+    for i, step in enumerate(plan.steps, start=1):
+        hint = f"  [tool={step.tool_hint}]" if getattr(step, "tool_hint", None) else ""
+        dep = ""
+        if getattr(step, "depends_on", None):
+            dep = f"  (depends_on: {', '.join(step.depends_on)})"
+        lines.append(f"  {i}. [{step.id}] {step.description}{hint}{dep}")
+    return "\n".join(lines)
+
+
 _FALLBACK_PLANNER_TEMPLATE = """你是任务规划助手。根据用户目标输出 **仅 JSON**（不要 markdown 包裹），格式：
 {{"goal":"<复述目标>","steps":[{{"id":"s1","description":"...","tool_hint":"calc|get_kb_snippet|null","agent_hint":null,"depends_on":[]}}]}}
 
@@ -323,8 +348,41 @@ async def execute_plan_with_agent(
     session_store: Any,
     step_system_messages: list[dict[str, Any]] | None = None,
     run_agent_fn: Callable[..., Awaitable[dict[str, Any]]] | None = None,
+    max_replan_attempts: int = 2,
+    _replan_attempt: int = 0,
+    _plan_revisions: list[dict[str, Any]] | None = None,
+    require_plan_approval: bool = False,
 ) -> dict[str, Any]:
-    """按拓扑顺序逐步调用 run_agent。"""
+    """按拓扑顺序逐步调用 run_agent，失败时触发 LLM Critic 重规划（最多 max_replan_attempts 次）。
+
+    若 require_plan_approval=True，不执行任何 step，直接返回
+    status='pending_plan_approval' 并将 plan 存入 plan_approval store。
+    """
+    # Q4 Plan-level HITL — 审批前暂停（仅第一次调用时生效，replan 调用不重新暂停）
+    if require_plan_approval and _replan_attempt == 0:
+        import uuid
+
+        from packages.agent.plan_approval import store_plan_approval
+
+        plan_approval_id = str(uuid.uuid4())
+        store_plan_approval(plan_approval_id, plan, tenant_id)
+        return {
+            "tenant_id": tenant_id,
+            "session_id": session_id,
+            "final_message": "",
+            "tool_calls": [],
+            "steps": 0,
+            "model": model or get_settings().agent_model or get_settings().default_model,
+            "trace_id": get_trace_id(),
+            "status": "pending_plan_approval",
+            "plan_approval_id": plan_approval_id,
+            "approval_id": None,
+            "plan": plan,
+            "plan_steps_completed": 0,
+            "plan_summary": format_plan_summary(plan),
+            "plan_revisions": [],
+        }
+
     from packages.agent.runner import run_agent
 
     runner = run_agent_fn or run_agent
@@ -336,6 +394,7 @@ async def execute_plan_with_agent(
     resolved_model = model or get_settings().agent_model or get_settings().default_model
     last_status = "completed"
     last_approval_id: str | None = None
+    plan_revisions: list[dict[str, Any]] = _plan_revisions if _plan_revisions is not None else []
 
     for idx, step in enumerate(steps, start=1):
         step_msg = format_step_user_message(step, index=idx, total=total)
@@ -343,15 +402,26 @@ async def execute_plan_with_agent(
         if step_system_messages and idx == 1:
             new_messages = [*step_system_messages, *new_messages]
 
-        result = await runner(
-            tenant_id=tenant_id,
-            session_id=session_id,
-            new_messages=new_messages,
-            allowed_tools=allowed_tools,
-            allowed_models=allowed_models,
-            model=model,
-            session_store=session_store,
-        )
+        try:
+            result = await runner(
+                tenant_id=tenant_id,
+                session_id=session_id,
+                new_messages=new_messages,
+                allowed_tools=allowed_tools,
+                allowed_models=allowed_models,
+                model=model,
+                session_store=session_store,
+            )
+        except Exception as exc:
+            logger.warning("execute_plan_with_agent: step %s raised exception: %s", step.id, exc)
+            result = {
+                "final_message": str(exc),
+                "tool_calls": [],
+                "steps": 0,
+                "model": resolved_model,
+                "status": "failed",
+            }
+
         resolved_model = result.get("model") or resolved_model
         agent_steps += int(result.get("steps") or 0)
         final_message = str(result.get("final_message") or final_message)
@@ -377,6 +447,72 @@ async def execute_plan_with_agent(
                 "approval_id": last_approval_id,
                 "plan": plan,
                 "plan_steps_completed": idx - 1,
+                "plan_revisions": plan_revisions,
+            }
+
+        if last_status == "failed":
+            # Q3: Attempt replan via critic LLM
+            if _replan_attempt < max_replan_attempts:
+                from packages.agent.plan_critic import replan_after_failure
+
+                failure_reason = final_message or f"step {step.id} returned status=failed"
+                logger.info(
+                    "execute_plan_with_agent: step %s failed, triggering replan attempt %d/%d",
+                    step.id,
+                    _replan_attempt + 1,
+                    max_replan_attempts,
+                )
+                new_plan = await replan_after_failure(
+                    plan=plan,
+                    failed_step=step,
+                    failure_reason=failure_reason,
+                    model=model,
+                    allowed_models=allowed_models,
+                    max_replan_attempts=max_replan_attempts,
+                    attempt=_replan_attempt,
+                )
+                if new_plan is not None:
+                    plan_revisions.append(
+                        {
+                            "attempt": _replan_attempt + 1,
+                            "failed_step_id": step.id,
+                            "new_plan_steps_count": len(new_plan.steps),
+                        }
+                    )
+                    return await execute_plan_with_agent(
+                        plan=new_plan,
+                        tenant_id=tenant_id,
+                        session_id=session_id,
+                        allowed_tools=allowed_tools,
+                        allowed_models=allowed_models,
+                        model=model,
+                        session_store=session_store,
+                        step_system_messages=step_system_messages,
+                        run_agent_fn=run_agent_fn,
+                        max_replan_attempts=max_replan_attempts,
+                        _replan_attempt=_replan_attempt + 1,
+                        _plan_revisions=plan_revisions,
+                    )
+                else:
+                    logger.warning(
+                        "execute_plan_with_agent: critic returned None for step %s, aborting plan",
+                        step.id,
+                    )
+            # Max attempts reached or critic failed — terminate
+            get_agent_perf_metrics().record_plan_steps(tenant_id=tenant_id, steps=idx)
+            return {
+                "tenant_id": tenant_id,
+                "session_id": session_id,
+                "final_message": final_message,
+                "tool_calls": all_tool_calls,
+                "steps": agent_steps,
+                "model": resolved_model,
+                "trace_id": get_trace_id(),
+                "status": "failed",
+                "approval_id": last_approval_id,
+                "plan": plan,
+                "plan_steps_completed": idx,
+                "plan_revisions": plan_revisions,
             }
 
     get_agent_perf_metrics().record_plan_steps(tenant_id=tenant_id, steps=total)
@@ -392,6 +528,7 @@ async def execute_plan_with_agent(
         "approval_id": last_approval_id,
         "plan": plan,
         "plan_steps_completed": total,
+        "plan_revisions": plan_revisions,
     }
 
 
@@ -449,6 +586,10 @@ async def execute_plan_parallel(
     session_store: Any,
     step_system_messages: list[dict[str, Any]] | None = None,
     run_agent_fn: Callable[..., Awaitable[dict[str, Any]]] | None = None,
+    max_replan_attempts: int = 2,
+    _replan_attempt: int = 0,
+    _plan_revisions: list[dict[str, Any]] | None = None,
+    require_plan_approval: bool = False,
 ) -> dict[str, Any]:
     """按 DAG 层并行执行 Plan steps。
 
@@ -457,7 +598,33 @@ async def execute_plan_parallel(
     - 每个 step 使用独立 sub-session（{session_id}__step_{step.id}）避免黑板写冲突
     - 任一 step 返回 pending_approval 则立即停止后续层
     - Prometheus: agent_plan_parallel_steps_total
+    - 若 require_plan_approval=True（且首次调用），暂停等待 plan 级人工审批
     """
+    # Q4 Plan-level HITL — 审批前暂停
+    if require_plan_approval and _replan_attempt == 0:
+        import uuid
+
+        from packages.agent.plan_approval import store_plan_approval
+
+        plan_approval_id = str(uuid.uuid4())
+        store_plan_approval(plan_approval_id, plan, tenant_id)
+        return {
+            "tenant_id": tenant_id,
+            "session_id": session_id,
+            "final_message": "",
+            "tool_calls": [],
+            "steps": 0,
+            "model": model or get_settings().agent_model or get_settings().default_model,
+            "trace_id": get_trace_id(),
+            "status": "pending_plan_approval",
+            "plan_approval_id": plan_approval_id,
+            "approval_id": None,
+            "plan": plan,
+            "plan_steps_completed": 0,
+            "plan_summary": format_plan_summary(plan),
+            "plan_revisions": [],
+        }
+
     from packages.agent.runner import run_agent
 
     runner = run_agent_fn or run_agent
@@ -471,6 +638,7 @@ async def execute_plan_parallel(
     last_status = "completed"
     last_approval_id: str | None = None
     completed_count = 0
+    plan_revisions: list[dict[str, Any]] = _plan_revisions if _plan_revisions is not None else []
 
     for layer_idx, layer in enumerate(layers):
         # Build per-step coroutines
@@ -520,6 +688,8 @@ async def execute_plan_parallel(
             if step_status == "pending_approval":
                 layer_has_pending = True
                 last_status = "pending_approval"
+            elif step_status == "failed":
+                last_status = "failed"
             completed_count += 1
 
         # Record metrics for this layer
@@ -538,6 +708,68 @@ async def execute_plan_parallel(
                 "approval_id": last_approval_id,
                 "plan": plan,
                 "plan_steps_completed": completed_count,
+                "plan_revisions": plan_revisions,
+            }
+
+        # Q3: If any step in this layer failed, attempt replan
+        if last_status == "failed" and _replan_attempt < max_replan_attempts:
+            # Find the first failed step in the layer for replan
+            failed_step = layer[0]  # Use first step of failed layer as representative
+            from packages.agent.plan_critic import replan_after_failure
+
+            failure_reason = final_message or f"layer {layer_idx} had failed steps"
+            logger.info(
+                "execute_plan_parallel: layer %d has failed step(s), triggering replan attempt %d/%d",
+                layer_idx,
+                _replan_attempt + 1,
+                max_replan_attempts,
+            )
+            new_plan = await replan_after_failure(
+                plan=plan,
+                failed_step=failed_step,
+                failure_reason=failure_reason,
+                model=model,
+                allowed_models=allowed_models,
+                max_replan_attempts=max_replan_attempts,
+                attempt=_replan_attempt,
+            )
+            if new_plan is not None:
+                plan_revisions.append(
+                    {
+                        "attempt": _replan_attempt + 1,
+                        "failed_step_id": failed_step.id,
+                        "new_plan_steps_count": len(new_plan.steps),
+                    }
+                )
+                return await execute_plan_parallel(
+                    plan=new_plan,
+                    tenant_id=tenant_id,
+                    session_id=session_id,
+                    allowed_tools=allowed_tools,
+                    allowed_models=allowed_models,
+                    model=model,
+                    session_store=session_store,
+                    step_system_messages=step_system_messages,
+                    run_agent_fn=run_agent_fn,
+                    max_replan_attempts=max_replan_attempts,
+                    _replan_attempt=_replan_attempt + 1,
+                    _plan_revisions=plan_revisions,
+                )
+
+        if last_status == "failed":
+            return {
+                "tenant_id": tenant_id,
+                "session_id": session_id,
+                "final_message": final_message,
+                "tool_calls": all_tool_calls,
+                "steps": agent_steps,
+                "model": resolved_model,
+                "trace_id": get_trace_id(),
+                "status": "failed",
+                "approval_id": last_approval_id,
+                "plan": plan,
+                "plan_steps_completed": completed_count,
+                "plan_revisions": plan_revisions,
             }
 
     return {
@@ -552,4 +784,5 @@ async def execute_plan_parallel(
         "approval_id": last_approval_id,
         "plan": plan,
         "plan_steps_completed": total_steps,
+        "plan_revisions": plan_revisions,
     }
