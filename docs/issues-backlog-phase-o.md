@@ -10,7 +10,7 @@
 | 规划文档 | [#86](https://github.com/xingyun0812/ai-platform-lab/issues/86) | ⏳ |
 | O1 Task Planner | [#87](https://github.com/xingyun0812/ai-platform-lab/issues/87) | ✅ #99 |
 | O2 CoT 推理 | [#88](https://github.com/xingyun0812/ai-platform-lab/issues/88) | ✅ #100 |
-| O4 Multi-Agent v2 | [#89](https://github.com/xingyun0812/ai-platform-lab/issues/89) | ⏳ |
+| O4 Multi-Agent v2 | [#89](https://github.com/xingyun0812/ai-platform-lab/issues/89) | ✅ #101 |
 | O5 Plugin Manifest | [#90](https://github.com/xingyun0812/ai-platform-lab/issues/90) | ⏳ |
 | O6 web_search | [#91](https://github.com/xingyun0812/ai-platform-lab/issues/91) | ⏳ |
 | O7 sql_query | [#92](https://github.com/xingyun0812/ai-platform-lab/issues/92) | ⏳ |
@@ -95,11 +95,11 @@
 **目标**：委托子 Agent 走完整 `run_agent()`；Redis 黑板；可选 reviewer 流程；Console 可查黑板。
 
 **验收**：
-- [ ] `packages/agent/multi_agent/blackboard.py`
-- [ ] `delegation.py` 改调 Runner
-- [ ] `GET /v1/agent/blackboard/{session_id}`
-- [ ] 单测 + 扩展 `agent_vertical_smoke`
-- [ ] 更新 `docs/phase-h-multi-agent.md` 边界说明
+- [x] `packages/agent/multi_agent/blackboard.py`
+- [x] `delegation.py` 改调 Runner
+- [x] `GET /v1/agent/blackboard/{session_id}`
+- [x] 单测 + 扩展 `agent_vertical_smoke`
+- [x] 更新 `docs/phase-h-multi-agent.md` 边界说明
 
 **依赖**：O1 可选
 
