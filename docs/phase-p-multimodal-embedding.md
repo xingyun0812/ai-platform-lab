@@ -1,8 +1,8 @@
 # Phase P — 多模态 Embedding
 
-> **状态**：进行中（P1 ✅ · P2 ✅ · P3 ✅ · P4 待做）  
+> **状态**：✅ **已完成**（P1～P4）  
 > **前置**：Phase G Embedding 独立服务 ✅ · Phase O ✅  
-> **Tag**（完成后）：`phase-p-multimodal`  
+> **Tag**：`phase-p-multimodal`  
 > **非目标**：自托管 CLIP 训推、视频/音频 embedding、分布式向量缓存
 
 ---
@@ -46,8 +46,8 @@ flowchart LR
 |-------|------|------|------|
 | **P1** | 多模态 inputs + stub + API | ✅ | PR #109 |
 | **P2** | RAG 图文 chunk 索引 | ✅ | PR #109 · #110 |
-| **P3** | Console / SDK embed inputs | ✅ | PR 待开 |
-| **P4** | eval 门禁 + tag | ⏳ | `multimodal_embedding_gate` |
+| **P3** | Console / SDK embed inputs | ✅ | PR #112 |
+| **P4** | eval 门禁 + tag | ✅ | `multimodal_embedding_gate` |
 
 ---
 
@@ -99,7 +99,7 @@ curl -s -X POST http://127.0.0.1:8000/internal/embeddings/embed \
 python -m unittest tests.test_multimodal_embedding -q
 python eval/multimodal_embedding_smoke.py
 python eval/rag_multimodal_smoke.py
-python eval/sdk_multimodal_smoke.py
+python eval/multimodal_embedding_gate.py run
 python -m unittest tests.test_embedding -q   # 回归
 ```
 
@@ -116,7 +116,17 @@ python -m unittest tests.test_embedding -q   # 回归
 
 ---
 
-## 9. 诚实边界
+## 9. P4 验收（门禁 + 收尾）
+
+- [x] `eval/multimodal_embedding_gate.py` — P1～P4 离线矩阵
+- [x] `tests/test_multimodal_embedding_gate.py`
+- [x] CI job `multimodal-embedding-gate`
+- [x] `docs/roadmap.md` / `PROJECT_STATUS.md` / 叙事同步
+- [x] Git tag `phase-p-multimodal`
+
+---
+
+## 10. 诚实边界
 
 | 项 | 说明 |
 |----|------|
@@ -127,7 +137,7 @@ python -m unittest tests.test_embedding -q   # 回归
 
 ---
 
-## 10. 相关文档
+## 11. 相关文档
 
 | 文档 | 用途 |
 |------|------|

@@ -10,7 +10,7 @@
 | P1 多模态 inputs + stub | #108 | ✅ |
 | P2 RAG 图文索引 | #110 | ✅ |
 | P3 Console / SDK | #111 | ✅ |
-| P4 eval 门禁 + tag | （待创建） | ⏳ |
+| P4 eval 门禁 + tag | #113 | ✅ |
 
 ---
 
@@ -61,5 +61,10 @@
 ## P4 — 收尾
 
 **标题**：`[Phase P] P4 Docs gate + tag phase-p-multimodal`
+
+**验收**：
+- [x] `eval/multimodal_embedding_gate.py` + CI
+- [x] 文档 / 叙事同步
+- [x] tag `phase-p-multimodal`
 
 **依赖**：P1～P3

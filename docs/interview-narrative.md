@@ -161,7 +161,7 @@ Phase A～K 先打通链路；Phase L #54 已接真 provider，可用 `eval comp
 
 ### Q4：测试怎么保证质量？
 
-484+ 单测、无外部依赖可跑；live eval 需 Key；CI 跑 lint + acceptance_smoke + RAG/Agent gate + **`python eval/agent_jd2_gate.py`**。
+484+ 单测、无外部依赖可跑；live eval 需 Key；CI 跑 lint + acceptance_smoke + RAG/Agent gate + **`agent_jd2_gate`** + **`multimodal_embedding_gate`**。
 
 ### Q7：反馈飞轮怎么演示？
 
@@ -184,6 +184,14 @@ live 路径：点踩 → `cycle` → `suggestion_id`（experiment 需先 apply s
 ```bash
 python eval/agent_jd2_gate.py run
 ./eval/data_analysis_vertical.sh --mock
+```
+
+### Q9：Phase P 多模态 Embedding 怎么讲？
+
+> `inputs` API（text / image_url / image_base64）+ `stub-multimodal` 离线 CI；RAG 可索引图片+caption；Console `/embedding` 试玩页；CI 用 `eval/multimodal_embedding_gate.py` 跑通 P1～P4 矩阵。
+
+```bash
+python eval/multimodal_embedding_gate.py run
 ```
 
 ### Q6：HITL 怎么工作的？
