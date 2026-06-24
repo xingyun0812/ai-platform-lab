@@ -23,5 +23,15 @@ models:
     provider: stub
     dimensions: 4096
     max_input_tokens: 99999
+    modalities: [text]
     metadata:
       note: 单测用；维度与 Qwen 对齐时可设为 4096
+
+  - model_id: stub-multimodal
+    name: Stub Multimodal Embedding (text + image)
+    provider: stub
+    dimensions: 4096
+    max_input_tokens: 99999
+    modalities: [text, image]
+    metadata:
+      note: Phase P 多模态 CI/dev；image 走确定性 stub 向量

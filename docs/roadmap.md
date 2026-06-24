@@ -257,6 +257,21 @@
 
 ---
 
+## Phase P — 多模态 Embedding（进行中）
+
+> **动机**：Phase G Embedding 仅文本；甘特图 Phase G3「多模态 Embedding」落地  
+> **规划**：[phase-p-multimodal-embedding.md](./phase-p-multimodal-embedding.md) · [issues-backlog-phase-p.md](./issues-backlog-phase-p.md)  
+> **Tag**（完成后）：`phase-p-multimodal`
+
+| Issue | 内容 | 状态 |
+|-------|------|------|
+| P1 | 多模态 inputs + stub API | 🚧 |
+| P2 | RAG 图文索引 | ⏳ |
+| P3 | Console / SDK | ⏳ |
+| P4 | eval 门禁 + tag | ⏳ |
+
+---
+
 ## 已知限制（面试时主动说）
 
 > **说明**：Phase A～K 已交付大量能力（MCP、HITL、Multi-Agent、语义缓存、PII、Console V2 等），本节区分 **「已有但 opt-in / 实验级」** 与 **「仍缺或仍为 stub」**，避免与 README 矛盾。Phase L 目标是把 stub 做深，见 [phase-l-engineering-depth.md](./phase-l-engineering-depth.md)。

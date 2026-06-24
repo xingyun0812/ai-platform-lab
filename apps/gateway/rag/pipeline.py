@@ -7,7 +7,7 @@ from apps.gateway.rag.task_store import get_task_store
 from apps.gateway.settings import get_settings
 from packages.contracts.rag_schemas import TaskStatus
 from packages.rag.chunker import chunk_text
-from packages.rag.embeddings import embed_texts
+from packages.rag.embeddings import embed_rag_chunks
 from packages.rag.index_metrics import get_index_metrics
 from packages.rag.indexing import plan_incremental_index
 from packages.rag.routing import parse_kb_routing, pick_query_version
@@ -33,22 +33,34 @@ async def run_index_task(task_id: str) -> None:
             raise FileNotFoundError(f"文件不存在: {record.source_uri}")
 
         raw = path.read_bytes()
-        try:
-            text = raw.decode("utf-8")
-        except UnicodeDecodeError as e:
-            raise ValueError(f"非 UTF-8 文本，无法索引: {record.source_uri}") from e
 
-        if not text.strip():
-            raise ValueError(f"文件为空: {record.source_uri}")
+        from packages.rag.multimodal_index import chunk_image_file, is_image_source
 
-        chunks = chunk_text(
-            text,
-            source_uri=record.source_uri,
-            kb_id=record.kb_id,
-            version=record.version,
-            chunk_size=settings.chunk_size,
-            overlap=settings.chunk_overlap,
-        )
+        if is_image_source(path):
+            chunks = chunk_image_file(
+                path,
+                source_uri=record.source_uri,
+                kb_id=record.kb_id,
+                version=record.version,
+                raw=raw,
+            )
+        else:
+            try:
+                text = raw.decode("utf-8")
+            except UnicodeDecodeError as e:
+                raise ValueError(f"非 UTF-8 文本，无法索引: {record.source_uri}") from e
+
+            if not text.strip():
+                raise ValueError(f"文件为空: {record.source_uri}")
+
+            chunks = chunk_text(
+                text,
+                source_uri=record.source_uri,
+                kb_id=record.kb_id,
+                version=record.version,
+                chunk_size=settings.chunk_size,
+                overlap=settings.chunk_overlap,
+            )
         if not chunks:
             raise ValueError(f"切分后无有效 chunk: {record.source_uri}")
 
@@ -62,15 +74,10 @@ async def run_index_task(task_id: str) -> None:
         if plan.point_ids_to_delete:
             store.delete_points(plan.point_ids_to_delete)
 
-        batch_size = max(1, settings.embedding_batch_size)
         to_embed = plan.chunks_to_embed
         all_vectors: list[list[float]] = []
         if to_embed:
-            texts = [c.text for c in to_embed]
-            for i in range(0, len(texts), batch_size):
-                batch = texts[i : i + batch_size]
-                vectors = await embed_texts(batch)
-                all_vectors.extend(vectors)
+            all_vectors = await embed_rag_chunks(to_embed)
             store.upsert_chunks(
                 kb_id=record.kb_id,
                 version=record.version,

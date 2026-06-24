@@ -9,6 +9,8 @@ class TextChunk:
     text: str
     source_uri: str
     offset: int
+    modality: str = "text"
+    content_fingerprint: str | None = None
 
 
 def chunk_text(
