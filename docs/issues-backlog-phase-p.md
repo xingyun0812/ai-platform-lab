@@ -9,7 +9,7 @@
 |---------|--------------|------|
 | P1 多模态 inputs + stub | #108 | ✅ |
 | P2 RAG 图文索引 | #110 | ✅ |
-| P3 Console / SDK | （待创建） | ⏳ |
+| P3 Console / SDK | #111 | ✅ |
 | P4 eval 门禁 + tag | （待创建） | ⏳ |
 
 ---
@@ -48,6 +48,11 @@
 ## P3 — Console / SDK
 
 **标题**：`[Phase P] P3 Console SDK multimodal embed`
+
+**验收**：
+- [x] Console Embedding 页 + `inputs` API 客户端
+- [x] Python SDK `create_with_inputs`
+- [x] `eval/sdk_multimodal_smoke.py`
 
 **依赖**：P1
 

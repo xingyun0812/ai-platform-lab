@@ -86,6 +86,7 @@ def test_pages():
         "Orchestrator.tsx",
         "Audit.tsx",
         "Settings.tsx",
+        "Embedding.tsx",
     ]:
         _check(pages_dir / name, f"src/pages/{name}")
 

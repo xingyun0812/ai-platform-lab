@@ -248,20 +248,56 @@ def test_agent_run_and_sessions():
 
 def test_embedding_create_and_list():
     try:
-        create_resp = _make_response(200, {"data": [{"embedding": [0.1, 0.2]}], "model": "text-embedding-3"})
-        list_resp = _make_response(200, [{"model": "text-embedding-3"}])
+        create_resp = _make_response(
+            200,
+            {
+                "model_id": "stub-multimodal",
+                "embeddings": [[0.1, 0.2]],
+                "dimensions": 2,
+                "usage": {},
+                "cached": 0,
+            },
+        )
+        list_resp = _make_response(200, {"models": [{"model_id": "stub-multimodal"}]})
 
         responses = iter([create_resp, list_resp])
         with patch.object(httpx.Client, "request", side_effect=lambda *a, **kw: next(responses)):
             with Client("http://localhost:8000") as c:
-                emb = c.embedding.create("text-embedding-3", ["hello", "world"])
+                emb = c.embedding.create("stub-multimodal", ["hello", "world"])
                 models = c.embedding.list_models()
 
-        assert len(emb["data"]) == 1
-        assert models[0]["model"] == "text-embedding-3"
+        assert len(emb["embeddings"]) == 1
+        assert models[0]["model_id"] == "stub-multimodal"
         _pass("test_embedding_create_and_list")
     except Exception as e:
         _fail("test_embedding_create_and_list", e)
+
+
+def test_embedding_create_with_inputs():
+    try:
+        create_resp = _make_response(
+            200,
+            {
+                "model_id": "stub-multimodal",
+                "embeddings": [[0.1], [0.2]],
+                "dimensions": 1,
+                "usage": {},
+                "cached": 0,
+            },
+        )
+        with patch.object(httpx.Client, "request", return_value=create_resp):
+            with Client("http://localhost:8000") as c:
+                emb = c.embedding.create_with_inputs(
+                    "stub-multimodal",
+                    [
+                        {"type": "text", "text": "chart"},
+                        {"type": "image_url", "url": "https://example.com/a.png"},
+                    ],
+                )
+        assert len(emb["embeddings"]) == 2
+        _pass("test_embedding_create_with_inputs")
+    except Exception as e:
+        _fail("test_embedding_create_with_inputs", e)
 
 
 # ---------------------------------------------------------------------------
@@ -579,6 +615,7 @@ if __name__ == "__main__":
     test_rag_list_kbs()
     test_agent_run_and_sessions()
     test_embedding_create_and_list()
+    test_embedding_create_with_inputs()
     test_memory_crud()
     test_orchestrator_workflow()
     test_exception_401_auth_error()
