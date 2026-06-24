@@ -38,8 +38,18 @@ docs/roadmap 或 backlog 规划
 
 提交前：
 
-1. `ruff check .` / 相关 `pytest` 通过
+1. `ruff check .` / 相关 `pytest` 或 `python -m unittest` 通过
 2. PR 描述写 `closes #N`
 3. **不要** `git push origin main`
+
+Issue / Milestone / Label 纪律（Phase 工作必做）：
+
+1. **Issue 必须先存在**：编号 `#N` 与 `docs/issues-backlog-phase-*.md` 条目一致
+2. **Milestone**：挂到对应 Phase（如 `Phase O — Agent JD2 Alignment`）
+3. **Labels**：至少 `phase-task` + `phase-<letter>`（如 `phase-o`）；缺 label 时先 `gh label create` 再建 Issue
+4. **分支名**：`feat/issue-<N>-<short-name>` 或 `fix/issue-<N>-<short-name>`（与 Issue 号一致）
+5. **Commit / PR**：message 或 body 含 `closes #N`（一个 PR 关闭一个 Issue）
+6. **合并后**：确认 Issue 自动关闭；同步更新 `docs/issues-backlog-phase-*.md` 的 PR 列（如 `✅ #99`）
+7. **Phase Tag**：该 Phase **全部** Issue merge 后，在 `main` HEAD 打 `phase-<letter>-<name>` 并 `git push origin <tag>`；**禁止**在 feature branch 或未完成 Phase 中间打 tag
 
 Phase 多 Issue 时：优先 **堆叠 PR**（#N 合并后再开 #N+1 分支），或按模块拆独立 PR，每个 PR 对应一个 Issue。

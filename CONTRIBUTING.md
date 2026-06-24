@@ -99,8 +99,19 @@ git commit -m "refactor: 抽取 PII 检测的公共 pattern 加载逻辑"
 ### 1.5 合并打 Tag
 
 - PR 合并到 `main` 后，Issue 由 `closes #N` 自动关闭
-- 一个 Phase 全部 Issue 完成后，维护者打 `phase-<letter>-<name>` 标签
-- **Tag 打在 merge 后的 `main` 上**，不打在 feature branch
+- 合并后维护者（或 Agent）**同步** `docs/issues-backlog-phase-*.md`：该 Issue 行标记 `✅ #<PR>`
+- 一个 Phase **全部** Issue 完成后，维护者在 **`main` 最新 HEAD** 打 `phase-<letter>-<name>` 标签并 push
+- **Tag 打在 merge 后的 `main` 上**，不打在 feature branch；Phase 未完成时不打 Phase tag
+
+#### 1.5.1 Issue / Milestone / Label 清单（Phase 交付）
+
+| 步骤 | 要求 |
+|------|------|
+| 开 Issue | 正文来自 backlog；挂 **Milestone**；打 `phase-task` + `phase-<letter>` |
+| 开分支 | `feat/issue-<N>-<short-name>`，从最新 `main` 拉出 |
+| 开 PR | 标题含 Issue 主题；body 写 `closes #N`；一个 PR 对应一个 Issue |
+| 合并后 | Issue 关闭；backlog 更新 PR 号；必要时更新 `roadmap.md` / Phase 规划 doc |
+| Phase 收尾 | 全部 Issue ✅ 后：`git tag -a phase-x-name -m "..." && git push origin phase-x-name` |
 
 ### 1.6 历史补录（仅维护者一次性操作）
 

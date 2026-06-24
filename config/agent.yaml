@@ -12,3 +12,5 @@ context_keep_recent_turns: 4
 tool_result_max_chars: 2000
 quality_min_score: 0.3
 reflect_max_retries: 2
+# Phase O #88 — react（默认）| cot（显式 thinking trace）
+reasoning_mode: react

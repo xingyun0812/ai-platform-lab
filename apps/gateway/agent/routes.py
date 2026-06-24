@@ -16,6 +16,7 @@ from packages.agent.planner import (
     execute_plan_with_agent,
     generate_plan,
 )
+from packages.agent.reasoning import ReasoningModeError, resolve_reasoning_mode
 from packages.agent.runner import AgentRunError, run_agent
 from packages.agent.session import get_session_store
 from packages.contracts.agent_schemas import (
@@ -172,6 +173,11 @@ async def agent_run(
     if not body.approval_id and not (settings.llm_api_key or "").strip():
         return json_error(503, "UPSTREAM_NOT_CONFIGURED", "LLM_API_KEY 未配置")
 
+    try:
+        resolve_reasoning_mode(body.reasoning_mode, settings.agent_reasoning_mode)
+    except ReasoningModeError as e:
+        return json_error(400, "INVALID_REQUEST", str(e))
+
     new_messages: list[dict[str, Any]] = [
         m.model_dump(exclude_none=True) for m in body.messages
     ]
@@ -225,6 +231,7 @@ async def agent_run(
                     token_budget_monthly=tenant.token_budget_monthly,
                     shadow_mode=(x_agent_shadow or "").lower() == "true",
                     approval_id=body.approval_id,
+                    reasoning_mode=body.reasoning_mode,
                 )
     except PlannerError as e:
         return _planner_error_response(e)
@@ -251,6 +258,8 @@ async def agent_run(
             return json_error(422, e.code, e.message, detail=e.detail)
         if e.code == "AGENT_TOOL_FORBIDDEN":
             return json_error(403, e.code, e.message, detail=e.detail)
+        if e.code == "AGENT_INVALID_REASONING_MODE":
+            return json_error(400, e.code, e.message, detail=e.detail)
         if e.code in ("AGENT_MAX_STEPS", "MODEL_NOT_ALLOWED"):
             status = 422 if e.code == "AGENT_MAX_STEPS" else 403
             return json_error(status, e.code, e.message, detail=e.detail)

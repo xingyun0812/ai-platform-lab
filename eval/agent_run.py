@@ -134,6 +134,11 @@ def evaluate_agent_case(
         code = (body.get("error") or {}).get("code") if isinstance(body.get("error"), dict) else None
         return False, f"期望 200 但 status={status} code={code}", metrics
 
+    if case.get("expect_reasoning_trace"):
+        trace = body.get("reasoning_trace")
+        if not isinstance(trace, list) or not trace:
+            return False, "缺少 reasoning_trace", metrics
+
     tool_calls = body.get("tool_calls") if isinstance(body.get("tool_calls"), list) else []
     tool_names = _tool_names_from_body(body)
     metrics.tool_names = tool_names
@@ -334,6 +339,8 @@ async def run_agent_baseline(
             }
             if case.get("kb_id"):
                 payload["kb_id"] = case["kb_id"]
+            if case.get("reasoning_mode"):
+                payload["reasoning_mode"] = case["reasoning_mode"]
 
             try:
                 r = await client.post("/v1/agent/run", json=payload, headers=headers)

@@ -8,8 +8,8 @@
 | Backlog | GitHub Issue | 状态 |
 |---------|--------------|------|
 | 规划文档 | [#86](https://github.com/xingyun0812/ai-platform-lab/issues/86) | ⏳ |
-| O1 Task Planner | [#87](https://github.com/xingyun0812/ai-platform-lab/issues/87) | ⏳ |
-| O2 CoT 推理 | [#88](https://github.com/xingyun0812/ai-platform-lab/issues/88) | ⏳ |
+| O1 Task Planner | [#87](https://github.com/xingyun0812/ai-platform-lab/issues/87) | ✅ #99 |
+| O2 CoT 推理 | [#88](https://github.com/xingyun0812/ai-platform-lab/issues/88) | ⏳ #100 |
 | O4 Multi-Agent v2 | [#89](https://github.com/xingyun0812/ai-platform-lab/issues/89) | ⏳ |
 | O5 Plugin Manifest | [#90](https://github.com/xingyun0812/ai-platform-lab/issues/90) | ⏳ |
 | O6 web_search | [#91](https://github.com/xingyun0812/ai-platform-lab/issues/91) | ⏳ |
