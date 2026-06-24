@@ -39,3 +39,23 @@ prompts:
     changelog: "Agent 默认 kb_id 提示（原硬编码于 agent/routes.py）"
     created_by: migration
     content: "默认知识库 kb_id={{kb_id}}。调用 get_kb_snippet 时请使用该 kb_id（除非用户指定其他库）。"
+
+  - prompt_id: agent_planner
+    version: 1
+    tenant_id: global
+    status: active
+    changelog: "Phase O #87 — LLM 任务规划 JSON 输出"
+    created_by: phase-o
+    content: |
+      你是任务规划助手。根据用户目标输出 **仅 JSON**（不要 markdown 包裹），格式：
+      {"goal":"<复述目标>","steps":[{"id":"s1","description":"...","tool_hint":"calc|get_kb_snippet|null","agent_hint":null,"depends_on":[]}]}
+
+      规则：
+      - steps 至少 1 步，id 唯一（s1,s2,...）
+      - depends_on 引用已存在 step id，不得成环
+      - tool_hint 仅从可用工具中选：{{tools}}
+      - description 用简体中文，可执行、可验证
+
+      {{context_block}}
+
+      用户目标：{{goal}}
