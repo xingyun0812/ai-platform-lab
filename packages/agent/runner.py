@@ -26,14 +26,13 @@ from packages.agent.context_compress import (
     retrieve_and_inject_memory,
 )
 from packages.agent.hitl import ApprovalStatus, get_approval
-from packages.agent.quality_gate import QUALITY_HINT, assess_tool_output
 from packages.agent.perf_metrics import get_agent_perf_metrics
+from packages.agent.quality_gate import QUALITY_HINT, assess_tool_output
 from packages.agent.reasoning import (
     apply_cot_to_assistant_message,
     merge_cot_system_prompt,
     resolve_reasoning_mode,
 )
-from packages.agent.tool_strategy import ToolCallStrategyError, resolve_tool_call_strategy
 from packages.agent.registry import ToolRegistry
 from packages.agent.risk import tool_requires_hitl
 from packages.agent.session import SessionStore
@@ -41,6 +40,7 @@ from packages.agent.session_state import SessionState, count_user_messages
 from packages.agent.shadow import shadow_tool_record
 from packages.agent.tool_envelope import parse_tool_result, with_quality_hint
 from packages.agent.tool_router import routing_meta, select_tools_from_messages
+from packages.agent.tool_strategy import ToolCallStrategyError, resolve_tool_call_strategy
 from packages.billing.budget import budget_platform_meta, get_budget_snapshot
 from packages.billing.recorder import record_upstream_usage
 from packages.contracts.agent_schemas import ReasoningTraceRecord, ToolCallRecord
