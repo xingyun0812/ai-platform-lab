@@ -312,7 +312,7 @@ tests/test_embedding.py           # 18 个测试用例
 1. **无批量优化**：单次 `/embed` 请求的多文本虽然缓存部分优化，但传给 OpenAI 的批次大小未做分片（OpenAI 限制 2048 个 input per 请求）；生产应加 `chunk_batch` 分片。
 2. **缓存不分布式**：当前 LRU 缓存是进程内 `OrderedDict`；多实例部署时缓存不共享。生产应用 Redis + 向量压缩（float32 序列化）。
 3. **无 OpenAI 限速重试**：OpenAI rate limit（429）直接抛出；生产应加指数退避 + tenacity 重试。
-4. **无多模态支持**：仅文本 embedding；图像/音频 embedding（如 CLIP）需额外 provider 实现。
+4. **无多模态支持**：仅文本 embedding；图像/音频 embedding（如 CLIP）需额外 provider 实现。→ **Phase P P1 已补** text+image inputs + stub-multimodal，见 [phase-p-multimodal-embedding.md](./phase-p-multimodal-embedding.md)。
 5. **无异步 Provider 池**：多个 provider 实例串行调用；生产应加 provider pool + 并发控制。
 6. **无维度验证**：注册模型时 `dimensions` 只做 `> 0` 检查；若 OpenAI API 返回的实际维度与配置不匹配，调用方会静默使用错误维度。
 

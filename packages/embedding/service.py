@@ -95,52 +95,56 @@ class EmbeddingService:
         """
         # 延迟导入避免循环依赖
         from packages.embedding.models import EmbeddingResponse
+        from packages.embedding.multimodal import validate_modalities
         from packages.embedding.providers import provider_factory
 
         model = self._registry.get_model(request.model_id)
         if model is None:
             raise ValueError(f"embedding model {request.model_id!r} not found in registry")
 
+        items = request.resolved_items()
+        validate_modalities(items, allowed=model.modalities)
+
         provider = provider_factory(model)
 
         embeddings = []
         all_cached = True
         cache_hits = 0
-        texts_to_embed = []
-        text_indices = []
+        items_to_embed: list[dict] = []
+        item_indices: list[int] = []
 
-        # 检查缓存
         cached_results: dict[int, list] = {}
-        for i, text in enumerate(request.texts):
-            cache_key = self._cache_key(request.model_id, text)
+        for i, item in enumerate(items):
+            cache_key = self._cache_key(request.model_id, item)
             cached = self._cache.get(cache_key)
             if cached is not None:
                 cached_results[i] = cached
                 cache_hits += 1
             else:
                 all_cached = False
-                texts_to_embed.append(text)
-                text_indices.append(i)
+                items_to_embed.append(item)
+                item_indices.append(i)
 
-        # 批量调用 provider（仅未命中缓存的文本）
-        if texts_to_embed:
-            new_embeddings = await provider.embed(texts_to_embed, model)
-            for idx, (text, embedding) in enumerate(zip(texts_to_embed, new_embeddings)):
-                orig_idx = text_indices[idx]
+        if items_to_embed:
+            new_embeddings = await provider.embed(items_to_embed, model)
+            for idx, (item, embedding) in enumerate(zip(items_to_embed, new_embeddings)):
+                orig_idx = item_indices[idx]
                 cached_results[orig_idx] = embedding
-                cache_key = self._cache_key(request.model_id, text)
+                cache_key = self._cache_key(request.model_id, item)
                 self._cache.set(cache_key, embedding)
 
-        # 按原顺序组装结果
-        for i in range(len(request.texts)):
+        for i in range(len(items)):
             embeddings.append(cached_results[i])
 
-        total = len(request.texts)
+        total = len(items)
         return EmbeddingResponse(
             model_id=request.model_id,
             embeddings=embeddings,
             dimensions=model.dimensions,
             usage={
+                "total_inputs": total,
+                "cached_inputs": cache_hits,
+                "computed_inputs": total - cache_hits,
                 "total_texts": total,
                 "cached_texts": cache_hits,
                 "computed_texts": total - cache_hits,
@@ -170,9 +174,15 @@ class EmbeddingService:
         return self._cache.clear()
 
     @staticmethod
-    def _cache_key(model_id: str, text: str) -> str:
-        """生成缓存键（model_id + text sha256）。"""
-        digest = hashlib.sha256(f"{model_id}:{text}".encode()).hexdigest()
+    def _cache_key(model_id: str, item: str | dict) -> str:
+        """生成缓存键（model_id + 多模态指纹）。"""
+        from packages.embedding.multimodal import item_fingerprint, normalize_item
+
+        if isinstance(item, str):
+            fp = item_fingerprint(normalize_item(item))
+        else:
+            fp = item_fingerprint(item)
+        digest = hashlib.sha256(f"{model_id}:{fp}".encode()).hexdigest()
         return digest
 
 

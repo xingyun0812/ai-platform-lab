@@ -56,12 +56,14 @@ class ModelCreateRequest(BaseModel):
     provider: str = Field(default="stub", description="openai | stub | custom")
     dimensions: int = Field(default=1536, gt=0)
     max_input_tokens: int = Field(default=8192, gt=0)
+    modalities: list[str] = Field(default_factory=lambda: ["text"])
     metadata: dict = Field(default_factory=dict)
 
 
 class EmbedRequest(BaseModel):
     model_id: str = Field(..., min_length=1)
-    texts: list = Field(..., min_length=1)
+    texts: list[str] | None = None
+    inputs: list | None = None
     tenant_id: str = "system"
 
 
@@ -136,6 +138,7 @@ async def create_model(
         provider=body.provider,
         dimensions=body.dimensions,
         max_input_tokens=body.max_input_tokens,
+        modalities=body.modalities or ["text"],
         metadata=body.metadata,
     )
     svc._registry.register_model(model)
@@ -181,18 +184,21 @@ async def embed(
     svc = _service_or_503()
     if isinstance(svc, JSONResponse):
         return svc
-    # 验证 texts 类型
-    if not body.texts or not all(isinstance(t, str) for t in body.texts):
-        return json_error(400, "INVALID_INPUT", "texts 必须是非空字符串列表")
+    if not body.texts and not body.inputs:
+        return json_error(400, "INVALID_INPUT", "texts 或 inputs 至少提供一个")
     from packages.embedding.models import EmbeddingRequest
+    from packages.embedding.multimodal import MultimodalInputError
 
     req = EmbeddingRequest(
         model_id=body.model_id,
-        texts=body.texts,
+        texts=list(body.texts or []),
+        inputs=body.inputs,
         tenant_id=body.tenant_id or getattr(tenant, "tenant_id", "system"),
     )
     try:
         resp = await svc.embed(req)
+    except MultimodalInputError as e:
+        return json_error(400, "INVALID_INPUT", str(e))
     except ValueError as e:
         return json_error(404, "MODEL_NOT_FOUND", str(e))
     except Exception as e:

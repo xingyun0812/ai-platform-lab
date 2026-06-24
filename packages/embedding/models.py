@@ -29,6 +29,7 @@ class EmbeddingModel:
     provider: str  # "openai" | "stub" | "custom"
     dimensions: int
     max_input_tokens: int = 8192
+    modalities: list[str] = field(default_factory=lambda: ["text"])
     created_at: float = field(default_factory=time.time)
     metadata: dict = field(default_factory=dict)
 
@@ -41,8 +42,18 @@ class EmbeddingRequest:
     """Embedding 请求。"""
 
     model_id: str
-    texts: list
+    texts: list = field(default_factory=list)
+    inputs: list | None = None
     tenant_id: str = "system"
+
+    def resolved_items(self) -> list[dict]:
+        from packages.embedding.multimodal import normalize_item, normalize_items
+
+        if self.inputs is not None:
+            return normalize_items(self.inputs)
+        if not self.texts:
+            raise ValueError("texts or inputs required")
+        return [normalize_item(t) for t in self.texts]
 
 
 @dataclass
@@ -128,12 +139,15 @@ class EmbeddingRegistry:
             return None
         try:
             model_id = str(item["model_id"])
+            from packages.embedding.multimodal import parse_modalities
+
             return EmbeddingModel(
                 model_id=model_id,
                 name=str(item.get("name", model_id)),
                 provider=str(item.get("provider", "stub")),
                 dimensions=int(item.get("dimensions", 1536)),
                 max_input_tokens=int(item.get("max_input_tokens", 8192)),
+                modalities=parse_modalities(item.get("modalities")),
                 created_at=float(item.get("created_at", time.time())),
                 metadata=dict(item.get("metadata", {})),
             )

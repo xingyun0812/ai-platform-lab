@@ -19,16 +19,8 @@ logger = logging.getLogger("ai_platform.embedding.providers")
 class EmbeddingProvider:
     """Embedding 提供商抽象基类。"""
 
-    async def embed(self, texts: list, model: Any) -> list:
-        """为文本列表生成 embedding。
-
-        Args:
-            texts: 待编码文本列表
-            model: EmbeddingModel 配置
-
-        Returns:
-            list[list[float]] — 每个文本对应一个 embedding 向量
-        """
+    async def embed(self, items: list, model: Any) -> list:
+        """为输入列表生成 embedding（每项为 canonical dict 或 str）。"""
         raise NotImplementedError
 
 
@@ -37,14 +29,20 @@ class StubProvider(EmbeddingProvider):
 
     特性：
     - 无 LLM 调用，适合测试和 CI
-    - 同一文本始终返回相同向量（确定性）
-    - 向量维度由 model.dimensions 决定
+    - 同一输入始终返回相同向量（确定性）
+    - 支持 text / image_url / image_base64
     """
 
-    async def embed(self, texts: list, model: Any) -> list:
+    async def embed(self, items: list, model: Any) -> list:
+        from packages.embedding.multimodal import item_fingerprint, normalize_item
+
         result = []
-        for text in texts:
-            vec = self._hash_to_vector(text, model.dimensions)
+        for raw in items:
+            if isinstance(raw, dict):
+                fp = item_fingerprint(raw)
+            else:
+                fp = item_fingerprint(normalize_item(raw))
+            vec = self._hash_to_vector(fp, model.dimensions)
             result.append(vec)
         return result
 
@@ -90,27 +88,30 @@ class OpenAIProvider(EmbeddingProvider):
         self._api_key = api_key
         self._base_url = base_url.rstrip("/")
 
-    async def embed(self, texts: list, model: Any) -> list:
-        """调用 OpenAI Embeddings API。"""
+    async def embed(self, items: list, model: Any) -> list:
+        """调用 OpenAI Embeddings API（多模态输入降级为 text / content）。"""
         import httpx
+
+        from packages.embedding.multimodal import items_to_openai_input, normalize_item
+
+        canonical = [normalize_item(i) if not isinstance(i, dict) else i for i in items]
+        payload_inputs = [items_to_openai_input([item]) for item in canonical]
 
         url = f"{self._base_url}/embeddings"
         headers = {
             "Authorization": f"Bearer {self._api_key}",
             "Content-Type": "application/json",
         }
-        payload = {
-            "model": model.model_id,
-            "input": texts,
-        }
+        results: list[list[float]] = []
         async with httpx.AsyncClient(timeout=60.0) as client:
-            resp = await client.post(url, headers=headers, json=payload)
-            resp.raise_for_status()
-            data = resp.json()
-
-        # 按 index 排序，提取向量
-        items = sorted(data["data"], key=lambda x: x["index"])
-        return [item["embedding"] for item in items]
+            for inp in payload_inputs:
+                body = {"model": model.model_id, "input": inp}
+                resp = await client.post(url, headers=headers, json=body)
+                resp.raise_for_status()
+                data = resp.json()
+                items_sorted = sorted(data["data"], key=lambda x: x["index"])
+                results.append(items_sorted[0]["embedding"])
+        return results
 
 
 def provider_factory(model: Any) -> EmbeddingProvider:

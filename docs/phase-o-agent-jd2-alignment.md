@@ -76,17 +76,17 @@ flowchart TB
 
 ## 4. Issue 拆分与依赖
 
-| Issue | 标题 | 依赖 | 工期 | JD2 对齐 | GitHub |
-|-------|------|------|------|----------|--------|
-| **O1** | Task Planner + 任务分解 | — | 3～4d | 任务规划、自动化分解 | [#87](https://github.com/xingyun0812/ai-platform-lab/issues/87) |
-| **O2** | CoT 推理模式 + trace | — | 2d | 链式推理 | [#88](https://github.com/xingyun0812/ai-platform-lab/issues/88) |
-| **O4** | Multi-Agent v2（黑板 + Runner 委托） | O1 可选 | 4～5d | Multi-Agent 协作 | [#89](https://github.com/xingyun0812/ai-platform-lab/issues/89) |
-| **O5** | Plugin Manifest 动态工具 | — | 2～3d | 插件系统 | [#90](https://github.com/xingyun0812/ai-platform-lab/issues/90) |
-| **O6** | web_search 工具 | O5 可选 | 2d | 搜索引擎 | [#91](https://github.com/xingyun0812/ai-platform-lab/issues/91) |
-| **O7** | sql_query 只读工具 | 沙箱 #41 | 2～3d | 数据库 | [#92](https://github.com/xingyun0812/ai-platform-lab/issues/92) |
-| **O9** | 数据分析 Vertical + Orchestrator | O1,O6,O7 | 3～4d | 办公/数据分析场景 | [#93](https://github.com/xingyun0812/ai-platform-lab/issues/93) |
-| **O10** | Agent 性能：并行工具 + 长上下文 | — | 2～3d | 性能调优 | [#94](https://github.com/xingyun0812/ai-platform-lab/issues/94) |
-| **O11** | 文档 / Demo / eval 门禁 / 叙事 | O1～O10 | 2d | 面试可讲闭环 | [#95](https://github.com/xingyun0812/ai-platform-lab/issues/95) |
+| Issue | 标题 | 依赖 | 工期 | JD2 对齐 | GitHub | 状态 |
+|-------|------|------|------|----------|--------|------|
+| **O1** | Task Planner + 任务分解 | — | 3～4d | 任务规划、自动化分解 | [#87](https://github.com/xingyun0812/ai-platform-lab/issues/87) | ✅ #99 |
+| **O2** | CoT 推理模式 + trace | — | 2d | 链式推理 | [#88](https://github.com/xingyun0812/ai-platform-lab/issues/88) | ✅ #100 |
+| **O4** | Multi-Agent v2（黑板 + Runner 委托） | O1 可选 | 4～5d | Multi-Agent 协作 | [#89](https://github.com/xingyun0812/ai-platform-lab/issues/89) | ✅ #101 |
+| **O5** | Plugin Manifest 动态工具 | — | 2～3d | 插件系统 | [#90](https://github.com/xingyun0812/ai-platform-lab/issues/90) | ✅ #102 |
+| **O6** | web_search 工具 | O5 可选 | 2d | 搜索引擎 | [#91](https://github.com/xingyun0812/ai-platform-lab/issues/91) | ✅ #103 |
+| **O7** | sql_query 只读工具 | 沙箱 #41 | 2～3d | 数据库 | [#92](https://github.com/xingyun0812/ai-platform-lab/issues/92) | ✅ #104 |
+| **O9** | 数据分析 Vertical + Orchestrator | O1,O6,O7 | 3～4d | 办公/数据分析场景 | [#93](https://github.com/xingyun0812/ai-platform-lab/issues/93) | ✅ #105 |
+| **O10** | Agent 性能：并行工具 + 长上下文 | — | 2～3d | 性能调优 | [#94](https://github.com/xingyun0812/ai-platform-lab/issues/94) | ✅ #106 |
+| **O11** | 文档 / Demo / eval 门禁 / 叙事 | O1～O10 | 2d | 面试可讲闭环 | [#95](https://github.com/xingyun0812/ai-platform-lab/issues/95) | ✅ #107 |
 
 **建议合并顺序（PR 链，不可并行 merge 有依赖项）**：
 
@@ -132,9 +132,9 @@ flowchart LR
 - 执行：plan 逐步喂给现有 `runner.py` 或转成 Orchestrator workflow（MVP 逐步执行即可）
 
 **验收**：
-- [ ] 单测 ≥12：空 goal、单步、多步依赖、循环依赖拒绝
-- [ ] `eval/agent_planner_smoke.py` mock LLM 通过
-- [ ] live：`auto_plan=true` 完成「查 KB → calc → 汇总」三步
+- [x] 单测 ≥12：空 goal、单步、多步依赖、循环依赖拒绝
+- [x] `eval/agent_planner_smoke.py` mock LLM 通过
+- [x] live：`auto_plan=true` 完成「查 KB → calc → 汇总」三步
 
 **关键文件**：
 - `packages/agent/planner.py`
@@ -154,9 +154,9 @@ flowchart LR
 - 可选：`stream` 时先流 thinking（后续迭代）
 
 **验收**：
-- [ ] 单测：解析 thinking 块、无 thinking 降级
-- [ ] `agent_run` baseline 新增 cot 用例（mock）
-- [ ] 文档：`docs/phase-o-cot.md` 一节
+- [x] 单测：解析 thinking 块、无 thinking 降级
+- [x] `agent_run` baseline 新增 cot 用例（mock）
+- [x] 文档：`docs/phase-o-cot.md` 一节
 
 **关键文件**：
 - `packages/agent/runner.py`
@@ -176,9 +176,9 @@ flowchart LR
 - API：`GET /v1/agent/blackboard/{session_id}`（Console 可展示）
 
 **验收**：
-- [ ] 单测：委托深度限制、黑板读写、reviewer 流程
-- [ ] 扩展 `eval/agent_vertical_smoke.py`：multi-agent + blackboard 断言
-- [ ] 更新 `phase-h-multi-agent.md` §已知限制
+- [x] 单测：委托深度限制、黑板读写、reviewer 流程
+- [x] 扩展 `eval/agent_vertical_smoke.py`：multi-agent + blackboard 断言
+- [x] 更新 `phase-h-multi-agent.md` §已知限制
 
 **关键文件**：
 - `packages/agent/multi_agent/delegation.py`
@@ -199,9 +199,9 @@ flowchart LR
 - 与 MCP 关系：MCP = 远程插件；Plugin = 本地 manifest
 
 **验收**：
-- [ ] 示例插件 `config/plugins/demo_echo.yaml`
-- [ ] 单测：加载、重复名拒绝、未授权 403
-- [ ] 文档：插件作者指南 1 页
+- [x] 示例插件 `config/plugins/demo_echo.yaml`
+- [x] 单测：加载、重复名拒绝、未授权 403
+- [x] 文档：插件作者指南 1 页（`docs/phase-o-plugin-manifest.md`）
 
 ---
 
@@ -216,9 +216,9 @@ flowchart LR
 - 返回：top-k `{title, snippet, url}` 结构化 JSON
 
 **验收**：
-- [ ] mock 模式单测 + agent 调用链
-- [ ] `tenants.yaml` demo-a 可选开放
-- [ ] 与 O9 vertical 串联
+- [x] mock 模式单测 + agent 调用链
+- [x] `tenants.yaml` demo-a 可选开放
+- [x] 与 O9 vertical 串联
 
 ---
 
@@ -234,9 +234,9 @@ flowchart LR
 - 动作级别：`read-only`（审计已有分级）
 
 **验收**：
-- [ ] 单测：SQL 注入式拒绝、LIMIT 强制
-- [ ] 示例视图 `samples/analytics_demo.sql`（seed 数据）
-- [ ] destructive 语句 → `AGENT_TOOL_FORBIDDEN`
+- [x] 单测：SQL 注入式拒绝、LIMIT 强制
+- [x] 示例视图 `samples/analytics_demo.sql`（seed 数据）
+- [x] destructive 语句 → `AGENT_TOOL_FORBIDDEN`
 
 ---
 
@@ -253,9 +253,9 @@ flowchart LR
 - Console：Agent 轨迹页展示 plan + blackboard + tool_trace
 
 **验收**：
-- [ ] `./eval/data_analysis_vertical.sh --mock` exit 0
-- [ ] live 有 Key 时 exit 0
-- [ ] CI：`agent_jd2_gate.py` 纳入新 vertical（mock 必跑）
+- [x] `./eval/data_analysis_vertical.sh --mock` exit 0
+- [x] live 有 Key 时 exit 0（见 `docs/phase-o-data-analysis-vertical.md`）
+- [x] CI：`agent_jd2_gate.py` 纳入新 vertical（mock 必跑）
 
 ---
 
@@ -270,9 +270,9 @@ flowchart LR
 - **策略**：`tool_call_strategy=sequential|parallel` 配置
 
 **验收**：
-- [ ] 单测：并行 vs 顺序
-- [ ] `/metrics` 新指标可见
-- [ ] `phase-o` 文档 §性能 可面试
+- [x] 单测：并行 vs 顺序
+- [x] `/metrics` 新指标可见
+- [x] `docs/phase-o-agent-perf.md` §性能 可面试
 
 ---
 
@@ -336,14 +336,14 @@ flowchart LR
 
 ## 8. 工期与里程碑
 
-| 里程碑 | 内容 | 累计 |
-|--------|------|------|
-| M0 | Phase N PyPI 收尾 | — |
-| M1 | O1 + O2 merge | ~1 周 |
-| M2 | O4 merge | +1 周 |
-| M3 | O5 + O6 + O7 merge | +1 周 |
-| M4 | O9 + O10 merge | +1 周 |
-| M5 | O11 + tag `phase-o-agent-jd2` | +2d |
+| 里程碑 | 内容 | 累计 | 状态 |
+|--------|------|------|------|
+| M0 | Phase N PyPI 收尾 | — | ✅ |
+| M1 | O1 + O2 merge | ~1 周 | ✅ |
+| M2 | O4 merge | +1 周 | ✅ |
+| M3 | O5 + O6 + O7 merge | +1 周 | ✅ |
+| M4 | O9 + O10 merge | +1 周 | ✅ |
+| M5 | O11 + tag `phase-o-agent-jd2` | +2d | ✅ |
 
 **总估**：约 **4～5 周**（单人、含 review；不含 PyPI 维护）
 
@@ -365,10 +365,15 @@ flowchart LR
 |------|------|
 | [tmp-jd-platform-comparison.md](./tmp-jd-platform-comparison.md) | JD 对照来源 |
 | [issues-backlog-phase-o.md](./issues-backlog-phase-o.md) | GitHub Issue 粘贴正文 |
+| [phase-o-cot.md](./phase-o-cot.md) | O2 CoT |
+| [phase-o-multi-agent-v2.md](./phase-o-multi-agent-v2.md) | O4 黑板 |
+| [phase-o-plugin-manifest.md](./phase-o-plugin-manifest.md) | O5 插件 |
+| [phase-o-data-analysis-vertical.md](./phase-o-data-analysis-vertical.md) | O9 vertical |
+| [phase-o-agent-perf.md](./phase-o-agent-perf.md) | O10 性能 |
 | [phase-h-multi-agent.md](./phase-h-multi-agent.md) | Multi-Agent 现状 |
 | [phase-h-orchestrator.md](./phase-h-orchestrator.md) | 编排现状 |
 | [interview-narrative.md](./interview-narrative.md) | 面试叙事（O11 更新） |
 
 ---
 
-*规划稿 · 2026-06-09 · Phase O 启动前需：Phase N 完成 + 创建 GitHub Milestone「Phase O — Agent JD2 Alignment」*
+*完成稿 · 2026-06-09 · tag `phase-o-agent-jd2` · Milestone「Phase O — Agent JD2 Alignment」*
