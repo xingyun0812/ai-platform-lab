@@ -163,10 +163,12 @@ def create_app() -> FastAPI:
         init_workflow_store(
             yaml_path=settings.orchestrator_workflows_path,
             overrides_path=settings.orchestrator_overrides_path,
+            extra_workflows_dir=settings.orchestrator_extra_workflows_dir,
         )
         logger.info(
-            "orchestrator enabled workflows=%s overrides=%s",
+            "orchestrator enabled workflows=%s extra=%s overrides=%s",
             settings.orchestrator_workflows_path,
+            settings.orchestrator_extra_workflows_dir,
             settings.orchestrator_overrides_path,
         )
     # Phase H #38 — Multi-Agent 协作框架

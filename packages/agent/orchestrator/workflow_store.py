@@ -27,9 +27,11 @@ class WorkflowStore:
         *,
         yaml_path: Path | None = None,
         overrides_path: Path | None = None,
+        extra_workflows_dir: Path | None = None,
     ) -> None:
         self._yaml_path = yaml_path
         self._overrides_path = overrides_path
+        self._extra_workflows_dir = extra_workflows_dir
         self._lock = threading.RLock()
         self._workflows: dict[str, Workflow] = {}
         self._metadata: dict[str, dict[str, Any]] = {}
@@ -51,6 +53,13 @@ class WorkflowStore:
                     self._merge(data, source="overrides")
                 except Exception as e:
                     logger.warning("workflow overrides load failed: %s", e)
+            if self._extra_workflows_dir and self._extra_workflows_dir.is_dir():
+                for path in sorted(self._extra_workflows_dir.glob("*.yaml")):
+                    try:
+                        data = yaml.safe_load(path.read_text(encoding="utf-8"))
+                        self._merge(data, source=str(path))
+                    except Exception as e:
+                        logger.warning("extra workflow load failed path=%s: %s", path, e)
             self._loaded = True
             logger.info(
                 "workflow store loaded workflows=%d", len(self._workflows)
@@ -161,6 +170,7 @@ def init_workflow_store(
     *,
     yaml_path: Path | None = None,
     overrides_path: Path | None = None,
+    extra_workflows_dir: Path | None = None,
 ) -> WorkflowStore | None:
     global _global_store
     with _global_lock:
@@ -169,6 +179,7 @@ def init_workflow_store(
         _global_store = WorkflowStore(
             yaml_path=yaml_path,
             overrides_path=overrides_path,
+            extra_workflows_dir=extra_workflows_dir,
         )
         _global_store.load()
         return _global_store

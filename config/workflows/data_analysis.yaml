@@ -1,0 +1,64 @@
+# Phase O #93 — 数据分析 Vertical 工作流
+# 链路：web_search(mock) → sql_query → calc → 报告模板（无需 LLM 即可跑通 tool 链）
+
+workflows:
+  - workflow_id: data-analysis-vertical
+    name: "Data Analysis Vertical — 搜索 + SQL + calc"
+    description: "演示 sales 分析：外部检索 → SQL 聚合 → calc → 报告摘要"
+    created_by: system
+    start_node: start
+    end_node: end
+    nodes:
+      - node_id: start
+        node_type: start
+      - node_id: web_search
+        node_type: tool_call
+        config:
+          tool_name: web_search
+          arguments:
+            query: "${input.topic}"
+            top_k: 3
+      - node_id: sql_agg
+        node_type: tool_call
+        config:
+          tool_name: sql_query
+          arguments:
+            sql: >-
+              SELECT region, SUM(amount) AS total
+              FROM demo_sales
+              GROUP BY region
+              LIMIT 10
+      - node_id: calc_yoy
+        node_type: tool_call
+        config:
+          tool_name: calc
+          arguments:
+            expression: "(14100 - 12000) / 12000 * 100"
+      - node_id: report
+        node_type: output
+        config:
+          value: |
+            ## 数据分析报告（Phase O vertical）
+            主题: ${input.topic}
+            ---
+            [1] 背景检索:
+            ${web_search.result}
+            ---
+            [2] SQL 聚合:
+            ${sql_agg.result}
+            ---
+            [3] 同比计算(%):
+            ${calc_yoy.result}
+      - node_id: end
+        node_type: end
+    edges:
+      - from_node: start
+        to_node: web_search
+      - from_node: web_search
+        to_node: sql_agg
+      - from_node: sql_agg
+        to_node: calc_yoy
+      - from_node: calc_yoy
+        to_node: report
+      - from_node: report
+        to_node: end
