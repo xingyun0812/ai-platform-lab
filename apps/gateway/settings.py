@@ -320,6 +320,18 @@ class Settings(BaseSettings):
         description="MCP 工具调用超时",
     )
 
+    # Phase O — Plugin Manifest (#90)
+    agent_plugins_enabled: bool = Field(
+        default=True,
+        validation_alias="AGENT_PLUGINS_ENABLED",
+        description="启用后从 config/plugins/*.yaml 加载 YAML 插件工具",
+    )
+    agent_plugins_config_dir: Path = Field(
+        default=REPO_ROOT / "config" / "plugins",
+        validation_alias="AGENT_PLUGINS_CONFIG_DIR",
+        description="Plugin Manifest YAML 目录",
+    )
+
     # Phase H — 控制流编排引擎 (#37)
     orchestrator_enabled: bool = Field(
         default=True,

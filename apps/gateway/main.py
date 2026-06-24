@@ -41,6 +41,7 @@ from apps.gateway.sandbox_routes import router as sandbox_router
 from apps.gateway.settings import get_settings
 from apps.gateway.storage_routes import router as storage_router
 from apps.gateway.tenants import TenantRecord, load_tenants
+from packages.agent.registry import build_default_registry
 from packages.billing.budget import budget_platform_meta, get_budget_snapshot
 from packages.billing.recorder import record_upstream_usage
 from packages.contracts.schemas import ChatCompletionRequest
@@ -143,6 +144,17 @@ def create_app() -> FastAPI:
             "mcp enabled yaml=%s overrides=%s",
             settings.mcp_servers_config_path,
             settings.mcp_overrides_path,
+        )
+    # Phase O #90 — Plugin Manifest
+    if settings.agent_plugins_enabled:
+        from packages.agent.plugins.loader import get_loaded_plugins
+
+        reserved = frozenset(build_default_registry().keys())
+        plugins = get_loaded_plugins(reserved_names=reserved)
+        logger.info(
+            "agent plugins enabled dir=%s count=%d",
+            settings.agent_plugins_config_dir,
+            len(plugins),
         )
     # Phase H #37 — 控制流编排引擎
     if settings.orchestrator_enabled:
