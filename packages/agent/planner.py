@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import os
@@ -391,4 +392,164 @@ async def execute_plan_with_agent(
         "approval_id": last_approval_id,
         "plan": plan,
         "plan_steps_completed": total,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Q2 — DAG 并行执行（Phase Q #117）
+# ---------------------------------------------------------------------------
+
+
+def plan_execution_layers(steps: list[PlanStep]) -> list[list[PlanStep]]:
+    """将 Plan steps 按 DAG BFS 层分组，同层内无依赖关系可并行执行。
+
+    算法：Kahn BFS 变体，每轮将所有 indegree=0 的 step 归为同一层。
+
+    示例：
+      s1 → s2 → s4
+      s1 → s3 → s4
+    返回：[[s1], [s2, s3], [s4]]
+    """
+    if not steps:
+        return []
+
+    by_id: dict[str, PlanStep] = {s.id: s for s in steps}
+    indegree: dict[str, int] = {s.id: 0 for s in steps}
+    successors: dict[str, list[str]] = {s.id: [] for s in steps}
+
+    for step in steps:
+        for dep in step.depends_on:
+            successors[dep].append(step.id)
+            indegree[step.id] += 1
+
+    layers: list[list[PlanStep]] = []
+    current_layer = [sid for sid, deg in indegree.items() if deg == 0]
+
+    while current_layer:
+        layers.append([by_id[sid] for sid in current_layer])
+        next_layer: list[str] = []
+        for sid in current_layer:
+            for nxt in successors[sid]:
+                indegree[nxt] -= 1
+                if indegree[nxt] == 0:
+                    next_layer.append(nxt)
+        current_layer = next_layer
+
+    return layers
+
+
+async def execute_plan_parallel(
+    *,
+    plan: AgentPlan,
+    tenant_id: str,
+    session_id: str,
+    allowed_tools: tuple[str, ...],
+    allowed_models: tuple[str, ...],
+    model: str | None,
+    session_store: Any,
+    step_system_messages: list[dict[str, Any]] | None = None,
+    run_agent_fn: Callable[..., Awaitable[dict[str, Any]]] | None = None,
+) -> dict[str, Any]:
+    """按 DAG 层并行执行 Plan steps。
+
+    策略：
+    - 同层内用 asyncio.gather 并行调用 run_agent（fail-open：捕获异常记录为 failed）
+    - 每个 step 使用独立 sub-session（{session_id}__step_{step.id}）避免黑板写冲突
+    - 任一 step 返回 pending_approval 则立即停止后续层
+    - Prometheus: agent_plan_parallel_steps_total
+    """
+    from packages.agent.runner import run_agent
+
+    runner = run_agent_fn or run_agent
+    layers = plan_execution_layers(plan.steps)
+    total_steps = len(plan.steps)
+
+    all_tool_calls: list[ToolCallRecord] = []
+    agent_steps = 0
+    final_message = ""
+    resolved_model = model or get_settings().agent_model or get_settings().default_model
+    last_status = "completed"
+    last_approval_id: str | None = None
+    completed_count = 0
+
+    for layer_idx, layer in enumerate(layers):
+        # Build per-step coroutines
+        async def _run_step(step: PlanStep, layer_pos: int) -> dict[str, Any]:
+            step_msg = format_step_user_message(step, index=layer_pos + 1, total=total_steps)
+            new_messages: list[dict[str, Any]] = [{"role": "user", "content": step_msg}]
+            if step_system_messages and layer_idx == 0 and layer_pos == 0:
+                new_messages = [*step_system_messages, *new_messages]
+            sub_session_id = f"{session_id}__step_{step.id}"
+            return await runner(
+                tenant_id=tenant_id,
+                session_id=sub_session_id,
+                new_messages=new_messages,
+                allowed_tools=allowed_tools,
+                allowed_models=allowed_models,
+                model=model,
+                session_store=session_store,
+            )
+
+        coros = [_run_step(step, i) for i, step in enumerate(layer)]
+        raw_results = await asyncio.gather(*coros, return_exceptions=True)
+
+        # Process layer results
+        layer_has_pending = False
+        for step, raw in zip(layer, raw_results):
+            if isinstance(raw, BaseException):
+                logger.warning(
+                    "parallel step %s failed with exception: %s", step.id, raw, exc_info=False
+                )
+                last_status = "failed"
+                completed_count += 1
+                continue
+
+            result: dict[str, Any] = raw
+            resolved_model = result.get("model") or resolved_model
+            agent_steps += int(result.get("steps") or 0)
+            final_message = str(result.get("final_message") or final_message)
+            step_status = str(result.get("status") or "completed")
+            last_approval_id = result.get("approval_id") or last_approval_id
+
+            for tc in result.get("tool_calls") or []:
+                if isinstance(tc, ToolCallRecord):
+                    all_tool_calls.append(tc)
+                elif isinstance(tc, dict):
+                    all_tool_calls.append(ToolCallRecord.model_validate(tc))
+
+            if step_status == "pending_approval":
+                layer_has_pending = True
+                last_status = "pending_approval"
+            completed_count += 1
+
+        # Record metrics for this layer
+        get_agent_perf_metrics().record_parallel_steps(tenant_id=tenant_id, steps=len(layer))
+
+        if layer_has_pending:
+            return {
+                "tenant_id": tenant_id,
+                "session_id": session_id,
+                "final_message": final_message,
+                "tool_calls": all_tool_calls,
+                "steps": agent_steps,
+                "model": resolved_model,
+                "trace_id": get_trace_id(),
+                "status": last_status,
+                "approval_id": last_approval_id,
+                "plan": plan,
+                "plan_steps_completed": completed_count,
+            }
+
+    return {
+        "tenant_id": tenant_id,
+        "session_id": session_id,
+        "final_message": final_message,
+        "tool_calls": all_tool_calls,
+        "steps": agent_steps,
+        "model": resolved_model,
+        "trace_id": get_trace_id(),
+        "status": last_status,
+        "approval_id": last_approval_id,
+        "plan": plan,
+        "plan_steps_completed": total_steps,
     }
