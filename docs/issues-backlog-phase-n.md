@@ -10,7 +10,7 @@
 | N1 包元数据 | [#77](https://github.com/xingyun0812/ai-platform-lab/issues/77) | ✅ #82 |
 | N2 CI 发布 | [#78](https://github.com/xingyun0812/ai-platform-lab/issues/78) | ✅ #83 |
 | N3 pip smoke | [#79](https://github.com/xingyun0812/ai-platform-lab/issues/79) | ✅ #84 |
-| N4 文档同步 | [#80](https://github.com/xingyun0812/ai-platform-lab/issues/80) | ⏳ #85 |
+| N4 文档同步 | [#80](https://github.com/xingyun0812/ai-platform-lab/issues/80) | ✅ #85 |
 
 ---
 
