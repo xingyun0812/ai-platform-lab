@@ -34,6 +34,10 @@ class AgentRunRequest(BaseModel):
         default=None,
         description="auto_plan 时的任务目标；缺省取最后一条 user 消息",
     )
+    reasoning_mode: str | None = Field(
+        default=None,
+        description="react | cot；缺省用 AGENT_REASONING_MODE / config/agent.yaml",
+    )
 
 
 class PlanStep(BaseModel):
@@ -67,6 +71,12 @@ class AgentPlanResponse(BaseModel):
     trace_id: str | None = None
 
 
+class ReasoningTraceRecord(BaseModel):
+    step: int
+    thinking: str | None = None
+    visible_content: str | None = None
+
+
 class ToolCallRecord(BaseModel):
     tool_name: str
     arguments: dict[str, Any]
@@ -90,4 +100,6 @@ class AgentRunResponse(BaseModel):
     approval_id: str | None = None
     plan: AgentPlan | None = None
     plan_steps_completed: int | None = None
+    reasoning_mode: str | None = None
+    reasoning_trace: list[ReasoningTraceRecord] | None = None
     shadow_tool_calls: list[ToolCallRecord] | None = None

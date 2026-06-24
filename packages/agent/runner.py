@@ -25,6 +25,11 @@ from packages.agent.context_compress import (
 )
 from packages.agent.hitl import ApprovalStatus, get_approval
 from packages.agent.quality_gate import QUALITY_HINT, assess_tool_output
+from packages.agent.reasoning import (
+    apply_cot_to_assistant_message,
+    merge_cot_system_prompt,
+    resolve_reasoning_mode,
+)
 from packages.agent.registry import ToolRegistry
 from packages.agent.risk import tool_requires_hitl
 from packages.agent.session import SessionStore
@@ -34,7 +39,7 @@ from packages.agent.tool_envelope import with_quality_hint
 from packages.agent.tool_router import routing_meta, select_tools_from_messages
 from packages.billing.budget import budget_platform_meta, get_budget_snapshot
 from packages.billing.recorder import record_upstream_usage
-from packages.contracts.agent_schemas import ToolCallRecord
+from packages.contracts.agent_schemas import ReasoningTraceRecord, ToolCallRecord
 from packages.observability.context import get_trace_id
 
 logger = logging.getLogger("ai_platform.agent.runner")
@@ -346,6 +351,7 @@ async def run_agent(
     token_budget_monthly: int = -1,
     shadow_mode: bool = False,
     approval_id: str | None = None,
+    reasoning_mode: str | None = None,
 ) -> dict[str, Any]:
     if approval_id:
         return await resume_approved_tool(
@@ -358,6 +364,12 @@ async def run_agent(
         )
 
     settings = get_settings()
+    try:
+        active_reasoning_mode = resolve_reasoning_mode(
+            reasoning_mode, settings.agent_reasoning_mode
+        )
+    except ValueError as e:
+        raise AgentRunError("AGENT_INVALID_REASONING_MODE", str(e)) from e
     reg = registry or ToolRegistry()
     allowed, resolved_model = is_model_allowed(
         model or settings.agent_model,
@@ -382,6 +394,8 @@ async def run_agent(
         keep_recent_turns=settings.agent_context_keep_recent_turns,
         tool_result_max_chars=settings.agent_tool_result_max_chars,
     )
+    if active_reasoning_mode == "cot":
+        messages = merge_cot_system_prompt(messages)
     # Phase F #33：长记忆注入 system prompt
     if settings.context_memory_injection_enabled and new_messages:
         # 用最新 user message 作为 query
@@ -418,6 +432,7 @@ async def run_agent(
     )
     tools_spec = reg.openai_tools_spec_subset(routing.tool_names, allowed_tools)
     trace: list[ToolCallRecord] = []
+    reasoning_trace: list[ReasoningTraceRecord] = []
     shadow_trace: list[ToolCallRecord] = []
     # memory_injection 在 assemble_llm_messages 后才确定
     memory_injection = None  # type: ignore[assignment]
@@ -494,6 +509,17 @@ async def run_agent(
 
         choice = choices[0]
         msg = _extract_message(choice)
+        if active_reasoning_mode == "cot":
+            msg, thinking = apply_cot_to_assistant_message(msg)
+            reasoning_trace.append(
+                ReasoningTraceRecord(
+                    step=steps,
+                    thinking=thinking,
+                    visible_content=msg.get("content")
+                    if isinstance(msg.get("content"), str)
+                    else None,
+                )
+            )
         finish = choice.get("finish_reason")
         messages.append(msg)
         session_messages.append(msg)
@@ -663,7 +689,10 @@ async def run_agent(
         "model": resolved_model,
         "trace_id": get_trace_id(),
         "status": "completed",
+        "reasoning_mode": active_reasoning_mode,
     }
+    if reasoning_trace:
+        payload["reasoning_trace"] = reasoning_trace
     if shadow_mode and shadow_trace:
         payload["shadow_tool_calls"] = shadow_trace
     budget_meta = ContextBudgetMeta(
