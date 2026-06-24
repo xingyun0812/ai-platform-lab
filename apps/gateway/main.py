@@ -448,6 +448,12 @@ def create_app() -> FastAPI:
             parts.append(get_index_metrics().prometheus_text())
         except Exception:
             logger.exception("rag index metrics export failed")
+        try:
+            from packages.agent.perf_metrics import get_agent_perf_metrics
+
+            parts.append(get_agent_perf_metrics().prometheus_text())
+        except Exception:
+            logger.exception("agent perf metrics export failed")
         return PlainTextResponse("".join(parts), media_type="text/plain; version=0.0.4; charset=utf-8")
 
     @app.post("/v1/chat/completions")

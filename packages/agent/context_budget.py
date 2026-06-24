@@ -181,3 +181,19 @@ def context_budget_platform_meta(meta: ContextBudgetMeta) -> dict[str, Any]:
         "keep_recent_turns": meta.keep_recent_turns,
         "remaining": max(0, meta.budget - meta.estimated_tokens),
     }
+
+
+def context_strategy_platform_meta() -> dict[str, str]:
+    """长上下文与 RAG/记忆引用分离策略（Phase O #94）。"""
+    return {
+        "session_assembly": (
+            "assemble_llm_messages：滚动摘要 pinned 前缀 + 最近 N 轮 + 超 budget 删最旧消息"
+        ),
+        "tool_results": "工具返回先按 tool_result_max_chars 截断，再计入 token budget",
+        "memory_injection": (
+            "长记忆 retrieve_and_inject_memory 在 assembly 之后，仅用 budget_remaining 注入"
+        ),
+        "rag_references": (
+            "RAG 片段经 get_kb_snippet 等工具写入 tool 消息，与会话摘要/记忆注入通道分离"
+        ),
+    }

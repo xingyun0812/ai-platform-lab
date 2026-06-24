@@ -122,6 +122,10 @@ class Settings(BaseSettings):
         default="react",
         validation_alias="AGENT_REASONING_MODE",
     )
+    agent_tool_call_strategy: str = Field(
+        default="sequential",
+        validation_alias="AGENT_TOOL_CALL_STRATEGY",
+    )
 
     # 观测（第 5 周）
     otel_enabled: bool = Field(default=False, validation_alias="OTEL_ENABLED")
@@ -855,6 +859,8 @@ def get_settings() -> Settings:
         overrides["agent_reflect_max_retries"] = agent_defaults["reflect_max_retries"]
     if isinstance(agent_defaults.get("reasoning_mode"), str):
         overrides["agent_reasoning_mode"] = agent_defaults["reasoning_mode"]
+    if isinstance(agent_defaults.get("tool_call_strategy"), str):
+        overrides["agent_tool_call_strategy"] = agent_defaults["tool_call_strategy"]
     if isinstance(obs_defaults.get("otel_enabled"), bool):
         overrides["otel_enabled"] = obs_defaults["otel_enabled"]
     if isinstance(obs_defaults.get("otel_console_export"), bool):
