@@ -16,7 +16,7 @@
 | O7 sql_query | [#92](https://github.com/xingyun0812/ai-platform-lab/issues/92) | ✅ #104 |
 | O9 数据分析 Vertical | [#93](https://github.com/xingyun0812/ai-platform-lab/issues/93) | ✅ #105 |
 | O10 Agent 性能 | [#94](https://github.com/xingyun0812/ai-platform-lab/issues/94) | ✅ #106 |
-| O11 文档 Demo 门禁 | [#95](https://github.com/xingyun0812/ai-platform-lab/issues/95) | ✅ |
+| O11 文档 Demo 门禁 | [#95](https://github.com/xingyun0812/ai-platform-lab/issues/95) | ✅ #107 |
 
 ---
 

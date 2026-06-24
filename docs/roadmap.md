@@ -251,7 +251,7 @@
 | #92 | sql_query 只读 | ✅ #104 |
 | #93 | 数据分析 Vertical | ✅ #105 |
 | #94 | Agent 性能 | ✅ #106 |
-| #95 | 文档 Demo gate | ✅ |
+| #95 | 文档 Demo gate | ✅ #107 |
 
 **非目标**：RPA、PyTorch、LangChain 依赖绑定。
 
