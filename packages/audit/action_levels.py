@@ -109,6 +109,12 @@ _DEFAULT_CLASSIFICATIONS: list[ToolActionClassification] = [
         description="Web 搜索（网络请求）",
     ),
     ToolActionClassification(
+        tool_name="web_search",
+        action_level=ActionLevel.NETWORK,
+        requires_approval=False,
+        description="外部网页搜索",
+    ),
+    ToolActionClassification(
         tool_name="httpbin_delay",
         action_level=ActionLevel.NETWORK,
         requires_approval=False,

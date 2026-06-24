@@ -332,6 +332,33 @@ class Settings(BaseSettings):
         description="Plugin Manifest YAML 目录",
     )
 
+    # Phase O — web_search 工具 (#91)
+    web_search_mode: str = Field(
+        default="mock",
+        validation_alias="WEB_SEARCH_MODE",
+        description="web_search 模式：mock | http",
+    )
+    web_search_url: str = Field(
+        default="",
+        validation_alias="WEB_SEARCH_URL",
+        description="http 模式下的搜索 API URL（POST JSON query/top_k）",
+    )
+    web_search_top_k: int = Field(
+        default=3,
+        validation_alias="WEB_SEARCH_TOP_K",
+        description="web_search 默认返回条数",
+    )
+    web_search_max_top_k: int = Field(
+        default=10,
+        validation_alias="WEB_SEARCH_MAX_TOP_K",
+        description="web_search 单次最大条数",
+    )
+    web_search_timeout_seconds: float = Field(
+        default=10.0,
+        validation_alias="WEB_SEARCH_TIMEOUT_SECONDS",
+        description="http 模式请求超时",
+    )
+
     # Phase H — 控制流编排引擎 (#37)
     orchestrator_enabled: bool = Field(
         default=True,
