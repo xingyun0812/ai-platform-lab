@@ -97,6 +97,20 @@ def get_tool_registry() -> dict[str, ToolDefinition]:
     global _REGISTRY
     if _REGISTRY is None:
         merged = build_default_registry()
+        # Phase O #90 — YAML Plugin Manifest
+        try:
+            from apps.gateway.settings import get_settings
+            from packages.agent.plugins.loader import get_loaded_plugins
+
+            settings = get_settings()
+            if settings.agent_plugins_enabled:
+                plugin_tools = get_loaded_plugins(
+                    reserved_names=frozenset(merged.keys()),
+                )
+                merged.update(plugin_tools)
+                logger.info("plugin tools loaded count=%d", len(plugin_tools))
+        except Exception as e:
+            logger.warning("plugin tools load failed: %s", e)
         # Phase F #32：动态加载 MCP server 工具
         try:
             from apps.gateway.settings import get_settings
@@ -181,6 +195,14 @@ async def refresh_mcp_tools() -> int:
     _REGISTRY.update(mcp_tools)
     logger.info("mcp tools refreshed count=%d", len(mcp_tools))
     return len(mcp_tools)
+
+
+def reset_tool_registry_for_tests() -> None:
+    global _REGISTRY
+    _REGISTRY = None
+    from packages.agent.plugins.loader import reset_plugins_for_tests
+
+    reset_plugins_for_tests()
 
 
 class ToolRegistry:

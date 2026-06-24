@@ -1,0 +1,15 @@
+# Phase O #90 — Plugin Manifest 示例
+name: demo_echo
+description: Echo input text back (YAML plugin demo)
+enabled: true
+parameters_schema:
+  type: object
+  properties:
+    text:
+      type: string
+      description: Text to echo back
+  required:
+    - text
+handler:
+  type: builtin
+  name: echo
