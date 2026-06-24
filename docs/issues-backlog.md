@@ -1,5 +1,7 @@
 # 可粘贴的 Issue 正文 — Phase J & K
 
+> **归档说明（2026-05-19）**：Phase J/K 已交付（见 [roadmap.md](./roadmap.md)）。下文各 Issue 正文内的 `- [ ]` 为**创建时模板**，不代表当前未完成。活跃 Phase 请用 `issues-backlog-phase-*.md`。
+
 > 维护者使用：将以下每个 Issue 的 **标题** 和 **正文** 复制到 [GitHub New Issue](https://github.com/xingyun0812/ai-platform-lab/issues/new) 创建。
 > 贡献者使用：在 [Issues 页面](https://github.com/xingyun0812/ai-platform-lab/issues) 认领未分配的 Issue。
 

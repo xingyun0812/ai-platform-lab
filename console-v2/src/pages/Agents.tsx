@@ -16,6 +16,8 @@ import {
   Popconfirm,
   message,
   Alert,
+  Card,
+  Collapse,
 } from "antd";
 import {
   PlusOutlined,
@@ -23,9 +25,19 @@ import {
   DeleteOutlined,
   HistoryOutlined,
   SendOutlined,
+  PartitionOutlined,
+  PlayCircleOutlined,
+  ReloadOutlined,
 } from "@ant-design/icons";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { agentApi, AgentSpec, DelegateRequest } from "../api/agent";
+import {
+  agentApi,
+  AgentSpec,
+  DelegateRequest,
+  AgentPlan,
+  AgentRunResponse,
+  BlackboardResponse,
+} from "../api/agent";
 
 const { Title, Text } = Typography;
 const { TextArea } = Input;
@@ -45,6 +57,38 @@ export default function Agents() {
   const [delegateResult, setDelegateResult] = useState<string | null>(null);
   const [form] = Form.useForm<AgentSpec>();
   const [delegateForm] = Form.useForm<DelegateRequest>();
+
+  const defaultGoal =
+    "数据分析：搜索 AI analytics 背景，对 demo_sales SQL 区域聚合，再 calc 算同比";
+  const [plannerGoal, setPlannerGoal] = useState(defaultGoal);
+  const [plannerSession, setPlannerSession] = useState("console-plan-demo");
+  const [planPreview, setPlanPreview] = useState<AgentPlan | null>(null);
+  const [runResult, setRunResult] = useState<AgentRunResponse | null>(null);
+  const tenantId = localStorage.getItem("tenant_id") || "admin";
+
+  const planMutation = useMutation({
+    mutationFn: () => agentApi.createPlan(tenantId, plannerGoal),
+    onSuccess: (data) => {
+      setPlanPreview(data.plan);
+      message.success("Plan 已生成");
+    },
+  });
+
+  const autoPlanMutation = useMutation({
+    mutationFn: () => agentApi.runAutoPlan(tenantId, plannerSession, plannerGoal),
+    onSuccess: (data) => {
+      setRunResult(data);
+      if (data.plan) setPlanPreview(data.plan);
+      message.success(`执行完成：${data.status}`);
+      qc.invalidateQueries({ queryKey: ["blackboard", plannerSession] });
+    },
+  });
+
+  const { data: blackboard, refetch: refetchBlackboard } = useQuery<BlackboardResponse>({
+    queryKey: ["blackboard", plannerSession],
+    queryFn: () => agentApi.getBlackboard(plannerSession),
+    enabled: false,
+  });
 
   const { data: versions } = useQuery({
     queryKey: ["agent-versions", selectedAgent?.agent_id],
@@ -199,6 +243,133 @@ export default function Agents() {
           新增 Agent
         </Button>
       </div>
+
+      <Card
+        title={
+          <Space>
+            <PartitionOutlined />
+            <span>Task Planner 演示（O1）</span>
+          </Space>
+        }
+        style={{ marginBottom: 24, background: "#161b22", borderColor: "#30363d" }}
+        data-testid="planner-demo-card"
+      >
+        <Text type="secondary" style={{ display: "block", marginBottom: 12 }}>
+          生成结构化 Plan 或 <code>auto_plan</code> 逐步执行；会话黑板与 Multi-Agent 共享。
+        </Text>
+        <Space direction="vertical" style={{ width: "100%" }} size="middle">
+          <Input
+            addonBefore="session_id"
+            value={plannerSession}
+            onChange={(e) => setPlannerSession(e.target.value)}
+            data-testid="planner-session-input"
+          />
+          <TextArea
+            rows={2}
+            value={plannerGoal}
+            onChange={(e) => setPlannerGoal(e.target.value)}
+            placeholder="任务目标 goal…"
+            data-testid="planner-goal-input"
+          />
+          <Space wrap>
+            <Button
+              icon={<PartitionOutlined />}
+              loading={planMutation.isPending}
+              onClick={() => planMutation.mutate()}
+              data-testid="planner-generate-btn"
+            >
+              仅生成 Plan
+            </Button>
+            <Button
+              type="primary"
+              icon={<PlayCircleOutlined />}
+              loading={autoPlanMutation.isPending}
+              onClick={() => autoPlanMutation.mutate()}
+              data-testid="planner-autoplan-btn"
+            >
+              auto_plan 执行
+            </Button>
+            <Button
+              icon={<ReloadOutlined />}
+              onClick={() => refetchBlackboard()}
+              data-testid="planner-blackboard-btn"
+            >
+              刷新黑板
+            </Button>
+          </Space>
+          {planPreview && planPreview.steps?.length > 0 && (
+            <Table
+              size="small"
+              pagination={false}
+              rowKey="id"
+              data-testid="planner-steps-table"
+              dataSource={planPreview.steps}
+              columns={[
+                { title: "Step", dataIndex: "id", width: 72 },
+                { title: "描述", dataIndex: "description" },
+                {
+                  title: "工具",
+                  dataIndex: "tool_hint",
+                  width: 120,
+                  render: (v: string | null) => (v ? <Tag>{v}</Tag> : "—"),
+                },
+                {
+                  title: "依赖",
+                  dataIndex: "depends_on",
+                  render: (deps: string[]) => (deps?.length ? deps.join(", ") : "—"),
+                },
+              ]}
+            />
+          )}
+          <Collapse
+            ghost
+            items={[
+              {
+                key: "run",
+                label: "执行结果 JSON",
+                children: (
+                  <pre
+                    style={{
+                      background: "#0d1117",
+                      padding: 12,
+                      borderRadius: 6,
+                      fontSize: 11,
+                      maxHeight: 240,
+                      overflow: "auto",
+                      color: "#e6edf3",
+                    }}
+                  >
+                    {runResult
+                      ? JSON.stringify(runResult, null, 2)
+                      : "（尚未执行 auto_plan）"}
+                  </pre>
+                ),
+              },
+              {
+                key: "bb",
+                label: `黑板 (${blackboard?.count ?? 0} 条)`,
+                children: (
+                  <pre
+                    style={{
+                      background: "#0d1117",
+                      padding: 12,
+                      borderRadius: 6,
+                      fontSize: 11,
+                      maxHeight: 200,
+                      overflow: "auto",
+                      color: "#e6edf3",
+                    }}
+                  >
+                    {blackboard
+                      ? JSON.stringify(blackboard.entries, null, 2)
+                      : "（点击刷新黑板）"}
+                  </pre>
+                ),
+              },
+            ]}
+          />
+        </Space>
+      </Card>
 
       <Table
         dataSource={data ?? []}

@@ -136,6 +136,7 @@ flowchart LR
 - [x] `eval/agent_planner_smoke.py` mock LLM 通过
 - [x] live：`auto_plan=true` 完成「查 KB → calc → 汇总」三步
 - [x] **O1 + vertical 闭环**：`eval/auto_plan_vertical.py --mock`（Plan 驱动 web_search → sql_query → calc）
+- [x] Console Plan 轨迹：Agents 页「Task Planner 演示」
 
 **关键文件**：
 - `packages/agent/planner.py`

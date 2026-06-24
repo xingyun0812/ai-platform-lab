@@ -3,20 +3,20 @@
 > **用途**：面试演示、内部分享、验收 Phase L 第一优先「端到端故事」。  
 > **前置**：[phase-l-console-integration.md](./phase-l-console-integration.md)（Console 已挂载）  
 > **自动化**：`./eval/platform_demo.sh --no-llm`（无 Key）/ `--with-llm`（需 Key + Qdrant）  
-> **Live 勾选**（2026-05-19 更新）：见下表 · 离线闭环以 `agent_jd2_gate` / `platform_demo --no-llm` 为准
+> **Live 勾选**（2026-05-19）：见下表 · 闭环 SOP：[closure-sop.md](./closure-sop.md)
 
 | 项 | 命令 | 状态 |
 |----|------|------|
+| **统一 Live 门禁** | `./eval/live_gate.sh`（无 Key skip / `--require-live` 严格） | 🤖 可自动化 |
+| GitHub Live CI | Actions → **Live Gate** + `LLM_API_KEY` secret | 🤖 workflow_dispatch |
 | healthz / Console API | `./eval/platform_demo.sh --no-llm` | ✅ |
 | chat / index / RAG | `platform_demo --with-llm` | ✅ |
 | 二次索引 `skipped_chunks≥1` | `platform_demo --with-llm` | ✅ |
 | 反馈飞轮 live | `python eval/feedback_loop_demo.py --live` | ✅ |
 | Agent vertical（Orchestrator+HITL） | `eval/agent_vertical_smoke.py --with-llm` | ✅ 7/7 |
-| **O1+vertical mock**（Plan→web/sql/calc） | `./eval/auto_plan_vertical.sh --mock` | ✅ CI |
-| O1+vertical live（`auto_plan`） | `./eval/auto_plan_vertical.sh --live` | ⚠️ 待手验 |
-| 数据分析 Orchestrator live | `./eval/data_analysis_vertical.sh --live` | ⚠️ 待手验 |
-| Phase O CoT live | `demo-walkthrough` §JD2 curl | ⚠️ 待手验 |
-| 多模态图文 RAG live | `eval/multimodal_embedding_gate.py` + 图文索引 | ❌ 未写脚本 |
+| **O1+vertical mock** | `./eval/auto_plan_vertical.sh --mock` | ✅ CI |
+| O1+vertical / CoT / 多模态 live | `./eval/live_gate.sh --require-live` | 🤖 见上 |
+| Console Plan UI | Agents 页 Task Planner 卡片 | ✅ |
 
 ---
 

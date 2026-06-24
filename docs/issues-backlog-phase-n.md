@@ -1,5 +1,7 @@
 # Phase N Issue Backlog — Python SDK 发布 PyPI
 
+> ✅ **Phase N 已完成**（tag `phase-n-pypi-sdk`）。验收以 [phase-n-pypi-sdk.md](./phase-n-pypi-sdk.md) 为准。
+
 > 规划：[phase-n-pypi-sdk.md](./phase-n-pypi-sdk.md)  
 > **Milestone**：Phase N — PyPI SDK  
 > **Tag**：`phase-n-pypi-sdk`
@@ -18,11 +20,11 @@
 
 **目标**：`sdk/python` 满足 PyPI 上架最低要求。
 
-**验收**：
-- [ ] `sdk/python/README.md`（安装 + Quickstart）
-- [ ] `pyproject.toml`：`authors`、`urls`、`classifiers`
-- [ ] `__version__` 与 pyproject 一致
-- [ ] `python -m build` 本地可产出 wheel
+**验收**（✅ 已完成）：
+- [x] `sdk/python/README.md`（安装 + Quickstart）
+- [x] `pyproject.toml`：`authors`、`urls`、`classifiers`
+- [x] `__version__` 与 pyproject 一致
+- [x] `python -m build` 本地可产出 wheel
 
 **文件**：`sdk/python/README.md`、`sdk/python/pyproject.toml`、`sdk/python/ai_platform_lab/__init__.py`
 
@@ -34,10 +36,10 @@
 
 **目标**：可重复、安全的自动/半自动发布。
 
-**验收**：
-- [ ] `.github/workflows/publish-sdk.yml`
-- [ ] Trusted Publishing 或 `PYPI_API_TOKEN` 文档写入 `.env.example` 注释 / `docs/phase-n-pypi-sdk.md`
-- [ ] `workflow_dispatch` 可手动发版
+**验收**（✅ 已完成）：
+- [x] `.github/workflows/publish-sdk.yml`
+- [x] Trusted Publishing 或 `PYPI_API_TOKEN` 文档写入 `.env.example` 注释 / `docs/phase-n-pypi-sdk.md`
+- [x] `workflow_dispatch` 可手动发版
 
 **依赖**：N1
 
@@ -49,9 +51,9 @@
 
 **目标**：证明 PyPI 包能跑通 `sdk_smoke`。
 
-**验收**：
-- [ ] `eval/sdk_pypi_smoke.sh`（venv + pip install + smoke）
-- [ ] README 增加「从 PyPI 安装」段落
+**验收**（✅ 已完成）：
+- [x] `eval/sdk_pypi_smoke.sh`（venv + pip install + smoke）
+- [x] README 增加「从 PyPI 安装」段落
 
 **依赖**：N2
 
@@ -63,11 +65,11 @@
 
 **目标**：项目状态与面试叙事反映 PyPI 闭环。
 
-**验收**：
-- [ ] `docs/PROJECT_STATUS.md` 开发者体验 PyPI ✅
-- [ ] `docs/roadmap.md` 已知限制更新
-- [ ] `docs/interview-narrative.md` SDK 段 `pip install`
-- [ ] `CONTRIBUTING.md` Phase N 映射
+**验收**（✅ 已完成）：
+- [x] `docs/PROJECT_STATUS.md` 开发者体验 PyPI ✅
+- [x] `docs/roadmap.md` 已知限制更新
+- [x] `docs/interview-narrative.md` SDK 段 `pip install`
+- [x] `CONTRIBUTING.md` Phase N 映射
 
 **依赖**：N3
 

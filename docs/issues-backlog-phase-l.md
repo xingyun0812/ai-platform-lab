@@ -1,5 +1,7 @@
 # 可粘贴的 Issue 正文 — Phase L（工程深度与面试叙事）
 
+> ✅ **Phase L 已全部交付**（tag `phase-l-engineering-depth`）。顶部「实施状态一览」为准；下文 Issue 正文内 `- [ ]` 为历史模板。
+
 > 维护者使用：将以下每个 Issue 的 **标题** 和 **正文** 复制到 [GitHub New Issue](https://github.com/xingyun0812/ai-platform-lab/issues/new) 创建。  
 > 规划总览见 [phase-l-engineering-depth.md](./phase-l-engineering-depth.md)。  
 > **ROI 优先级对照**见 [phase-l-priority-roi.md](./phase-l-priority-roi.md)。

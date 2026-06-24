@@ -35,6 +35,58 @@ export interface DelegateResult {
   latency_ms: number;
 }
 
+export interface PlanStep {
+  id: string;
+  description: string;
+  tool_hint?: string | null;
+  agent_hint?: string | null;
+  depends_on?: string[];
+}
+
+export interface AgentPlan {
+  goal: string;
+  steps: PlanStep[];
+}
+
+export interface AgentPlanResponse {
+  tenant_id: string;
+  goal: string;
+  plan: AgentPlan;
+  model: string;
+  trace_id?: string | null;
+}
+
+export interface AgentRunResponse {
+  tenant_id: string;
+  session_id: string;
+  final_message: string;
+  tool_calls: Array<{
+    tool_name: string;
+    status: string;
+    result?: string | null;
+  }>;
+  steps: number;
+  model: string;
+  status: string;
+  plan?: AgentPlan | null;
+  plan_steps_completed?: number | null;
+  reasoning_trace?: Array<{ step: number; thinking?: string | null }> | null;
+}
+
+export interface BlackboardEntry {
+  agent_id?: string;
+  role?: string;
+  content?: string;
+  created_at?: string;
+}
+
+export interface BlackboardResponse {
+  tenant_id: string;
+  session_id: string;
+  entries: BlackboardEntry[];
+  count: number;
+}
+
 export const agentApi = {
   list: () =>
     apiClient
@@ -60,4 +112,31 @@ export const agentApi = {
 
   getVersions: (agentId: string) =>
     apiClient.get<AgentVersion[]>(`/internal/agents/${agentId}/versions`).then((r) => r.data),
+
+  /** Phase O — Task Planner / auto_plan / 黑板 */
+  createPlan: (tenantId: string, goal: string) =>
+    apiClient
+      .post<AgentPlanResponse>("/v1/agent/plan", {
+        tenant_id: tenantId,
+        goal,
+      })
+      .then((r) => r.data),
+
+  runAutoPlan: (tenantId: string, sessionId: string, goal: string, model = "chat-fast") =>
+    apiClient
+      .post<AgentRunResponse>(
+        "/v1/agent/run",
+        {
+          tenant_id: tenantId,
+          session_id: sessionId,
+          auto_plan: true,
+          goal,
+          model,
+        },
+        { timeout: 180_000 }
+      )
+      .then((r) => r.data),
+
+  getBlackboard: (sessionId: string) =>
+    apiClient.get<BlackboardResponse>(`/v1/agent/blackboard/${sessionId}`).then((r) => r.data),
 };

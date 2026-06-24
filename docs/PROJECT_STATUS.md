@@ -187,7 +187,8 @@ roadmap.md → GitHub Issue → feature branch → PR → merge → tag
 - Demo：`./eval/platform_demo.sh --no-llm` / `--with-llm`（含 **O1+vertical mock**）
 - 离线门禁：`python eval/agent_jd2_gate.py run`（12/12，含 `auto_plan_vertical`）
 - SDK：`pip install ai-platform-lab`（见 [phase-n-pypi-sdk.md](./phase-n-pypi-sdk.md)）或 `pip install -e sdk/python`
-- **Live 手验清单**：[demo-walkthrough.md](./demo-walkthrough.md) 顶部表（部分项 ⚠️ 待手验）
+- **Live 自动化**：`./eval/live_gate.sh`（见 [closure-sop.md](./closure-sop.md)）
+- **Live 手验表**：[demo-walkthrough.md](./demo-walkthrough.md)
 - 评测 Pipeline 的 live 用例需 `EVAL_API_KEY`
 
 ## 10. 下一步建议

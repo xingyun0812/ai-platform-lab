@@ -133,7 +133,8 @@ fi
 echo "==> auto_plan + data analysis vertical (O1 E2E mock)"
 python3 eval/auto_plan_vertical.py --mock
 if $WITH_LLM; then
-  python3 eval/auto_plan_vertical.py --live || echo "    (live auto_plan vertical skipped/failed — 见 eval/auto_plan_vertical.py)"
+  python3 eval/auto_plan_vertical.py --live || echo "    (live auto_plan vertical skipped/failed)"
+  python3 eval/live_gate.py run --require-live || echo "    (live_gate failed — 见 eval/live_gate.py)"
 fi
 
 echo "OK platform_demo ($($WITH_LLM && echo with-llm || echo no-llm))"
