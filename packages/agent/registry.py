@@ -10,6 +10,7 @@ from packages.agent.tools.builtin import (
     handle_math_llm_stub,
     handle_search_web_stub,
 )
+from packages.agent.tools.sql_query import handle_sql_query
 from packages.agent.tools.web_search import handle_web_search
 
 logger = logging.getLogger("ai_platform.agent.registry")
@@ -96,6 +97,21 @@ def build_default_registry() -> dict[str, ToolDefinition]:
                 "required": ["query"],
             },
             handler=handle_web_search,
+        ),
+        "sql_query": ToolDefinition(
+            name="sql_query",
+            description="只读 SQL 查询（仅 SELECT，自动 LIMIT；When NOT：写库请走业务 API）",
+            parameters_schema={
+                "type": "object",
+                "properties": {
+                    "sql": {
+                        "type": "string",
+                        "description": "SELECT 语句，如 SELECT region, SUM(amount) FROM demo_sales GROUP BY region",
+                    },
+                },
+                "required": ["sql"],
+            },
+            handler=handle_sql_query,
         ),
         "math_llm_stub": ToolDefinition(
             name="math_llm_stub",

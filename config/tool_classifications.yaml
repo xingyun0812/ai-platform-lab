@@ -25,6 +25,11 @@ classifications:
     requires_approval: false
     description: 外部网页搜索（mock 或 HTTP API）
 
+  - tool_name: sql_query
+    action_level: read_only
+    requires_approval: false
+    description: 只读 SQL 查询（SELECT + LIMIT）
+
   - tool_name: httpbin_delay
     action_level: network
     requires_approval: false

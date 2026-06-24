@@ -359,6 +359,28 @@ class Settings(BaseSettings):
         description="http 模式请求超时",
     )
 
+    # Phase O — sql_query 工具 (#92)
+    sql_query_mode: str = Field(
+        default="mock",
+        validation_alias="SQL_QUERY_MODE",
+        description="sql_query 模式：mock | postgres",
+    )
+    sql_agent_database_url: str = Field(
+        default="",
+        validation_alias="SQL_AGENT_DATABASE_URL",
+        description="postgres 模式只读连接 URL",
+    )
+    sql_query_max_rows: int = Field(
+        default=100,
+        validation_alias="SQL_QUERY_MAX_ROWS",
+        description="单次查询最大行数（强制 LIMIT 上限）",
+    )
+    sql_query_timeout_seconds: float = Field(
+        default=10.0,
+        validation_alias="SQL_QUERY_TIMEOUT_SECONDS",
+        description="postgres 查询超时",
+    )
+
     # Phase H — 控制流编排引擎 (#37)
     orchestrator_enabled: bool = Field(
         default=True,
