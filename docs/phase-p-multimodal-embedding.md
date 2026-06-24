@@ -1,6 +1,6 @@
 # Phase P — 多模态 Embedding
 
-> **状态**：进行中（P1 ✅ · P2 RAG 图文索引 🚧）  
+> **状态**：进行中（P1 ✅ · P2 ✅ · P3 Console/SDK 待做）  
 > **前置**：Phase G Embedding 独立服务 ✅ · Phase O ✅  
 > **Tag**（完成后）：`phase-p-multimodal`  
 > **非目标**：自托管 CLIP 训推、视频/音频 embedding、分布式向量缓存
@@ -45,7 +45,7 @@ flowchart LR
 | Issue | 标题 | 状态 | 说明 |
 |-------|------|------|------|
 | **P1** | 多模态 inputs + stub + API | ✅ | PR #109 |
-| **P2** | RAG 图文 chunk 索引 | 🚧 | pipeline 识别 image source |
+| **P2** | RAG 图文 chunk 索引 | ✅ | PR #109 · #110 |
 | **P3** | Console / SDK embed inputs | ⏳ | console-v2 + Python SDK |
 | **P4** | eval 门禁 + tag | ⏳ | `multimodal_embedding_gate` |
 

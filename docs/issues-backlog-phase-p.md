@@ -8,7 +8,7 @@
 | Backlog | GitHub Issue | 状态 |
 |---------|--------------|------|
 | P1 多模态 inputs + stub | #108 | ✅ |
-| P2 RAG 图文索引 | #110 | 🚧 |
+| P2 RAG 图文索引 | #110 | ✅ |
 | P3 Console / SDK | （待创建） | ⏳ |
 | P4 eval 门禁 + tag | （待创建） | ⏳ |
 
