@@ -11,6 +11,10 @@ def content_hash(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()[:16]
 
 
+def chunk_fingerprint(chunk: TextChunk) -> str:
+    return chunk.content_fingerprint or content_hash(chunk.text)
+
+
 @dataclass(frozen=True)
 class IncrementalIndexPlan:
     chunks_to_embed: list[TextChunk]
@@ -46,7 +50,7 @@ def plan_incremental_index(
     new_n = updated_n = skipped_n = 0
 
     for chunk in new_chunks:
-        fp = content_hash(chunk.text)
+        fp = chunk_fingerprint(chunk)
         old = existing_by_offset.get(chunk.offset)
         if old and old.get("content_hash") == fp:
             skipped_n += 1

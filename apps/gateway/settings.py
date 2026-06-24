@@ -524,6 +524,11 @@ class Settings(BaseSettings):
         validation_alias="EMBEDDING_DEFAULT_MODEL",
         description="默认 embedding 模型",
     )
+    rag_multimodal_embedding_model: str = Field(
+        default="stub-multimodal",
+        validation_alias="RAG_MULTIMODAL_EMBEDDING_MODEL",
+        description="RAG 图片索引使用的多模态 embedding 模型",
+    )
 
     # Phase I #41 — 沙箱容器隔离
     sandbox_enabled: bool = Field(

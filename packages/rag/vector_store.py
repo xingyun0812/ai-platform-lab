@@ -9,7 +9,7 @@ from qdrant_client.http import models as qm
 
 from apps.gateway.settings import get_settings
 from packages.rag.chunker import TextChunk
-from packages.rag.indexing import content_hash
+from packages.rag.indexing import chunk_fingerprint, content_hash
 
 logger = logging.getLogger("ai_platform.rag.vector_store")
 
@@ -76,7 +76,8 @@ class VectorStore:
                 "source_uri": chunk.source_uri,
                 "offset": chunk.offset,
                 "text": chunk.text,
-                "content_hash": content_hash(chunk.text),
+                "modality": chunk.modality,
+                "content_hash": chunk_fingerprint(chunk),
             }
             points.append(
                 qm.PointStruct(id=point_id, vector=vector, payload=payload),

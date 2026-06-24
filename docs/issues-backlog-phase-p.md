@@ -7,8 +7,8 @@
 
 | Backlog | GitHub Issue | 状态 |
 |---------|--------------|------|
-| P1 多模态 inputs + stub | （待创建） | 🚧 |
-| P2 RAG 图文索引 | （待创建） | ⏳ |
+| P1 多模态 inputs + stub | #108 | ✅ |
+| P2 RAG 图文索引 | #110 | 🚧 |
 | P3 Console / SDK | （待创建） | ⏳ |
 | P4 eval 门禁 + tag | （待创建） | ⏳ |
 
@@ -37,9 +37,9 @@
 **目标**：索引 pipeline 支持 image URI + 可选 caption，写入同一向量空间。
 
 **验收**：
-- [ ] `source_uri` 图片类型检测
-- [ ] chunk metadata `modality=image`
-- [ ] 单测 + mock 索引 smoke
+- [x] `source_uri` 图片类型检测
+- [x] chunk metadata `modality=image`
+- [x] 单测 + `eval/rag_multimodal_smoke.py`
 
 **依赖**：P1
 

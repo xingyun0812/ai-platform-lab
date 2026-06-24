@@ -1,6 +1,6 @@
 # Phase P — 多模态 Embedding
 
-> **状态**：进行中（P1 输入 schema + stub + API）  
+> **状态**：进行中（P1 ✅ · P2 RAG 图文索引 🚧）  
 > **前置**：Phase G Embedding 独立服务 ✅ · Phase O ✅  
 > **Tag**（完成后）：`phase-p-multimodal`  
 > **非目标**：自托管 CLIP 训推、视频/音频 embedding、分布式向量缓存
@@ -44,14 +44,27 @@ flowchart LR
 
 | Issue | 标题 | 状态 | 说明 |
 |-------|------|------|------|
-| **P1** | 多模态 inputs + stub + API | 🚧 | 本文档 + `stub-multimodal` |
-| **P2** | RAG 图文 chunk 索引 | ⏳ | pipeline 识别 image source |
+| **P1** | 多模态 inputs + stub + API | ✅ | PR #109 |
+| **P2** | RAG 图文 chunk 索引 | 🚧 | pipeline 识别 image source |
 | **P3** | Console / SDK embed inputs | ⏳ | console-v2 + Python SDK |
 | **P4** | eval 门禁 + tag | ⏳ | `multimodal_embedding_gate` |
 
 ---
 
-## 4. P1 验收
+## 4. P2 验收（RAG 图文索引）
+
+- [x] `packages/rag/multimodal_index.py` — 图片检测 + caption sidecar
+- [x] `TextChunk.modality` + `content_fingerprint` 增量跳过
+- [x] `packages/rag/embeddings.py` — `embed_rag_chunks` / image_base64
+- [x] `apps/gateway/rag/pipeline.py` — 图片走 `chunk_image_file`
+- [x] `RAG_MULTIMODAL_EMBEDDING_MODEL` 配置项
+- [x] `tests/test_rag_multimodal_index.py`
+- [x] `eval/rag_multimodal_smoke.py`
+- [x] `samples/chart.png` + caption sidecar
+
+---
+
+## 5. P1 验收
 
 - [x] `packages/embedding/multimodal.py` 归一化 + 指纹
 - [x] `EmbeddingModel.modalities` + `EmbeddingRequest.inputs`
@@ -62,7 +75,7 @@ flowchart LR
 
 ---
 
-## 5. API 示例
+## 6. API 示例
 
 ```bash
 curl -s -X POST http://127.0.0.1:8000/internal/embeddings/embed \
@@ -80,17 +93,18 @@ curl -s -X POST http://127.0.0.1:8000/internal/embeddings/embed \
 
 ---
 
-## 6. 验证
+## 7. 验证
 
 ```bash
 python -m unittest tests.test_multimodal_embedding -q
 python eval/multimodal_embedding_smoke.py
+python eval/rag_multimodal_smoke.py
 python -m unittest tests.test_embedding -q   # 回归
 ```
 
 ---
 
-## 7. 诚实边界
+## 8. 诚实边界
 
 | 项 | 说明 |
 |----|------|
@@ -101,7 +115,7 @@ python -m unittest tests.test_embedding -q   # 回归
 
 ---
 
-## 8. 相关文档
+## 9. 相关文档
 
 | 文档 | 用途 |
 |------|------|
