@@ -11,6 +11,7 @@ from apps.gateway.quota import get_quota_tracker
 from apps.gateway.request_guards import check_rate_limit, check_token_budget
 from apps.gateway.settings import get_settings
 from apps.gateway.tenants import TenantRecord, load_tenants
+from packages.agent.multi_agent.blackboard import get_blackboard
 from packages.agent.planner import (
     PlannerError,
     execute_plan_with_agent,
@@ -275,3 +276,29 @@ async def agent_run(
         content["_platform"] = platform
     status_code = 202 if content.get("status") == "pending_approval" else 200
     return JSONResponse(status_code=status_code, content=content)
+
+
+@router.get("/blackboard/{session_id}")
+async def get_agent_blackboard(
+    session_id: str,
+    x_tenant_id: Annotated[str | None, Header(alias="X-Tenant-Id")] = None,
+    authorization: Annotated[str | None, Header()] = None,
+    limit: int = 100,
+) -> JSONResponse:
+    """Multi-Agent 共享黑板 — Phase O #89。"""
+    tenants = load_tenants()
+    tenant = _require_tenant(x_tenant_id, authorization, tenants)
+    if isinstance(tenant, JSONResponse):
+        return tenant
+    if not session_id.strip():
+        return json_error(400, "INVALID_SESSION", "session_id 不能为空")
+    bb = get_blackboard()
+    entries = bb.list_entries(tenant.tenant_id, session_id.strip(), limit=max(1, min(limit, 500)))
+    return JSONResponse(
+        {
+            "tenant_id": tenant.tenant_id,
+            "session_id": session_id.strip(),
+            "entries": [e.to_dict() for e in entries],
+            "count": len(entries),
+        }
+    )

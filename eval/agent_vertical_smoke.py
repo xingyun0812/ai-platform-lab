@@ -53,6 +53,24 @@ async def run_agent_vertical_smoke(
         except Exception as e:
             out.append(VerticalCheck("rag_specialist 已注册", False, str(e)))
 
+        # 1b. Multi-Agent 黑板 API（O4 #89，无需 LLM）
+        try:
+            r = await client.get(
+                "/v1/agent/blackboard/vertical-smoke",
+                headers=headers,
+            )
+            body = r.json() if r.content else {}
+            ok = r.status_code == 200 and isinstance(body.get("entries"), list)
+            out.append(
+                VerticalCheck(
+                    "blackboard API 可达",
+                    ok,
+                    f"status={r.status_code} count={body.get('count')}",
+                )
+            )
+        except Exception as e:
+            out.append(VerticalCheck("blackboard API 可达", False, str(e)))
+
         # 2. Orchestrator 预置 workflow
         try:
             r = await client.get("/internal/orchestrator/workflows", headers=headers)
