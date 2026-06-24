@@ -1,8 +1,8 @@
 # ai-platform-lab 项目状态总览
 
-> **最后更新**：2026-06-23
-> **当前状态**：Phase A～M 全部完成；tag `phase-m-incremental-index`；PR #68～#71 已合并
-> **主分支**：`main` @ `92915d4`
+> **最后更新**：2026-06-24
+> **当前状态**：Phase A～N 代码交付完成；tag `phase-m-incremental-index` · Phase N 待 tag `phase-n-pypi-sdk`
+> **主分支**：`main` @ `ecc625a`
 
 ---
 
@@ -19,7 +19,7 @@
 | 能力中台 | ~90% | RAG、Prompt 版本化+A/B、长记忆、MCP、上下文压缩 | — |
 | Agent 应用层 | ~90% | 控制流编排、Multi-Agent、生命周期、HITL | — |
 | AgentOps 治理 | ~90% | 沙箱、分级审计、PII、OAuth2/mTLS | 在线评测飞轮（已有反馈飞轮） |
-| 开发者体验 | ~95% | Python SDK、Console V2、Demo 脚本、SDK smoke、面试叙事 | PyPI 发布、TS SDK |
+| 开发者体验 | ~95% | Python SDK、**PyPI 发布流程**、Console V2、Demo、SDK smoke | TS SDK |
 
 ## 3. Phase 完成历史线
 
@@ -39,6 +39,7 @@ Phase J — 开发者体验        ✅ tag: phase-j-developer-experience + phase
 Phase K — 生产基础设施      ✅ tag: phase-k-infra-base + phase-jk-complete            ← 今日
 Phase L — 工程深度与面试叙事 ✅ tag: phase-l-engineering-depth                      ← 2026-06-23
 Phase M — RAG 增量索引做满    ✅ tag: phase-m-incremental-index                      ← 2026-06-23
+Phase N — Python SDK PyPI       ✅ PR #82～#84 · tag phase-n-pypi-sdk 待打            ← 2026-06-24
 ```
 
 ## 4. 代码规模

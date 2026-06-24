@@ -65,6 +65,9 @@ Async client: `from ai_platform_lab import AsyncClient` (same constructor, `awai
 ```bash
 pip install -e "sdk/python[dev]"
 python eval/sdk_smoke.py --base-url http://127.0.0.1:8000
+
+# verify installed wheel (Phase N)
+./eval/sdk_pypi_smoke.sh --local
 ```
 
 ## License

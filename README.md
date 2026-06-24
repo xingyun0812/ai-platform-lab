@@ -2,7 +2,7 @@
 
 最小 **AI 中台** 实验仓库（与 [《AI中台学习执行手册》](docs/AI中台学习执行手册.md) 配套）。当前完成 **Phase A～M**：模型网关、RAG（含增量索引）、Agent、观测评测、硬化、Prompt 版本化、长记忆、MCP、上下文压缩、语义缓存、Embedding 服务、控制流编排、Multi-Agent、HITL、沙箱、分级审计、PII 脱敏、OAuth2/mTLS、Python SDK、Console V2、评测 Pipeline、反馈飞轮、对象存储、K8s Helm、多 AZ、GPU 调度。
 
-> 📊 **当前状态**：Phase A～M 完成 · tag `phase-m-incremental-index` · PR #68～#71 已合并
+> 📊 **当前状态**：Phase A～N 代码完成 · tag `phase-m-incremental-index` · Phase N PyPI 见 [phase-n-pypi-sdk.md](docs/phase-n-pypi-sdk.md)
 > 📋 **完整状态报告**：[docs/PROJECT_STATUS.md](docs/PROJECT_STATUS.md)
 
 ## 15 分钟快速跑通
@@ -383,7 +383,7 @@ curl -s -X POST http://127.0.0.1:8000/internal/agents/rag_specialist/delegate \
 - **6 个资源类**：chat / rag / agent / embedding / memory / orchestrator
 - **同步 + 异步**：`Client` + `AsyncClient`
 - **类型注解完整**：py.typed marker
-- **独立包**：`pip install -e sdk/python`
+- **独立包**：`pip install ai-platform-lab`（PyPI，见 [phase-n-pypi-sdk.md](docs/phase-n-pypi-sdk.md)）或开发态 `pip install -e sdk/python`
 
 ```python
 from ai_platform_lab import Client
