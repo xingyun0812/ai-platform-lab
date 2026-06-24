@@ -12,7 +12,7 @@
 | O2 CoT 推理 | [#88](https://github.com/xingyun0812/ai-platform-lab/issues/88) | ✅ #100 |
 | O4 Multi-Agent v2 | [#89](https://github.com/xingyun0812/ai-platform-lab/issues/89) | ✅ #101 |
 | O5 Plugin Manifest | [#90](https://github.com/xingyun0812/ai-platform-lab/issues/90) | ✅ #102 |
-| O6 web_search | [#91](https://github.com/xingyun0812/ai-platform-lab/issues/91) | ⏳ |
+| O6 web_search | [#91](https://github.com/xingyun0812/ai-platform-lab/issues/91) | ✅ #103 |
 | O7 sql_query | [#92](https://github.com/xingyun0812/ai-platform-lab/issues/92) | ⏳ |
 | O9 数据分析 Vertical | [#93](https://github.com/xingyun0812/ai-platform-lab/issues/93) | ⏳ |
 | O10 Agent 性能 | [#94](https://github.com/xingyun0812/ai-platform-lab/issues/94) | ⏳ |
@@ -136,9 +136,9 @@
 **目标**：Agent 工具 `web_search`；`WEB_SEARCH_MODE=mock|http`；返回结构化 top-k。
 
 **验收**：
-- [ ] `packages/agent/tools/web_search.py`
-- [ ] mock 单测 + agent 集成测
-- [ ] `.env.example` 注释
+- [x] `packages/agent/tools/web_search.py`
+- [x] mock 单测 + agent 集成测
+- [x] `.env.example` 注释
 
 **依赖**：O5 可选
 
