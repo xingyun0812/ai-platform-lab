@@ -9,7 +9,7 @@ from qdrant_client.http import models as qm
 
 from apps.gateway.settings import get_settings
 from packages.rag.chunker import TextChunk
-from packages.rag.indexing import chunk_fingerprint, content_hash
+from packages.rag.indexing import chunk_fingerprint
 
 logger = logging.getLogger("ai_platform.rag.vector_store")
 

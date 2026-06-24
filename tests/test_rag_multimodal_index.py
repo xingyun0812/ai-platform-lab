@@ -16,7 +16,6 @@ from packages.rag.multimodal_index import (
     load_image_caption,
 )
 
-
 # 1x1 PNG
 TINY_PNG = (
     b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01"
@@ -87,10 +86,14 @@ models:
             )
             img_path = Path(tmp) / "x.png"
             img_path.write_bytes(TINY_PNG)
-            from packages.embedding.models import EmbeddingRegistry
-            from packages.embedding.service import EmbeddingService, reset_embedding_service_for_tests
-            from packages.rag.embeddings import embed_image_chunk
             from unittest.mock import patch
+
+            from packages.embedding.models import EmbeddingRegistry
+            from packages.embedding.service import (
+                EmbeddingService,
+                reset_embedding_service_for_tests,
+            )
+            from packages.rag.embeddings import embed_image_chunk
 
             reset_embedding_service_for_tests()
             reg = EmbeddingRegistry(yaml_path=yaml_path)

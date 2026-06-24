@@ -38,7 +38,7 @@ def load_image_caption(path: Path) -> str:
 
 def image_content_fingerprint(*, caption: str, raw: bytes) -> str:
     digest = hashlib.sha256(raw).hexdigest()[:16]
-    return hashlib.sha256(f"{caption}|{digest}".encode("utf-8")).hexdigest()[:16]
+    return hashlib.sha256(f"{caption}|{digest}".encode()).hexdigest()[:16]
 
 
 def chunk_image_file(
