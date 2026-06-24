@@ -24,7 +24,7 @@ from packages.agent.planner import (  # noqa: E402
 
 def _run_async(coro):
     """Helper to run coroutines in tests."""
-    return asyncio.get_event_loop().run_until_complete(coro)
+    return asyncio.run(coro)
 
 
 def _valid_plan_payload(**overrides) -> dict:

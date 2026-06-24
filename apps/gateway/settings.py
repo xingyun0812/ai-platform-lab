@@ -127,6 +127,13 @@ class Settings(BaseSettings):
         validation_alias="AGENT_TOOL_CALL_STRATEGY",
     )
 
+    # Phase Q — Advanced Planning settings
+    plan_output_mode: str = Field(
+        default="structured",
+        validation_alias="PLAN_OUTPUT_MODE",
+        description="Plan 输出模式：structured（json_schema response_format）或 legacy（prompt-only）",
+    )
+
     # 观测（第 5 周）
     otel_enabled: bool = Field(default=False, validation_alias="OTEL_ENABLED")
     otel_console_export: bool = Field(default=True, validation_alias="OTEL_CONSOLE_EXPORT")

@@ -32,7 +32,7 @@ def _plan(*steps: PlanStep) -> AgentPlan:
 
 
 def _run_async(coro):
-    return asyncio.get_event_loop().run_until_complete(coro)
+    return asyncio.run(coro)
 
 
 # ---------------------------------------------------------------------------
