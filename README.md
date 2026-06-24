@@ -50,12 +50,34 @@ python eval/run.py run
 
 ## 环境（本地开发）
 
-- Python **3.11+**
+- Python **3.11+**（项目通过 `.python-version` 锁定 3.11，CI 也用 3.11）
+- 推荐 **uv** 管理 Python 版本 + 虚拟环境（比 pip 快 10-100x）
 - Docker（可选，推荐 Compose 一键起）
 
+### 方式一：uv（推荐）
+
 ```bash
-python3 -m venv .venv && source .venv/bin/activate
-pip install -U pip && pip install -e .
+# 安装 uv（如尚未安装）
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# 一键搞定：按 .python-version 安装 Python + 创建 .venv + 装依赖
+uv venv && uv pip install -e ".[dev]"
+
+# 激活虚拟环境
+source .venv/bin/activate
+
+# 跑测试
+python -m pytest -q
+
+# 启动 gateway
+uvicorn apps.gateway.main:app --reload --host 127.0.0.1 --port 8000
+```
+
+### 方式二：venv + pip（传统方式）
+
+```bash
+python3.11 -m venv .venv && source .venv/bin/activate
+pip install -U pip && pip install -e ".[dev]"
 uvicorn apps.gateway.main:app --reload --host 127.0.0.1 --port 8000
 ```
 

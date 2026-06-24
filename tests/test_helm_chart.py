@@ -59,7 +59,7 @@ _passed: list[str] = []
 _failed: list[str] = []
 
 
-def test(name: str, fn) -> None:
+def run_test(name: str, fn) -> None:
     try:
         fn()
         _passed.append(name)
@@ -332,26 +332,26 @@ def test_docs_phase_k_helm_exists():
 if __name__ == "__main__":
     print("\n=== Helm Chart Tests ===\n")
 
-    test("01 Chart.yaml valid (apiVersion v2, name, version)", test_chart_yaml_valid)
-    test("02 values.yaml parses as valid YAML", test_values_yaml_parses)
-    test("03 values.yaml has required top-level keys", test_values_has_required_top_level_keys)
-    test("04 gateway values structure (image, replicas, resources, service port 8000)", test_gateway_values_structure)
-    test("05 HPA minReplicas <= maxReplicas for gateway and worker", test_hpa_min_max_valid)
-    test("06 All expected template files exist", test_all_expected_template_files_exist)
-    test("07 All template files contain Go template syntax {{ }}", test_template_files_have_go_template_syntax)
-    test("08 gateway-deployment uses image helper and probes", test_gateway_deployment_has_image_and_probes)
-    test("09 worker-deployment uses worker image and sets TIER", test_worker_deployment_has_image)
-    test("10 secret.yaml uses b64enc; gateway uses secretKeyRef for LLM_API_KEY", test_secret_template_references_secretkeyref)
-    test("11 HPA templates use autoscaling/v2", test_hpa_templates_use_autoscaling_v2)
-    test("12 values-prod.yaml parses and has gateway section", test_values_prod_yaml_parses)
-    test("13 README.md has helm install / upgrade / uninstall", test_readme_exists_and_has_install_command)
-    test("14 qdrant-statefulset.yaml has volumeClaimTemplates", test_qdrant_statefulset_has_pvc)
-    test("15 _helpers.tpl defines all required named templates", test_helpers_tpl_defines_required_templates)
-    test("16 configmap.yaml references .Values.config", test_configmap_template_uses_config_values)
-    test("17 ingress.yaml supports TLS and is gated by .Values.ingress.enabled", test_ingress_template_has_tls_support)
-    test("18 Chart.yaml has keywords and maintainers", test_chart_yaml_has_keywords_and_maintainers)
-    test("19 deploy/k8s/kustomization.yaml exists and parses", test_kustomization_yaml_exists)
-    test("20 docs/phase-k-helm.md design doc exists", test_docs_phase_k_helm_exists)
+    run_test("01 Chart.yaml valid (apiVersion v2, name, version)", test_chart_yaml_valid)
+    run_test("02 values.yaml parses as valid YAML", test_values_yaml_parses)
+    run_test("03 values.yaml has required top-level keys", test_values_has_required_top_level_keys)
+    run_test("04 gateway values structure (image, replicas, resources, service port 8000)", test_gateway_values_structure)
+    run_test("05 HPA minReplicas <= maxReplicas for gateway and worker", test_hpa_min_max_valid)
+    run_test("06 All expected template files exist", test_all_expected_template_files_exist)
+    run_test("07 All template files contain Go template syntax {{ }}", test_template_files_have_go_template_syntax)
+    run_test("08 gateway-deployment uses image helper and probes", test_gateway_deployment_has_image_and_probes)
+    run_test("09 worker-deployment uses worker image and sets TIER", test_worker_deployment_has_image)
+    run_test("10 secret.yaml uses b64enc; gateway uses secretKeyRef for LLM_API_KEY", test_secret_template_references_secretkeyref)
+    run_test("11 HPA templates use autoscaling/v2", test_hpa_templates_use_autoscaling_v2)
+    run_test("12 values-prod.yaml parses and has gateway section", test_values_prod_yaml_parses)
+    run_test("13 README.md has helm install / upgrade / uninstall", test_readme_exists_and_has_install_command)
+    run_test("14 qdrant-statefulset.yaml has volumeClaimTemplates", test_qdrant_statefulset_has_pvc)
+    run_test("15 _helpers.tpl defines all required named templates", test_helpers_tpl_defines_required_templates)
+    run_test("16 configmap.yaml references .Values.config", test_configmap_template_uses_config_values)
+    run_test("17 ingress.yaml supports TLS and is gated by .Values.ingress.enabled", test_ingress_template_has_tls_support)
+    run_test("18 Chart.yaml has keywords and maintainers", test_chart_yaml_has_keywords_and_maintainers)
+    run_test("19 deploy/k8s/kustomization.yaml exists and parses", test_kustomization_yaml_exists)
+    run_test("20 docs/phase-k-helm.md design doc exists", test_docs_phase_k_helm_exists)
 
     total = len(_passed) + len(_failed)
     print(f"\n=== Results: {len(_passed)}/{total} passed ===")

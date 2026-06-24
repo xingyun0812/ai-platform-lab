@@ -130,15 +130,26 @@ Phase M（增量索引）按此流程补录：`backup/phase-m-pre-split`，Issue
 
 ### 2.1 依赖安装
 
+项目通过 `.python-version` 锁定 Python 3.11，CI 也用 3.11。推荐用 **uv**（比 pip 快 10-100x）：
+
 ```bash
 git clone git@github.com:xingyun0812/ai-platform-lab.git
 cd ai-platform-lab
-python3 -m venv .venv
-source .venv/bin/activate
+
+# 方式一：uv（推荐）
+curl -LsSf https://astral.sh/uv/install.sh | sh   # 首次安装 uv
+uv venv && uv pip install -e ".[dev]"
+
+# 方式二：venv + pip（需本机已有 python3.11）
+python3.11 -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"
+
+source .venv/bin/activate   # 激活虚拟环境
 cp .env.example .env
 # 编辑 .env 填入真实 API key
 ```
+
+> **注意**：代码使用 `datetime.UTC` 等 3.11+ 语法，**不支持 Python 3.9/3.10**。如本机只有 3.9，`uv venv` 会自动下载 3.11。
 
 ### 2.2 运行测试
 
