@@ -171,13 +171,17 @@ class ParallelToolExecutionTests(unittest.TestCase):
         prom = get_agent_perf_metrics().prometheus_text()
         self.assertIn("agent_tool_parallel_duration_ms", prom)
 
-    @patch("apps.gateway.model_router.forward_with_model_router", new_callable=AsyncMock)
-    @patch("apps.gateway.settings.get_settings")
+    @patch("packages.agent.runner.forward_with_model_router", new_callable=AsyncMock)
+    @patch("packages.agent.runner.get_settings")
     def test_run_agent_reports_tool_call_strategy(self, mock_settings, mock_route) -> None:
+        from apps.gateway.settings import get_settings
         from packages.agent.runner import run_agent
 
+        get_settings.cache_clear()
         settings = Settings()
         settings.agent_tool_call_strategy = "parallel"
+        settings.context_memory_injection_enabled = False
+        settings.context_llm_summary_enabled = False
         mock_settings.return_value = settings
 
         class R:

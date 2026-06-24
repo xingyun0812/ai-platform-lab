@@ -1,0 +1,37 @@
+"""Phase O #95 — agent_jd2_gate 元测试。"""
+
+from __future__ import annotations
+
+import json
+import subprocess
+import sys
+from pathlib import Path
+
+REPO = Path(__file__).resolve().parents[1]
+
+
+def test_required_paths_exist() -> None:
+    from eval.agent_jd2_gate import verify_required_paths
+
+    missing = verify_required_paths()
+    assert missing == [], missing
+
+
+def test_checks_cover_o1_through_o10() -> None:
+    from eval.agent_jd2_gate import CHECKS
+
+    issues = {c.issue for c in CHECKS}
+    assert {"O1", "O2", "O4", "O5", "O6", "O7", "O9", "O10", "O11"}.issubset(issues)
+
+
+def test_list_command_json() -> None:
+    proc = subprocess.run(
+        [sys.executable, str(REPO / "eval" / "agent_jd2_gate.py"), "list"],
+        cwd=REPO,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    data = json.loads(proc.stdout)
+    assert isinstance(data, list)
+    assert len(data) >= 10

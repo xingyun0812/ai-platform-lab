@@ -1,6 +1,6 @@
 # Phase O — Agent 能力对齐 JD2（智能体研发岗）
 
-> **状态**：规划中（Issue [#86](https://github.com/xingyun0812/ai-platform-lab/issues/86) · Milestone Phase O）  
+> **状态**：✅ 已完成（O1～O11 · tag `phase-o-agent-jd2` · Milestone Phase O）  
 > **前置**：Phase N ✅ tag `phase-n-pypi-sdk`  
 > **动机**：对照 [tmp-jd-platform-comparison.md](./tmp-jd-platform-comparison.md) §4.1 岗位职责，把 ⚠️/❌ 项做成 **可演示、可单测、可面试** 的增量交付。  
 > **Tag**（完成后）：`phase-o-agent-jd2`  
@@ -281,13 +281,13 @@ flowchart LR
 **动机**：Phase 收尾 + 更新 JD 对照表。
 
 **交付**：
-- [ ] `docs/phase-o-agent-jd2-alignment.md`（本文）状态改为 ✅
-- [ ] `docs/issues-backlog-phase-o.md` Issue 关闭映射
-- [ ] 更新 `tmp-jd-platform-comparison.md` §4.1 评级
-- [ ] 更新 `interview-narrative.md` Agent 层 + Q&A（Planner/CoT/Vertical）
-- [ ] 更新 `demo-walkthrough.md` 新增 5 分钟 Agent JD2 路线
-- [ ] `eval/agent_jd2_gate.py` + CI job
-- [ ] Tag：`phase-o-agent-jd2`
+- [x] `docs/phase-o-agent-jd2-alignment.md`（本文）状态改为 ✅
+- [x] `docs/issues-backlog-phase-o.md` Issue 关闭映射
+- [x] 更新 `tmp-jd-platform-comparison.md` §4.1 评级
+- [x] 更新 `interview-narrative.md` Agent 层 + Q&A（Planner/CoT/Vertical）
+- [x] 更新 `demo-walkthrough.md` 新增 5 分钟 Agent JD2 路线
+- [x] `eval/agent_jd2_gate.py` + CI job
+- [x] Tag：`phase-o-agent-jd2`
 
 ---
 

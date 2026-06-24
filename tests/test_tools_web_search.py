@@ -168,8 +168,13 @@ class AuditClassificationTests(unittest.TestCase):
 
 
 class AgentIntegrationTests(unittest.TestCase):
-    @patch("apps.gateway.model_router.forward_with_model_router", new_callable=AsyncMock)
-    @patch("apps.gateway.settings.get_settings")
+    def setUp(self) -> None:
+        from apps.gateway.settings import get_settings
+
+        get_settings.cache_clear()
+
+    @patch("packages.agent.runner.forward_with_model_router", new_callable=AsyncMock)
+    @patch("packages.agent.runner.get_settings")
     def test_run_agent_executes_web_search_tool(self, mock_settings, mock_route) -> None:
         from apps.gateway.settings import Settings
         from packages.agent.runner import run_agent
@@ -177,6 +182,8 @@ class AgentIntegrationTests(unittest.TestCase):
 
         settings = Settings()
         settings.web_search_mode = "mock"
+        settings.context_memory_injection_enabled = False
+        settings.context_llm_summary_enabled = False
         mock_settings.return_value = settings
 
         call_count = {"n": 0}

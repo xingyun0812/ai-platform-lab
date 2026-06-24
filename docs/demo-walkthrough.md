@@ -177,6 +177,42 @@ Console **Agents** 页可看注册 Agent / 委托（`MULTI_AGENT_ENABLED`）。
 
 > Phase L #59：见 [demo-agent-vertical.md](./demo-agent-vertical.md)（Orchestrator + HITL vertical curl 链，live 6/6 ✅）。
 
+### Agent JD2 五分钟路线（Phase O）
+
+无 Key 离线矩阵（CI 同款）：
+
+```bash
+python eval/agent_jd2_gate.py run
+./eval/data_analysis_vertical.sh --mock
+python eval/agent_planner_smoke.py
+python eval/agent_cot_smoke.py
+```
+
+有 Key 时可追加：
+
+```bash
+# Task Planner
+curl -s http://127.0.0.1:8000/v1/agent/plan \
+  -H "Content-Type: application/json" \
+  -H "X-Tenant-Id: admin" \
+  -H "Authorization: Bearer sk-tenant-admin-change-me" \
+  -d '{"goal":"查资料并计算 1+2","session_id":"jd2-demo"}'
+
+# CoT 推理
+curl -s http://127.0.0.1:8000/v1/agent/run \
+  -H "Content-Type: application/json" \
+  -H "X-Tenant-Id: admin" \
+  -H "Authorization: Bearer sk-tenant-admin-change-me" \
+  -d '{"messages":[{"role":"user","content":"解释 2+2"}],"session_id":"jd2-cot","reasoning_mode":"cot"}'
+
+# Multi-Agent 黑板（委托后）
+curl -s http://127.0.0.1:8000/v1/agent/blackboard/jd2-demo \
+  -H "X-Tenant-Id: admin" \
+  -H "Authorization: Bearer sk-tenant-admin-change-me"
+```
+
+**话术要点**：Phase O 把 JD2 §4.1 从「ReAct 能调工具」升级为 **可规划、可显式推理、可协作、可接搜索/SQL、可跑 vertical**；门禁见 `eval/agent_jd2_gate.py`。
+
 ### Phase M 增量索引（#63～#66）
 
 `./eval/platform_demo.sh --with-llm` 会自动：
@@ -238,6 +274,7 @@ python eval/sdk_smoke.py \
 ```bash
 ./eval/platform_demo.sh --no-llm          # 不依赖 LLM（含 feedback mock + agent vertical）
 ./eval/platform_demo.sh --with-llm        # 含二次索引 skipped 断言 + RAG live
+python eval/agent_jd2_gate.py run         # Phase O JD2 离线矩阵
 python eval/acceptance_smoke.py --platform-demo
 python eval/sdk_smoke.py                  # SDK 三接口
 ```
