@@ -30,11 +30,11 @@ from packages.contracts.rag_schemas import (
     RetrieveResponse,
 )
 from packages.rag.index_metrics import get_index_metrics
-from packages.rag.source_index import purge_source_index
 from packages.rag.rerank import rerank_chunks
 from packages.rag.rerank_providers import provider_config_from_settings
 from packages.rag.retrieval import retrieve_chunks
 from packages.rag.routing import describe_routing
+from packages.rag.source_index import purge_source_index
 from packages.rag.vector_store import VectorStore
 from packages.tasks.queue import get_index_task_queue
 

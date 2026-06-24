@@ -13,7 +13,8 @@ from pydantic import BaseModel, Field
 
 from apps.gateway.http_utils import json_error, resolve_tenant
 from apps.gateway.rag.pipeline import _kb_routing_rules, _list_kb_versions, resolve_query_version
-from apps.gateway.rag.routes import _dispatch_index, _require_tenant as rag_require_tenant
+from apps.gateway.rag.routes import _dispatch_index
+from apps.gateway.rag.routes import _require_tenant as rag_require_tenant
 from apps.gateway.rag.task_store import get_task_store as get_rag_task_store
 from apps.gateway.settings import REPO_ROOT, get_settings
 from apps.gateway.tenants import TenantRecord, load_tenants
@@ -70,7 +71,7 @@ def _document_count(kb_id: str) -> int:
     settings = get_settings()
     root = settings.rag_data_root
     count = 0
-    for pattern in (f"samples/*.txt", f"uploads/{kb_id}/**/*"):
+    for pattern in ("samples/*.txt", f"uploads/{kb_id}/**/*"):
         count += len(list(root.glob(pattern)))
     return count
 
@@ -352,7 +353,6 @@ async def upload_kb_document(
     if isinstance(tenant, JSONResponse):
         return tenant
 
-    settings = get_settings()
     safe_name = (file.filename or "upload.txt").replace("/", "_").replace("\\", "_")
     source_uri = f"uploads/{kb_id}/v{version}/{safe_name}"
     from apps.gateway.rag.paths import resolve_source_path

@@ -11,7 +11,6 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT))
 
 from packages.rag.bm25_index import (
-    Bm25Index,
     build_index_from_chunks,
     merge_source_into_index,
     remove_source_from_index,

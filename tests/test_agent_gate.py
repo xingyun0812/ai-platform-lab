@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import tempfile
 from pathlib import Path
 
 import pytest
@@ -82,7 +81,7 @@ def test_run_offline_gate_passes_on_main():
 
 
 def test_check_command_with_report_files(tmp_path: Path):
-    from eval.agent_gate import load_report_summary, check_agent_gate
+    from eval.agent_gate import check_agent_gate, load_report_summary
 
     a = tmp_path / "a.json"
     b = tmp_path / "b.json"

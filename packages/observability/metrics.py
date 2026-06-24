@@ -51,7 +51,6 @@ class MetricsStore:
         """Console Dashboard 用 JSON 快照。"""
         with self._lock:
             totals = dict(self._request_total)
-            latencies = {k: list(v) for k, v in self._latency_ms.items()}
 
         total_requests = sum(totals.values())
         error_requests = sum(

@@ -16,9 +16,8 @@ from packages.rag.rerank import rerank_chunks, rerank_provider_name
 from packages.rag.rerank_providers import (
     ApiRerankProvider,
     LocalRerankProvider,
-    StubRerankProvider,
-    get_rerank_provider,
     _parse_rerank_scores,
+    get_rerank_provider,
 )
 
 

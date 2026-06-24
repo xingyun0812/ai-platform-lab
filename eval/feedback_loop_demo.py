@@ -7,7 +7,6 @@ import argparse
 import asyncio
 import json
 import os
-import sys
 import time
 from pathlib import Path
 from typing import Any
@@ -35,11 +34,12 @@ async def run_mock_demo(
     auto_experiment: bool = False,
 ) -> dict[str, Any]:
     """内存 FeedbackStore + 临时 bad_cases.jsonl，跑通 run_full_cycle。"""
-    from packages.feedback import init_feedback_store, reset_for_tests as reset_fb
+    import tempfile
+
+    from packages.feedback import init_feedback_store
+    from packages.feedback import reset_for_tests as reset_fb
     from packages.feedback.store import Feedback, FeedbackType
     from packages.feedback_loop.pipeline import FeedbackLoop, init_feedback_loop, reset_for_tests
-
-    import tempfile
 
     reset_fb()
     reset_for_tests()

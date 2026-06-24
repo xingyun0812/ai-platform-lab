@@ -11,7 +11,8 @@ from pathlib import Path
 import pytest
 
 from eval.feedback_loop_demo import run_live_demo, run_mock_demo
-from packages.feedback import init_feedback_store, reset_for_tests as reset_fb_store
+from packages.feedback import init_feedback_store
+from packages.feedback import reset_for_tests as reset_fb_store
 from packages.feedback.store import Feedback, FeedbackType
 from packages.feedback_loop.pipeline import FeedbackLoop, init_feedback_loop, reset_for_tests
 
