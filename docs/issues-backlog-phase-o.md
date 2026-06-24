@@ -9,7 +9,7 @@
 |---------|--------------|------|
 | 规划文档 | [#86](https://github.com/xingyun0812/ai-platform-lab/issues/86) | ⏳ |
 | O1 Task Planner | [#87](https://github.com/xingyun0812/ai-platform-lab/issues/87) | ✅ #99 |
-| O2 CoT 推理 | [#88](https://github.com/xingyun0812/ai-platform-lab/issues/88) | ⏳ #100 |
+| O2 CoT 推理 | [#88](https://github.com/xingyun0812/ai-platform-lab/issues/88) | ✅ #100 |
 | O4 Multi-Agent v2 | [#89](https://github.com/xingyun0812/ai-platform-lab/issues/89) | ⏳ |
 | O5 Plugin Manifest | [#90](https://github.com/xingyun0812/ai-platform-lab/issues/90) | ⏳ |
 | O6 web_search | [#91](https://github.com/xingyun0812/ai-platform-lab/issues/91) | ⏳ |
@@ -75,10 +75,10 @@
 **目标**：`AGENT_REASONING_MODE=cot` 时解析 `<thinking>` 块并写入 `tool_trace`，默认 `react` 不变。
 
 **验收**：
-- [ ] `packages/agent/reasoning.py` 解析器
-- [ ] `runner.py` 集成 + `config/agent.yaml`
-- [ ] 单测 mock LLM 输出
-- [ ] `eval/agent_run.py` baseline 增 cot 用例（mock）
+- [x] `packages/agent/reasoning.py` 解析器
+- [x] `runner.py` 集成 + `config/agent.yaml`
+- [x] 单测 mock LLM 输出
+- [x] `eval/agent_run.py` baseline 增 cot 用例（mock）
 
 **依赖**：无（可与 O1 并行开发，merge 建议同 Wave）
 
