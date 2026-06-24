@@ -59,3 +59,19 @@ prompts:
       {{context_block}}
 
       用户目标：{{goal}}
+
+  - prompt_id: agent_plan_critic
+    version: 1
+    tenant_id: global
+    status: active
+    changelog: "Phase Q #118 — Q3 Replan on failure Critic LLM prompt"
+    created_by: phase-q
+    content: |
+      原始 Plan（JSON）：
+      {{plan_json}}
+
+      失败的 step（id={{failed_step_id}}）：{{failed_step_desc}}
+      失败原因：{{failure_reason}}
+      {{context_block}}
+      请输出修订后的完整 Plan（JSON），修复失败 step 或替换为可执行的步骤。
+      只输出合法 JSON，不要其他文字。
