@@ -190,10 +190,14 @@ async def execute_workflow_api(
     from apps.gateway.settings import get_settings
 
     settings = get_settings()
+    merged_inputs = dict(body.inputs or {})
+    merged_inputs.setdefault("tenant_id", tenant.tenant_id)
+    merged_inputs.setdefault("allowed_tools", list(tenant.allowed_tools or ()))
+    merged_inputs.setdefault("allowed_models", list(tenant.allowed_models or ()))
     try:
         result = await execute_workflow(
             wf,
-            inputs=body.inputs,
+            inputs=merged_inputs,
             max_steps=body.max_steps or settings.orchestrator_max_steps,
             timeout_seconds=body.timeout_seconds or settings.orchestrator_timeout_seconds,
         )

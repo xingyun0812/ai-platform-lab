@@ -25,10 +25,18 @@ import logging
 from dataclasses import dataclass, field
 from typing import Any
 
+from packages.agent.multi_agent.blackboard import (
+    BlackboardEntry,
+    BlackboardStore,
+    get_blackboard,
+    reset_blackboard_for_tests,
+)
 from packages.agent.multi_agent.delegation import (
     DelegationError,
     DelegationResult,
     delegate_to_agent,
+    parallel_delegate,
+    resolve_delegation_tools,
 )
 from packages.agent.multi_agent.registry import (
     AgentRegistry,
@@ -47,10 +55,16 @@ __all__ = [
     "AgentRegistryError",
     "AgentSpec",
     "AgentStatus",
+    "BlackboardEntry",
+    "BlackboardStore",
     "DelegationError",
     "DelegationResult",
     "delegate_to_agent",
     "get_agent_registry",
+    "get_blackboard",
     "init_agent_registry",
+    "parallel_delegate",
     "reset_agent_registry_for_tests",
+    "reset_blackboard_for_tests",
+    "resolve_delegation_tools",
 ]

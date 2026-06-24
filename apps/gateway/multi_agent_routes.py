@@ -81,7 +81,12 @@ class AgentUpdateRequest(BaseModel):
 class DelegateRequest(BaseModel):
     task: str = Field(..., min_length=1)
     inputs: dict[str, Any] = Field(default_factory=dict)
+    session_id: str | None = Field(
+        default=None,
+        description="父会话 ID，用于共享黑板；省略则自动生成",
+    )
     timeout_seconds: float = 60.0
+    use_blackboard: bool = True
 
 
 def _agent_payload(spec: AgentSpec, status: Any = None) -> dict[str, Any]:
@@ -251,8 +256,13 @@ async def delegate_to_agent_api(
     result = await delegate_to_agent(
         agent_id=agent_id,
         task=body.task,
+        tenant_id=tenant.tenant_id,
+        session_id=body.session_id,
         inputs=body.inputs,
         timeout_seconds=body.timeout_seconds,
+        allowed_tools=tuple(tenant.allowed_tools or ()),
+        allowed_models=tuple(tenant.allowed_models or ()),
+        use_blackboard=body.use_blackboard,
     )
     return JSONResponse(
         {
@@ -264,5 +274,7 @@ async def delegate_to_agent_api(
             "usage": result.usage,
             "execution_time_ms": round(result.execution_time_ms, 2),
             "delegation_depth": result.delegation_depth,
+            "blackboard_entry_id": result.blackboard_entry_id,
+            "sub_session_id": result.sub_session_id,
         }
     )

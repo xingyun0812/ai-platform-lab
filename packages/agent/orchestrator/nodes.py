@@ -382,14 +382,30 @@ async def _execute_agent_call(config: dict[str, Any], ctx: Any) -> dict[str, Any
     else:
         rendered_inputs = {}
     timeout = float(config.get("timeout", 60.0))
+    use_blackboard = config.get("use_blackboard", True)
     # 委托栈：从 ctx 继承（如果存在）
     delegation_stack = getattr(ctx, "variables", {}).get("_delegation_stack", [])
+    tenant_id = str(getattr(ctx, "inputs", {}).get("tenant_id") or "admin")
+    session_id = getattr(ctx, "inputs", {}).get("session_id")
+    if session_id is not None:
+        session_id = str(session_id)
+    allowed_tools_raw = getattr(ctx, "inputs", {}).get("allowed_tools")
+    allowed_tools = tuple(allowed_tools_raw) if isinstance(allowed_tools_raw, (list, tuple)) else None
+    allowed_models_raw = getattr(ctx, "inputs", {}).get("allowed_models")
+    allowed_models = (
+        tuple(allowed_models_raw) if isinstance(allowed_models_raw, (list, tuple)) else None
+    )
     result = await delegate_to_agent(
         agent_id=agent_id,
         task=task,
+        tenant_id=tenant_id,
+        session_id=session_id,
         inputs=rendered_inputs,
         delegation_stack=list(delegation_stack),
         timeout_seconds=timeout,
+        allowed_tools=allowed_tools,
+        allowed_models=allowed_models,
+        use_blackboard=bool(use_blackboard),
     )
     return {
         "agent_id": agent_id,
@@ -400,6 +416,8 @@ async def _execute_agent_call(config: dict[str, Any], ctx: Any) -> dict[str, Any
         "usage": result.usage,
         "delegation_depth": result.delegation_depth,
         "execution_time_ms": result.execution_time_ms,
+        "blackboard_entry_id": result.blackboard_entry_id,
+        "sub_session_id": result.sub_session_id,
     }
 
 

@@ -252,12 +252,17 @@ config/agents.yaml                   # 种子配置
 
 ## 6. 已知限制（面试时主动说）
 
-1. **无 Agent 间消息传递**：当前仅主→子单向委托；无子→主回询。生产应加双向通信。
-2. **无共享黑板**：多 Agent 并行时无共享上下文；只能通过编排引擎的 `outputs` 传递。
-3. **委托无持久化**：委托结果仅返回不存储；生产应加 execution history。
-4. **无 Agent 版本管理**：AgentSpec 无版本；改 system_prompt 即时生效。生产应加版本表。
-5. **LLM 调用直连**：委托时直接调 `forward_with_model_router`，未走 Agent runner 的完整 ReAct 循环。
-6. **无并行委托编排节点**：`parallel_delegate` 仅在代码层；编排引擎中需用 `parallel` 节点 + 多个 `agent_call` 子图实现。
+> **Phase O #89 已补齐**：共享黑板 + 委托走完整 `run_agent()`。下列为**剩余**限制。
+
+1. **无 Agent 间双向回询**：主→子单向委托；子 Agent 不能主动追问主 Agent（生产可加 message bus）。
+2. **黑板 TTL 24h**：Redis 不可达时回退进程内存储，跨实例不共享。
+3. **委托历史无独立表**：结果写入黑板 JSON，非结构化 execution history。
+4. **无并行委托编排节点**：`parallel_delegate` 仅在代码层；编排引擎中需用 `parallel` 节点 + 多个 `agent_call` 子图实现。
+
+**Phase O 已交付（#89）**：
+- `GET /v1/agent/blackboard/{session_id}` — Console / eval 可查询
+- `delegation.py` → 完整 ReAct `run_agent()` + 工具 ACL
+- Reviewer 角色自动读取黑板上下文
 
 ---
 
@@ -265,11 +270,9 @@ config/agents.yaml                   # 种子配置
 
 | Issue | 内容 | 依赖 |
 |-------|------|------|
+| ✅ #89 | 共享黑板 + Runner 委托 | Phase O |
 | 未来 | Agent 间双向通信（消息队列） | — |
-| 未来 | 共享黑板（Blackboard 模式） | — |
-| 未来 | Agent 版本管理 + 灰度发布 | #39 |
-| 未来 | 委托执行历史持久化 | — |
-| 未来 | 委托走完整 Agent runner（ReAct 循环） | — |
+| 未来 | 委托 execution history 持久化 | — |
 
 ---
 
