@@ -45,12 +45,12 @@
 
 **目标**：用户给出 `goal`，平台生成 `Plan`（多步 + 依赖），并驱动 Agent Runner 逐步执行。
 
-**验收**：
-- [ ] `packages/agent/planner.py` + `Plan` / `PlanStep` schema
-- [ ] `POST /v1/agent/plan` 或 `auto_plan=true` on `/v1/agent/run`
-- [ ] Prompt `agent_planner` in `config/prompts.yaml`
-- [ ] 单测 ≥12（`tests/test_agent_planner.py`）
-- [ ] `eval/agent_planner_smoke.py` mock 通过
+**验收**（✅ PR #99 · 复验 2026-05-19）：
+- [x] `packages/agent/planner.py` + `Plan` / `PlanStep` schema
+- [x] `POST /v1/agent/plan` 或 `auto_plan=true` on `/v1/agent/run`
+- [x] Prompt `agent_planner` in `config/prompts.yaml`
+- [x] 单测 ≥12（`tests/test_agent_planner.py`，共 13 条）
+- [x] `eval/agent_planner_smoke.py` mock 通过
 
 **关键文件**：
 - `packages/agent/planner.py`
