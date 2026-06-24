@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import hashlib
-import json
 from typing import Any
 
 SUPPORTED_INPUT_TYPES = frozenset({"text", "image_url", "image_base64"})
