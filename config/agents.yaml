@@ -21,3 +21,20 @@ agents:
     can_be_delegated_to: true
     max_delegation_depth: 3
     enabled: true
+
+  - agent_id: data_analyst
+    name: 数据分析专家
+    role: specialist
+    description: "Phase O #93 — web_search + sql_query + calc 数据分析 vertical"
+    system_prompt: |
+      你是数据分析专家。先用 web_search 了解行业背景，再用 sql_query 查询 demo_sales 表，
+      必要时用 calc 做精确计算，最后输出结构化报告摘要。
+    model: null
+    allowed_tools:
+      - web_search
+      - sql_query
+      - calc
+    can_delegate: false
+    can_be_delegated_to: true
+    max_delegation_depth: 2
+    enabled: true

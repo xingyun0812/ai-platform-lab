@@ -397,6 +397,11 @@ class Settings(BaseSettings):
         validation_alias="ORCHESTRATOR_OVERRIDES_PATH",
         description="工作流运行时 overrides（admin API，不进 git）",
     )
+    orchestrator_extra_workflows_dir: Path = Field(
+        default=REPO_ROOT / "config" / "workflows",
+        validation_alias="ORCHESTRATOR_EXTRA_WORKFLOWS_DIR",
+        description="额外工作流 YAML 目录（Phase O #93 data_analysis 等）",
+    )
     orchestrator_max_steps: int = Field(
         default=100,
         validation_alias="ORCHESTRATOR_MAX_STEPS",
