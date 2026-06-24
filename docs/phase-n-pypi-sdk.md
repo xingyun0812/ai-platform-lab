@@ -1,6 +1,6 @@
 # Phase N — Python SDK 发布 PyPI
 
-> **状态**：✅ 代码交付完成（tag `phase-n-pypi-sdk` 待打）  
+> **状态**：✅ 已完成 · tag `phase-n-pypi-sdk`
 > **前置**：Phase L #63 `sdk_smoke.py` ✅ · SDK 源码 `sdk/python/`  
 > **Tag**（完成后）：`phase-n-pypi-sdk`  
 > **非目标**：TS SDK、多模态 Embedding、RBAC、SLO（留 Phase O+）

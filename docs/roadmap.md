@@ -220,7 +220,7 @@
 ## Phase N — Python SDK 发布 PyPI（✅ 已完成）
 
 > **规划**：[phase-n-pypi-sdk.md](./phase-n-pypi-sdk.md) · Issue 正文：[issues-backlog-phase-n.md](./issues-backlog-phase-n.md)  
-> **Tag**：`phase-n-pypi-sdk`（N4 merge 后打）
+> **Tag**：`phase-n-pypi-sdk`（2026-06-24）
 
 | Issue | 内容 | PR | 状态 |
 |-------|------|-----|------|
@@ -231,6 +231,29 @@
 | #80 | 文档 / roadmap / 叙事同步 | #85 | ✅ |
 
 **诚实边界**：PyPI 包为 HTTP 客户端；首次生产发版需维护者配置 Trusted Publishing 或 `PYPI_API_TOKEN` 后打 `sdk-v*` tag。
+
+---
+
+## Phase O — Agent 能力对齐 JD2（规划中）
+
+> **动机**：智能体研发岗 JD §4.1 缺口补齐（Planner / CoT / Multi-Agent v2 / 外部工具 / 数据分析 vertical）  
+> **规划**：[phase-o-agent-jd2-alignment.md](./phase-o-agent-jd2-alignment.md) · Issue 正文：[issues-backlog-phase-o.md](./issues-backlog-phase-o.md) · 规划 Issue [#86](https://github.com/xingyun0812/ai-platform-lab/issues/86)  
+> **Tag**（完成后）：`phase-o-agent-jd2`
+
+| Issue | 内容 | 状态 |
+|-------|------|------|
+| #86 | 规划文档 | ⏳ PR |
+| #87 | Task Planner + 任务分解 | ⏳ |
+| #88 | CoT 推理模式 | ⏳ |
+| #89 | Multi-Agent v2 黑板 | ⏳ |
+| #90 | Plugin Manifest | ⏳ |
+| #91 | web_search 工具 | ⏳ |
+| #92 | sql_query 只读 | ⏳ |
+| #93 | 数据分析 Vertical | ⏳ |
+| #94 | Agent 性能 | ⏳ |
+| #95 | 文档 Demo gate | ⏳ |
+
+**非目标**：RPA、PyTorch、LangChain 依赖绑定。
 
 ---
 
