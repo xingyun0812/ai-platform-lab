@@ -132,7 +132,7 @@ flowchart TB
 | 4～7 | RAG 索引 + **二次索引**（`skipped_chunks`） | Phase M 增量故事 |
 | 7～10 | v2 + 金丝雀 + eval compare | SOP 核心（需 Key） |
 | 11～13 | Audit / Agent vertical / 反馈飞轮 | 治理 + 闭环 |
-| 13～15 | `python eval/sdk_smoke.py` | SDK 三接口 + 诚实边界 |
+| 13～15 | `python eval/sdk_smoke.py` 或 `./eval/sdk_pypi_smoke.sh --local` | SDK 三接口 · 可演示 pip 安装包 |
 
 详见 [demo-walkthrough.md](./demo-walkthrough.md)。
 

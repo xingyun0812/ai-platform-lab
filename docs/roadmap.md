@@ -215,6 +215,25 @@
 
 **Phase M 全部完成！** 堆叠 PR #68～#71。
 
+---
+
+## Phase N — Python SDK 发布 PyPI（✅ 已完成）
+
+> **规划**：[phase-n-pypi-sdk.md](./phase-n-pypi-sdk.md) · Issue 正文：[issues-backlog-phase-n.md](./issues-backlog-phase-n.md)  
+> **Tag**：`phase-n-pypi-sdk`（N4 merge 后打）
+
+| Issue | 内容 | PR | 状态 |
+|-------|------|-----|------|
+| #76 | 规划文档 | #81 | ✅ |
+| #77 | SDK 包元数据 + README | #82 | ✅ |
+| #78 | `publish-sdk.yml` PyPI 发布 | #83 | ✅ |
+| #79 | `eval/sdk_pypi_smoke.sh` | #84 | ✅ |
+| #80 | 文档 / roadmap / 叙事同步 | #85 | ✅ |
+
+**诚实边界**：PyPI 包为 HTTP 客户端；首次生产发版需维护者配置 Trusted Publishing 或 `PYPI_API_TOKEN` 后打 `sdk-v*` tag。
+
+---
+
 ## 已知限制（面试时主动说）
 
 > **说明**：Phase A～K 已交付大量能力（MCP、HITL、Multi-Agent、语义缓存、PII、Console V2 等），本节区分 **「已有但 opt-in / 实验级」** 与 **「仍缺或仍为 stub」**，避免与 README 矛盾。Phase L 目标是把 stub 做深，见 [phase-l-engineering-depth.md](./phase-l-engineering-depth.md)。
@@ -265,8 +284,8 @@
 ### 开发者体验
 
 - **Console V2 已挂载** → `/console/`（见 [phase-l-console-integration.md](./phase-l-console-integration.md)）。
-- **Python SDK 已有**（`pip install -e sdk/python`），未发 PyPI；TS SDK **无**。
-- Demo：`./eval/platform_demo.sh`、`eval/sdk_smoke.py`（Phase L #62/#63）。
+- **Python SDK**：`pip install ai-platform-lab`（Phase N，`publish-sdk.yml` + `eval/sdk_pypi_smoke.sh`）；本地开发仍可用 `pip install -e sdk/python`；TS SDK **无**。
+- Demo：`./eval/platform_demo.sh`、`eval/sdk_smoke.py`、`./eval/sdk_pypi_smoke.sh --local`。
 
 ---
 
