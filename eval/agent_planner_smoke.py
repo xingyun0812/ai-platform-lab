@@ -5,11 +5,125 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 import sys
 from pathlib import Path
+from unittest.mock import patch
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT))
+
+
+def test_structured_plan_path() -> None:
+    """Smoke test for Q1 structured plan path (Issue #116, mock LLM, no real API)."""
+    from packages.agent.planner import (
+        build_response_format_schema,
+        generate_plan,
+        is_structured_mode,
+    )
+
+    # 1. Verify helpers
+    schema = build_response_format_schema()
+    assert schema["type"] == "json_schema"
+    js = schema["json_schema"]
+    assert js["name"] == "agent_plan"
+    assert js["strict"] is True
+    inner = js["schema"]
+    assert "goal" in inner["properties"]
+    assert "steps" in inner["properties"]
+    assert inner["additionalProperties"] is False
+    print("  [ok] build_response_format_schema keys verified")
+
+    sample = {
+        "goal": "structured smoke goal",
+        "steps": [
+            {
+                "id": "s1",
+                "description": "检索资料",
+                "tool_hint": "get_kb_snippet",
+                "depends_on": [],
+            },
+            {
+                "id": "s2",
+                "description": "计算",
+                "tool_hint": "calc",
+                "depends_on": ["s1"],
+            },
+        ],
+    }
+
+    captured_payloads: list[dict] = []
+
+    async def mock_llm(body):
+        captured_payloads.append(body)
+
+        class Route:
+            status = 200
+            body = {"choices": [{"message": {"content": json.dumps(sample, ensure_ascii=False)}}]}
+            error = None
+
+        return Route()
+
+    async def _run_structured() -> None:
+        with patch.dict(os.environ, {"PLAN_OUTPUT_MODE": "structured"}):
+            with patch("packages.agent.planner.forward_with_model_router", mock_llm):
+                plan, _ = await generate_plan(
+                    goal=sample["goal"],
+                    allowed_models=(),
+                    allowed_tools=(),
+                )
+        assert plan.goal == sample["goal"]
+        assert len(plan.steps) == 2
+        # Verify response_format was injected
+        assert len(captured_payloads) == 1, "Should be 1 upstream call on success"
+        rf = captured_payloads[0].get("response_format")
+        assert rf is not None, "response_format must be present in structured mode"
+        assert rf["type"] == "json_schema"
+        print("  [ok] structured path: plan parsed, response_format injected")
+
+    asyncio.run(_run_structured())
+
+    # 2. Test fallback path
+    captured_payloads.clear()
+    call_count = [0]
+
+    async def mock_llm_fallback(body):
+        call_count[0] += 1
+        captured_payloads.append(body)
+        if call_count[0] == 1:
+
+            class BadRoute:
+                status = 200
+                body = {"choices": [{"message": {"content": "BROKEN JSON {{{"}}]}
+                error = None
+
+            return BadRoute()
+
+        class GoodRoute:
+            status = 200
+            body = {"choices": [{"message": {"content": json.dumps(sample, ensure_ascii=False)}}]}
+            error = None
+
+        return GoodRoute()
+
+    async def _run_fallback() -> None:
+        with patch.dict(os.environ, {"PLAN_OUTPUT_MODE": "structured"}):
+            with patch("packages.agent.planner.forward_with_model_router", mock_llm_fallback):
+                plan, _ = await generate_plan(
+                    goal="fallback smoke test",
+                    allowed_models=(),
+                    allowed_tools=(),
+                )
+        assert plan.goal == sample["goal"]
+        assert call_count[0] == 2, "Expected 2 calls: structured attempt + legacy fallback"
+        # First call had response_format, second did not
+        assert "response_format" in captured_payloads[0]
+        assert "response_format" not in captured_payloads[1]
+        print("  [ok] fallback path: degraded gracefully, plan parsed from legacy call")
+
+    asyncio.run(_run_fallback())
+
+    print("  [ok] test_structured_plan_path PASSED")
 
 
 def main() -> int:
@@ -65,16 +179,12 @@ def main() -> int:
     async def _mock_llm(*args, **kwargs):
         class Route:
             status = 200
-            body = {
-                "choices": [{"message": {"content": json.dumps(sample, ensure_ascii=False)}}]
-            }
+            body = {"choices": [{"message": {"content": json.dumps(sample, ensure_ascii=False)}}]}
             error = None
 
         return Route()
 
     async def _run() -> None:
-        from unittest.mock import patch
-
         with patch(
             "packages.agent.planner.forward_with_model_router",
             _mock_llm,
@@ -111,7 +221,13 @@ def main() -> int:
         assert len(calls) == 2
 
     asyncio.run(_run())
-    print("OK agent_planner_smoke")
+    print("OK agent_planner_smoke (legacy path)")
+
+    # Q1 structured plan path test (Issue #116)
+    print("Testing Q1 structured plan path (Issue #116)...")
+    test_structured_plan_path()
+    print("OK agent_planner_smoke (structured path)")
+
     return 0
 
 

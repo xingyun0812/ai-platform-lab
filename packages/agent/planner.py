@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import re
 from collections import deque
 from collections.abc import Awaitable, Callable
@@ -36,6 +37,48 @@ class PlannerError(Exception):
         self.message = message
         self.detail = detail
         super().__init__(message)
+
+
+def build_response_format_schema() -> dict[str, Any]:
+    """构造 json_schema response_format payload。"""
+    return {
+        "type": "json_schema",
+        "json_schema": {
+            "name": "agent_plan",
+            "strict": True,
+            "schema": {
+                "type": "object",
+                "properties": {
+                    "goal": {"type": "string"},
+                    "steps": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "id": {"type": "string"},
+                                "description": {"type": "string"},
+                                "tool_hint": {"type": ["string", "null"]},
+                                "agent_hint": {"type": ["string", "null"]},
+                                "depends_on": {
+                                    "type": "array",
+                                    "items": {"type": "string"},
+                                },
+                            },
+                            "required": ["id", "description", "depends_on"],
+                            "additionalProperties": False,
+                        },
+                    },
+                },
+                "required": ["goal", "steps"],
+                "additionalProperties": False,
+            },
+        },
+    }
+
+
+def is_structured_mode() -> bool:
+    """检查是否启用 structured output 模式。"""
+    return os.getenv("PLAN_OUTPUT_MODE", "structured").lower() == "structured"
 
 
 def extract_json_object(text: str) -> dict[str, Any]:
@@ -166,6 +209,33 @@ def _assistant_content_from_route(body: dict[str, Any] | None) -> str:
     return content if isinstance(content, str) else ""
 
 
+def _build_base_payload(
+    resolved_model: str,
+    user_prompt: str,
+) -> dict[str, Any]:
+    """构建不含 response_format 的基础 payload。"""
+    return {
+        "model": resolved_model,
+        "messages": [
+            {"role": "system", "content": "你只输出合法 JSON，不要其它文字。"},
+            {"role": "user", "content": user_prompt},
+        ],
+        "temperature": 0.1,
+    }
+
+
+async def _call_upstream(payload: dict[str, Any]) -> str:
+    """调用 upstream 并返回 content 字符串；失败抛 PlannerError。"""
+    route = await forward_with_model_router(payload)
+    if route.status != 200 or not route.body:
+        raise PlannerError(
+            "PLAN_UPSTREAM_ERROR",
+            route.error or f"upstream status={route.status}",
+            detail={"status": route.status},
+        )
+    return _assistant_content_from_route(route.body)
+
+
 async def generate_plan(
     *,
     goal: str,
@@ -175,7 +245,12 @@ async def generate_plan(
     allowed_tools: tuple[str, ...],
     registry: ToolRegistry | None = None,
 ) -> tuple[AgentPlan, str]:
-    """调用 LLM 生成 Plan，返回 (plan, resolved_model)。"""
+    """调用 LLM 生成 Plan，返回 (plan, resolved_model)。
+
+    若 PLAN_OUTPUT_MODE=structured（默认），优先走 response_format json_schema 路径；
+    若 upstream 拒绝或解析失败，自动降级到 legacy extract_json_object 路径。
+    若 PLAN_OUTPUT_MODE=legacy，直接走 legacy 路径。
+    """
     goal = goal.strip()
     if not goal:
         raise PlannerError("PLAN_INVALID", "goal 不能为空")
@@ -201,22 +276,26 @@ async def generate_plan(
         context=context,
         available_tools=available,
     )
-    payload = {
-        "model": resolved_model,
-        "messages": [
-            {"role": "system", "content": "你只输出合法 JSON，不要其它文字。"},
-            {"role": "user", "content": user_prompt},
-        ],
-        "temperature": 0.1,
-    }
-    route = await forward_with_model_router(payload)
-    if route.status != 200 or not route.body:
-        raise PlannerError(
-            "PLAN_UPSTREAM_ERROR",
-            route.error or f"upstream status={route.status}",
-            detail={"status": route.status},
-        )
-    content = _assistant_content_from_route(route.body)
+    base_payload = _build_base_payload(resolved_model, user_prompt)
+
+    if is_structured_mode():
+        # --- Structured path: add response_format ---
+        structured_payload = {**base_payload, "response_format": build_response_format_schema()}
+        try:
+            content = await _call_upstream(structured_payload)
+            plan = parse_plan(extract_json_object(content))
+            return plan, resolved_model
+        except PlannerError as exc:
+            # Degrade to legacy path on any planner-level failure
+            logger.warning(
+                "structured plan path failed (%s: %s), fallback to legacy path",
+                exc.code,
+                exc.message,
+            )
+            # Fall through to legacy below
+
+    # --- Legacy path (no response_format) ---
+    content = await _call_upstream(base_payload)
     plan = parse_plan(extract_json_object(content))
     return plan, resolved_model
 
