@@ -9,6 +9,7 @@ from typing import Any
 
 from apps.gateway.model_router import forward_with_model_router, is_model_allowed
 from apps.gateway.settings import get_settings
+from packages.agent.perf_metrics import get_agent_perf_metrics
 from packages.agent.registry import ToolRegistry
 from packages.contracts.agent_schemas import AgentPlan, PlanStep, ToolCallRecord
 from packages.observability.context import get_trace_id
@@ -283,6 +284,7 @@ async def execute_plan_with_agent(
                 all_tool_calls.append(ToolCallRecord.model_validate(tc))
 
         if last_status == "pending_approval":
+            get_agent_perf_metrics().record_plan_steps(tenant_id=tenant_id, steps=idx - 1)
             return {
                 "tenant_id": tenant_id,
                 "session_id": session_id,
@@ -297,6 +299,7 @@ async def execute_plan_with_agent(
                 "plan_steps_completed": idx - 1,
             }
 
+    get_agent_perf_metrics().record_plan_steps(tenant_id=tenant_id, steps=total)
     return {
         "tenant_id": tenant_id,
         "session_id": session_id,

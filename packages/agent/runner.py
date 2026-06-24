@@ -4,6 +4,7 @@ import asyncio
 import json
 import logging
 import time
+from dataclasses import dataclass
 from typing import Any
 
 from apps.gateway.model_router import forward_with_model_router, is_model_allowed
@@ -12,6 +13,7 @@ from packages.agent.context_budget import (
     ContextBudgetMeta,
     assemble_llm_messages,
     context_budget_platform_meta,
+    context_strategy_platform_meta,
     drop_oldest_until_budget,
     estimate_messages_tokens,
     maybe_compact_session,
@@ -24,6 +26,7 @@ from packages.agent.context_compress import (
     retrieve_and_inject_memory,
 )
 from packages.agent.hitl import ApprovalStatus, get_approval
+from packages.agent.perf_metrics import get_agent_perf_metrics
 from packages.agent.quality_gate import QUALITY_HINT, assess_tool_output
 from packages.agent.reasoning import (
     apply_cot_to_assistant_message,
@@ -37,6 +40,7 @@ from packages.agent.session_state import SessionState, count_user_messages
 from packages.agent.shadow import shadow_tool_record
 from packages.agent.tool_envelope import parse_tool_result, with_quality_hint
 from packages.agent.tool_router import routing_meta, select_tools_from_messages
+from packages.agent.tool_strategy import ToolCallStrategyError, resolve_tool_call_strategy
 from packages.billing.budget import budget_platform_meta, get_budget_snapshot
 from packages.billing.recorder import record_upstream_usage
 from packages.contracts.agent_schemas import ReasoningTraceRecord, ToolCallRecord
@@ -276,6 +280,211 @@ def _extract_message(choice: dict[str, Any]) -> dict[str, Any]:
     return msg
 
 
+@dataclass(frozen=True)
+class _ParsedToolCall:
+    tc_id: str
+    tool_name: str
+    args_raw: str
+
+
+@dataclass
+class _ToolRoundResult:
+    tool_messages: list[dict[str, Any]]
+    reflect_remaining: int
+    runtime_truncated_tools: int
+    fatal: AgentRunError | None
+
+
+def _parse_tool_calls(tool_calls: list[Any]) -> list[_ParsedToolCall]:
+    parsed: list[_ParsedToolCall] = []
+    for tc in tool_calls:
+        if not isinstance(tc, dict):
+            continue
+        fn = tc.get("function") if isinstance(tc.get("function"), dict) else {}
+        tool_name = fn.get("name")
+        args_raw = fn.get("arguments") or "{}"
+        tc_id = tc.get("id") or f"call_{len(parsed)}"
+        if not isinstance(tool_name, str):
+            continue
+        parsed.append(_ParsedToolCall(tc_id=tc_id, tool_name=tool_name, args_raw=str(args_raw)))
+    return parsed
+
+
+async def _execute_single_tool_call_raw(
+    reg: ToolRegistry,
+    parsed: _ParsedToolCall,
+    *,
+    allowed_tools: tuple[str, ...],
+    settings: Any,
+    tenant_id: str,
+    session_id: str,
+    shadow_mode: bool,
+) -> tuple[str | None, ToolCallRecord | None, AgentRunError | None]:
+    try:
+        result, record = await _execute_tool(
+            reg,
+            tool_name=parsed.tool_name,
+            arguments_json=parsed.args_raw,
+            allowed_tools=allowed_tools,
+            tool_timeout=settings.agent_tool_timeout_seconds,
+            tool_max_retries=settings.agent_tool_max_retries,
+            tenant_id=tenant_id,
+            session_id=session_id,
+            shadow_mode=shadow_mode,
+        )
+        return result, record, None
+    except AgentRunError as e:
+        if e.code == "AGENT_TOOL_FORBIDDEN":
+            return None, None, e
+        record = ToolCallRecord(
+            tool_name=parsed.tool_name,
+            arguments={},
+            status="failed",
+            result=None,
+            error=f"{e.code}: {e.message}",
+            latency_ms=0.0,
+            quality_gate="failed",
+        )
+        return None, record, None
+    except Exception as e:
+        record = ToolCallRecord(
+            tool_name=parsed.tool_name,
+            arguments={},
+            status="failed",
+            result=None,
+            error=str(e),
+            latency_ms=0.0,
+            quality_gate="failed",
+        )
+        return None, record, None
+
+
+def _finalize_tool_call(
+    parsed: _ParsedToolCall,
+    *,
+    result: str | None,
+    record: ToolCallRecord,
+    settings: Any,
+    reflect_remaining: int,
+    runtime_truncated_tools: int,
+    shadow_mode: bool,
+    shadow_trace: list[ToolCallRecord],
+    trace: list[ToolCallRecord],
+) -> tuple[dict[str, Any], int, int]:
+    if shadow_mode:
+        shadow_trace.append(record)
+    _, quality_gate = assess_tool_output(
+        parsed.tool_name,
+        result or "",
+        min_score=settings.agent_quality_min_score,
+    )
+    record = record.model_copy(update={"quality_gate": quality_gate})
+    trace.append(record)
+    tool_content = result or record.error or ""
+    if quality_gate == "low_quality" and reflect_remaining > 0:
+        reflect_remaining -= 1
+        tool_content = with_quality_hint(tool_content, QUALITY_HINT)
+    tool_content, did_trunc = truncate_tool_content(
+        tool_content,
+        settings.agent_tool_result_max_chars,
+    )
+    if did_trunc:
+        runtime_truncated_tools += 1
+    tool_msg = {
+        "role": "tool",
+        "tool_call_id": parsed.tc_id,
+        "content": tool_content,
+    }
+    return tool_msg, reflect_remaining, runtime_truncated_tools
+
+
+async def _process_tool_calls_round(
+    tool_calls: list[Any],
+    *,
+    reg: ToolRegistry,
+    allowed_tools: tuple[str, ...],
+    settings: Any,
+    tenant_id: str,
+    session_id: str,
+    shadow_mode: bool,
+    strategy: str,
+    reflect_remaining: int,
+    runtime_truncated_tools: int,
+    trace: list[ToolCallRecord],
+    shadow_trace: list[ToolCallRecord],
+) -> _ToolRoundResult:
+    parsed = _parse_tool_calls(tool_calls)
+    tool_messages: list[dict[str, Any]] = []
+    if not parsed:
+        return _ToolRoundResult(tool_messages, reflect_remaining, runtime_truncated_tools, None)
+
+    if strategy == "parallel" and len(parsed) > 1:
+        t0 = time.perf_counter()
+        exec_pairs = await asyncio.gather(
+            *(
+                _execute_single_tool_call_raw(
+                    reg,
+                    p,
+                    allowed_tools=allowed_tools,
+                    settings=settings,
+                    tenant_id=tenant_id,
+                    session_id=session_id,
+                    shadow_mode=shadow_mode,
+                )
+                for p in parsed
+            )
+        )
+        duration_ms = (time.perf_counter() - t0) * 1000
+        get_agent_perf_metrics().record_tool_parallel_batch(
+            tenant_id=tenant_id,
+            strategy=strategy,
+            duration_ms=duration_ms,
+            tool_count=len(parsed),
+        )
+        exec_results = list(zip(parsed, exec_pairs, strict=True))
+    else:
+        exec_results = []
+        for p in parsed:
+            raw = await _execute_single_tool_call_raw(
+                reg,
+                p,
+                allowed_tools=allowed_tools,
+                settings=settings,
+                tenant_id=tenant_id,
+                session_id=session_id,
+                shadow_mode=shadow_mode,
+            )
+            exec_results.append((p, raw))
+
+    for parsed_call, (result, record, fatal) in exec_results:
+        if fatal is not None:
+            return _ToolRoundResult(tool_messages, reflect_remaining, runtime_truncated_tools, fatal)
+        if record is None:
+            continue
+        if record.status == "success":
+            tool_msg, reflect_remaining, runtime_truncated_tools = _finalize_tool_call(
+                parsed_call,
+                result=result,
+                record=record,
+                settings=settings,
+                reflect_remaining=reflect_remaining,
+                runtime_truncated_tools=runtime_truncated_tools,
+                shadow_mode=shadow_mode,
+                shadow_trace=shadow_trace,
+                trace=trace,
+            )
+        else:
+            trace.append(record)
+            tool_msg = {
+                "role": "tool",
+                "tool_call_id": parsed_call.tc_id,
+                "content": f"error: {record.error}",
+            }
+        tool_messages.append(tool_msg)
+
+    return _ToolRoundResult(tool_messages, reflect_remaining, runtime_truncated_tools, None)
+
+
 async def resume_approved_tool(
     *,
     tenant_id: str,
@@ -364,6 +573,7 @@ async def run_agent(
     shadow_mode: bool = False,
     approval_id: str | None = None,
     reasoning_mode: str | None = None,
+    tool_call_strategy: str | None = None,
 ) -> dict[str, Any]:
     if approval_id:
         return await resume_approved_tool(
@@ -382,6 +592,12 @@ async def run_agent(
         )
     except ValueError as e:
         raise AgentRunError("AGENT_INVALID_REASONING_MODE", str(e)) from e
+    try:
+        active_tool_call_strategy = resolve_tool_call_strategy(
+            tool_call_strategy, settings.agent_tool_call_strategy
+        )
+    except ToolCallStrategyError as e:
+        raise AgentRunError("AGENT_INVALID_TOOL_CALL_STRATEGY", str(e)) from e
     reg = registry or ToolRegistry()
     allowed, resolved_model = is_model_allowed(
         model or settings.agent_model,
@@ -523,6 +739,11 @@ async def run_agent(
         msg = _extract_message(choice)
         if active_reasoning_mode == "cot":
             msg, thinking = apply_cot_to_assistant_message(msg)
+            if thinking:
+                get_agent_perf_metrics().record_cot_thinking_tokens(
+                    tenant_id=tenant_id,
+                    tokens=estimate_messages_tokens([{"role": "assistant", "content": thinking}]),
+                )
             reasoning_trace.append(
                 ReasoningTraceRecord(
                     step=steps,
@@ -541,93 +762,27 @@ async def run_agent(
             if not isinstance(tool_calls, list) or not tool_calls:
                 raise AgentRunError("AGENT_UPSTREAM_ERROR", "finish_reason=tool_calls 但无 tool_calls")
 
-            for tc in tool_calls:
-                if not isinstance(tc, dict):
-                    continue
-                fn = tc.get("function") if isinstance(tc.get("function"), dict) else {}
-                tool_name = fn.get("name")
-                args_raw = fn.get("arguments") or "{}"
-                tc_id = tc.get("id") or f"call_{len(trace)}"
-
-                if not isinstance(tool_name, str):
-                    continue
-
-                try:
-                    result, record = await _execute_tool(
-                        reg,
-                        tool_name=tool_name,
-                        arguments_json=str(args_raw),
-                        allowed_tools=allowed_tools,
-                        tool_timeout=settings.agent_tool_timeout_seconds,
-                        tool_max_retries=settings.agent_tool_max_retries,
-                        tenant_id=tenant_id,
-                        session_id=session_id,
-                        shadow_mode=shadow_mode,
-                    )
-                    if shadow_mode:
-                        shadow_trace.append(record)
-                    _, quality_gate = assess_tool_output(
-                        tool_name,
-                        result,
-                        min_score=settings.agent_quality_min_score,
-                    )
-                    record = record.model_copy(update={"quality_gate": quality_gate})
-                    trace.append(record)
-                    tool_content = result or record.error or ""
-                    if quality_gate == "low_quality" and reflect_remaining > 0:
-                        reflect_remaining -= 1
-                        tool_content = with_quality_hint(tool_content, QUALITY_HINT)
-                    tool_content, did_trunc = truncate_tool_content(
-                        tool_content,
-                        settings.agent_tool_result_max_chars,
-                    )
-                    if did_trunc:
-                        runtime_truncated_tools += 1
-                    tool_msg = {
-                        "role": "tool",
-                        "tool_call_id": tc_id,
-                        "content": tool_content,
-                    }
-                    messages.append(tool_msg)
-                    session_messages.append(tool_msg)
-                except AgentRunError as e:
-                    if e.code == "AGENT_TOOL_FORBIDDEN":
-                        raise
-                    record = ToolCallRecord(
-                        tool_name=tool_name,
-                        arguments={},
-                        status="failed",
-                        result=None,
-                        error=f"{e.code}: {e.message}",
-                        latency_ms=0.0,
-                        quality_gate="failed",
-                    )
-                    trace.append(record)
-                    tool_msg = {
-                        "role": "tool",
-                        "tool_call_id": tc_id,
-                        "content": f"error: {e.message}",
-                    }
-                    messages.append(tool_msg)
-                    session_messages.append(tool_msg)
-                except Exception as e:
-                    record = ToolCallRecord(
-                        tool_name=tool_name,
-                        arguments={},
-                        status="failed",
-                        result=None,
-                        error=str(e),
-                        latency_ms=0.0,
-                        quality_gate="failed",
-                    )
-                    trace.append(record)
-                    tool_msg = {
-                        "role": "tool",
-                        "tool_call_id": tc_id,
-                        "content": f"error: {e}",
-                    }
-                    messages.append(tool_msg)
-                    session_messages.append(tool_msg)
+            round_result = await _process_tool_calls_round(
+                tool_calls,
+                reg=reg,
+                allowed_tools=allowed_tools,
+                settings=settings,
+                tenant_id=tenant_id,
+                session_id=session_id,
+                shadow_mode=shadow_mode,
+                strategy=active_tool_call_strategy,
+                reflect_remaining=reflect_remaining,
+                runtime_truncated_tools=runtime_truncated_tools,
+                trace=trace,
+                shadow_trace=shadow_trace,
+            )
+            if round_result.fatal is not None:
+                raise round_result.fatal
+            reflect_remaining = round_result.reflect_remaining
+            runtime_truncated_tools = round_result.runtime_truncated_tools
+            for tool_msg in round_result.tool_messages:
+                messages.append(tool_msg)
+                session_messages.append(tool_msg)
             continue
 
         content = msg.get("content")
@@ -702,6 +857,7 @@ async def run_agent(
         "trace_id": get_trace_id(),
         "status": "completed",
         "reasoning_mode": active_reasoning_mode,
+        "tool_call_strategy": active_tool_call_strategy,
     }
     if reasoning_trace:
         payload["reasoning_trace"] = reasoning_trace
@@ -717,7 +873,9 @@ async def run_agent(
     )
     platform_meta: dict[str, Any] = {
         "tool_routing": routing_meta(routing),
+        "tool_call_strategy": active_tool_call_strategy,
         "context_budget": context_budget_platform_meta(budget_meta),
+        "context_strategy": context_strategy_platform_meta(),
         "session_turn_count": saved_state.turn_count,
         "session_summary": bool(saved_state.summary),
         "reflect_remaining": reflect_remaining,

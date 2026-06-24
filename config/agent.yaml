@@ -14,3 +14,5 @@ quality_min_score: 0.3
 reflect_max_retries: 2
 # Phase O #88 — react（默认）| cot（显式 thinking trace）
 reasoning_mode: react
+# Phase O #94 — sequential（默认）| parallel（同轮多 tool_calls 并行）
+tool_call_strategy: sequential
