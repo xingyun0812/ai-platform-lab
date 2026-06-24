@@ -241,5 +241,102 @@ class _FakeSessionStore:
         return None
 
 
+def test_parallel_execution() -> int:
+    """Smoke test for Q2 DAG parallel plan step execution (mock, no real API)."""
+    from packages.agent.planner import execute_plan_parallel, plan_execution_layers
+    from packages.contracts.agent_schemas import AgentPlan, PlanStep
+
+    # Test plan_execution_layers with a diamond dependency
+    s1 = PlanStep(id="s1", description="root", depends_on=[])
+    s2 = PlanStep(id="s2", description="branch A", depends_on=["s1"])
+    s3 = PlanStep(id="s3", description="branch B", depends_on=["s1"])
+    s4 = PlanStep(id="s4", description="merge", depends_on=["s2", "s3"])
+
+    layers = plan_execution_layers([s1, s2, s3, s4])
+    assert len(layers) == 3, f"Expected 3 layers, got {len(layers)}"
+    assert [s.id for s in layers[0]] == ["s1"]
+    layer1_ids = sorted(s.id for s in layers[1])
+    assert layer1_ids == ["s2", "s3"], f"Layer 1 ids mismatch: {layer1_ids}"
+    assert [s.id for s in layers[2]] == ["s4"]
+
+    # Test no-deps all-parallel plan
+    pa = PlanStep(id="pa", description="a", depends_on=[])
+    pb = PlanStep(id="pb", description="b", depends_on=[])
+    pc = PlanStep(id="pc", description="c", depends_on=[])
+    flat_layers = plan_execution_layers([pa, pb, pc])
+    assert len(flat_layers) == 1, f"Expected 1 layer, got {len(flat_layers)}"
+    assert len(flat_layers[0]) == 3
+
+    # Test execute_plan_parallel with mock runner
+    plan = AgentPlan(goal="parallel smoke", steps=[s1, s2, s3, s4])
+    calls: list[str] = []
+
+    async def fake_run(**kwargs):
+        calls.append(kwargs["session_id"])
+        return {
+            "final_message": "ok",
+            "tool_calls": [],
+            "steps": 1,
+            "model": "mock-model",
+            "status": "completed",
+        }
+
+    import asyncio
+
+    result = asyncio.run(
+        execute_plan_parallel(
+            plan=plan,
+            tenant_id="smoke-tenant",
+            session_id="smoke-session",
+            allowed_tools=(),
+            allowed_models=(),
+            model="mock-model",
+            session_store=None,
+            run_agent_fn=fake_run,
+        )
+    )
+    assert result["plan_steps_completed"] == 4, (
+        f"Expected 4 steps, got {result['plan_steps_completed']}"
+    )
+    assert result["status"] == "completed", f"Expected completed, got {result['status']}"
+
+    # Verify sub-session IDs were used
+    assert any("__step_s1" in c for c in calls), f"sub-session for s1 not found in {calls}"
+    assert any("__step_s4" in c for c in calls), f"sub-session for s4 not found in {calls}"
+
+    # Test pending_approval stops later layers
+    plan2 = AgentPlan(goal="approval test", steps=[s1, s2])
+
+    async def approval_run(**kwargs):
+        return {
+            "final_message": "approval needed",
+            "tool_calls": [],
+            "steps": 0,
+            "model": "mock-model",
+            "status": "pending_approval",
+            "approval_id": "appr-smoke-001",
+        }
+
+    result2 = asyncio.run(
+        execute_plan_parallel(
+            plan=plan2,
+            tenant_id="smoke-tenant",
+            session_id="smoke-session-2",
+            allowed_tools=(),
+            allowed_models=(),
+            model="mock-model",
+            session_store=None,
+            run_agent_fn=approval_run,
+        )
+    )
+    assert result2["status"] == "pending_approval", (
+        f"Expected pending_approval, got {result2['status']}"
+    )
+    assert result2["approval_id"] == "appr-smoke-001"
+
+    print("OK test_parallel_execution")
+    return 0
+
+
 if __name__ == "__main__":
     raise SystemExit(main())
