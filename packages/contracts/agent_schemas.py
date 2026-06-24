@@ -26,6 +26,45 @@ class AgentRunRequest(BaseModel):
         default=None,
         description="Phase E5：人工确认后 resume 执行已批准的工具调用",
     )
+    auto_plan: bool = Field(
+        default=False,
+        description="Phase O #87：先生成 Plan 再逐步执行",
+    )
+    goal: str | None = Field(
+        default=None,
+        description="auto_plan 时的任务目标；缺省取最后一条 user 消息",
+    )
+
+
+class PlanStep(BaseModel):
+    id: str = Field(..., min_length=1)
+    description: str = Field(..., min_length=1)
+    tool_hint: str | None = None
+    agent_hint: str | None = None
+    depends_on: list[str] = Field(default_factory=list)
+
+
+class AgentPlan(BaseModel):
+    goal: str = Field(..., min_length=1)
+    steps: list[PlanStep] = Field(..., min_length=1)
+
+
+class AgentPlanRequest(BaseModel):
+    tenant_id: str = Field(..., min_length=1)
+    goal: str = Field(..., min_length=1)
+    context: str | None = Field(
+        default=None,
+        description="可选背景（memory/RAG 摘要等）",
+    )
+    model: str | None = None
+
+
+class AgentPlanResponse(BaseModel):
+    tenant_id: str
+    goal: str
+    plan: AgentPlan
+    model: str
+    trace_id: str | None = None
 
 
 class ToolCallRecord(BaseModel):
@@ -49,4 +88,6 @@ class AgentRunResponse(BaseModel):
     trace_id: str | None = None
     status: str = "completed"
     approval_id: str | None = None
+    plan: AgentPlan | None = None
+    plan_steps_completed: int | None = None
     shadow_tool_calls: list[ToolCallRecord] | None = None

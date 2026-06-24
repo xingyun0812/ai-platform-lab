@@ -11,9 +11,19 @@ from apps.gateway.quota import get_quota_tracker
 from apps.gateway.request_guards import check_rate_limit, check_token_budget
 from apps.gateway.settings import get_settings
 from apps.gateway.tenants import TenantRecord, load_tenants
+from packages.agent.planner import (
+    PlannerError,
+    execute_plan_with_agent,
+    generate_plan,
+)
 from packages.agent.runner import AgentRunError, run_agent
 from packages.agent.session import get_session_store
-from packages.contracts.agent_schemas import AgentRunRequest, AgentRunResponse
+from packages.contracts.agent_schemas import (
+    AgentPlanRequest,
+    AgentPlanResponse,
+    AgentRunRequest,
+    AgentRunResponse,
+)
 from packages.observability.otel import component_span
 
 logger = logging.getLogger("ai_platform.gateway.agent")
@@ -52,6 +62,78 @@ def _require_tenant(
         return json_error(int(e.status_code), "UNAUTHORIZED", str(e.detail))
 
 
+def _last_user_goal(messages: list) -> str | None:
+    for m in reversed(messages):
+        if getattr(m, "role", None) == "user":
+            content = getattr(m, "content", None)
+            if isinstance(content, str) and content.strip():
+                return content.strip()
+    return None
+
+
+def _planner_error_response(exc: PlannerError) -> JSONResponse:
+    status = 422
+    if exc.code == "MODEL_NOT_ALLOWED":
+        status = 403
+    if exc.code == "PLAN_UPSTREAM_ERROR":
+        status = 503
+    return json_error(status, exc.code, exc.message, detail=exc.detail)
+
+
+@router.post("/plan", response_model=AgentPlanResponse)
+async def agent_plan(
+    body: AgentPlanRequest,
+    x_tenant_id: Annotated[str | None, Header(alias="X-Tenant-Id")] = None,
+    authorization: Annotated[str | None, Header()] = None,
+) -> Any:
+    tenants = load_tenants()
+    tenant = _require_tenant(x_tenant_id, authorization, tenants)
+    if isinstance(tenant, JSONResponse):
+        return tenant
+
+    if not x_tenant_id or body.tenant_id.strip() != x_tenant_id.strip():
+        return json_error(400, "TENANT_MISMATCH", "body.tenant_id 须与 X-Tenant-Id 一致")
+
+    settings = get_settings()
+    rate_err = check_rate_limit(tenant)
+    if rate_err is not None:
+        return rate_err
+
+    budget_err = check_token_budget(tenant)
+    if budget_err is not None:
+        return budget_err
+
+    if not (settings.llm_api_key or "").strip():
+        return json_error(503, "UPSTREAM_NOT_CONFIGURED", "LLM_API_KEY 未配置")
+
+    try:
+        with component_span(
+            "agent.plan",
+            component="agent",
+            enabled=settings.otel_enabled,
+            tenant_id=tenant.tenant_id,
+        ):
+            plan, resolved_model = await generate_plan(
+                goal=body.goal,
+                context=body.context,
+                model=body.model,
+                allowed_models=tenant.allowed_models,
+                allowed_tools=tenant.allowed_tools,
+            )
+    except PlannerError as e:
+        return _planner_error_response(e)
+
+    from packages.observability.context import get_trace_id
+
+    return AgentPlanResponse(
+        tenant_id=tenant.tenant_id,
+        goal=plan.goal,
+        plan=plan,
+        model=resolved_model,
+        trace_id=get_trace_id(),
+    )
+
+
 @router.post("/run", response_model=AgentRunResponse)
 async def agent_run(
     body: AgentRunRequest,
@@ -79,8 +161,13 @@ async def agent_run(
     if not quota_tracker.has_quota(tenant.tenant_id, tenant.daily_request_quota):
         return json_error(429, "QUOTA_EXCEEDED", "租户日配额已用尽")
 
-    if not body.approval_id and not body.messages:
+    if not body.approval_id and not body.messages and not body.auto_plan:
         return json_error(400, "INVALID_REQUEST", "messages 与 approval_id 不能同时为空")
+
+    if body.auto_plan and not body.approval_id:
+        goal = (body.goal or _last_user_goal(body.messages) or "").strip()
+        if not goal:
+            return json_error(400, "INVALID_REQUEST", "auto_plan 需要 goal 或 user 消息")
 
     if not body.approval_id and not (settings.llm_api_key or "").strip():
         return json_error(503, "UPSTREAM_NOT_CONFIGURED", "LLM_API_KEY 未配置")
@@ -88,12 +175,12 @@ async def agent_run(
     new_messages: list[dict[str, Any]] = [
         m.model_dump(exclude_none=True) for m in body.messages
     ]
+    step_system_messages: list[dict[str, Any]] | None = None
     if body.kb_id:
         hint = _resolve_agent_kb_hint(settings, body.kb_id)
-        new_messages = [
-            {"role": "system", "content": hint},
-            *new_messages,
-        ]
+        step_system_messages = [{"role": "system", "content": hint}]
+        if not body.auto_plan:
+            new_messages = [{"role": "system", "content": hint}, *new_messages]
 
     if not quota_tracker.try_consume(tenant.tenant_id, tenant.daily_request_quota):
         return json_error(429, "QUOTA_EXCEEDED", "租户日配额已用尽")
@@ -106,19 +193,41 @@ async def agent_run(
             tenant_id=tenant.tenant_id,
             session_id=body.session_id.strip(),
         ):
-            result = await run_agent(
-                tenant_id=tenant.tenant_id,
-                session_id=body.session_id.strip(),
-                new_messages=new_messages,
-                allowed_tools=tenant.allowed_tools,
-                allowed_models=tenant.allowed_models,
-                model=body.model,
-                session_store=get_session_store(),
-                token_budget_daily=tenant.token_budget_daily,
-                token_budget_monthly=tenant.token_budget_monthly,
-                shadow_mode=(x_agent_shadow or "").lower() == "true",
-                approval_id=body.approval_id,
-            )
+            if body.auto_plan and not body.approval_id:
+                goal = (body.goal or _last_user_goal(body.messages) or "").strip()
+                plan, _ = await generate_plan(
+                    goal=goal,
+                    context=None,
+                    model=body.model,
+                    allowed_models=tenant.allowed_models,
+                    allowed_tools=tenant.allowed_tools,
+                )
+                result = await execute_plan_with_agent(
+                    plan=plan,
+                    tenant_id=tenant.tenant_id,
+                    session_id=body.session_id.strip(),
+                    allowed_tools=tenant.allowed_tools,
+                    allowed_models=tenant.allowed_models,
+                    model=body.model,
+                    session_store=get_session_store(),
+                    step_system_messages=step_system_messages,
+                )
+            else:
+                result = await run_agent(
+                    tenant_id=tenant.tenant_id,
+                    session_id=body.session_id.strip(),
+                    new_messages=new_messages,
+                    allowed_tools=tenant.allowed_tools,
+                    allowed_models=tenant.allowed_models,
+                    model=body.model,
+                    session_store=get_session_store(),
+                    token_budget_daily=tenant.token_budget_daily,
+                    token_budget_monthly=tenant.token_budget_monthly,
+                    shadow_mode=(x_agent_shadow or "").lower() == "true",
+                    approval_id=body.approval_id,
+                )
+    except PlannerError as e:
+        return _planner_error_response(e)
     except AgentRunError as e:
         if e.code == "AGENT_PENDING_APPROVAL":
             detail = e.detail or {}
@@ -155,4 +264,5 @@ async def agent_run(
     content = response.model_dump()
     if platform:
         content["_platform"] = platform
-    return JSONResponse(status_code=200, content=content)
+    status_code = 202 if content.get("status") == "pending_approval" else 200
+    return JSONResponse(status_code=status_code, content=content)
