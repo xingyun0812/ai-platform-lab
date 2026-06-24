@@ -5,7 +5,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import sys
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
@@ -144,7 +143,12 @@ def run_offline_gate(
         item = json.loads(line)
         fixtures[str(item["case_id"])] = item
 
-    from eval.agent_run import AgentCaseResult, TrajectoryMetrics, _case_direct_answer, _case_expect_tools, _case_require_tools
+    from eval.agent_run import (
+        AgentCaseResult,
+        _case_direct_answer,
+        _case_expect_tools,
+        _case_require_tools,
+    )
 
     results: list[AgentCaseResult] = []
     for line in cases_path.read_text(encoding="utf-8").splitlines():

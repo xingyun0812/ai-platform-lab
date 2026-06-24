@@ -5,7 +5,6 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-import pytest
 import yaml
 
 REPO = Path(__file__).resolve().parents[1]
@@ -70,8 +69,13 @@ def test_audit_log_pending_includes_approval_id():
 
     async def _run():
         from packages.agent.runner import _audit_tool_action
-        from packages.audit.action_levels import init_classifier, reset_for_tests as reset_cls
-        from packages.audit.action_logger import get_action_logger, init_action_logger, reset_for_tests
+        from packages.audit.action_levels import init_classifier
+        from packages.audit.action_levels import reset_for_tests as reset_cls
+        from packages.audit.action_logger import (
+            get_action_logger,
+            init_action_logger,
+            reset_for_tests,
+        )
 
         reset_for_tests()
         reset_cls()
@@ -100,8 +104,13 @@ def test_audit_log_success_after_tool():
 
     async def _run():
         from packages.agent.runner import _audit_tool_action
-        from packages.audit.action_levels import init_classifier, reset_for_tests as reset_cls
-        from packages.audit.action_logger import get_action_logger, init_action_logger, reset_for_tests
+        from packages.audit.action_levels import init_classifier
+        from packages.audit.action_levels import reset_for_tests as reset_cls
+        from packages.audit.action_logger import (
+            get_action_logger,
+            init_action_logger,
+            reset_for_tests,
+        )
 
         reset_for_tests()
         reset_cls()

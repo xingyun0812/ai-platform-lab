@@ -1762,10 +1762,16 @@ async def run_checks(*, with_llm: bool) -> list[Check]:
 
     # W6 model alias
     try:
+        import yaml
+
         from apps.gateway.model_router import resolve_model_name
 
-        ok = resolve_model_name("chat-fast") == "gpt-4o-mini"
-        out.append(Check("W6", "别名 chat-fast", ok, resolve_model_name("chat-fast")))
+        models_raw = yaml.safe_load((REPO_ROOT / "config" / "models.yaml").read_text(encoding="utf-8"))
+        aliases = models_raw.get("aliases") if isinstance(models_raw, dict) else {}
+        expected = str((aliases or {}).get("chat-fast", ""))
+        resolved = resolve_model_name("chat-fast")
+        ok = bool(expected) and resolved == expected
+        out.append(Check("W6", "别名 chat-fast", ok, resolved))
     except Exception as e:
         out.append(Check("W6", "别名 chat-fast", False, str(e)))
 

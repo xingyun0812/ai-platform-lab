@@ -10,8 +10,8 @@ from packages.rag.chunker import chunk_text
 from packages.rag.embeddings import embed_texts
 from packages.rag.index_metrics import get_index_metrics
 from packages.rag.indexing import plan_incremental_index
-from packages.rag.source_index import refresh_bm25_after_source_index
 from packages.rag.routing import parse_kb_routing, pick_query_version
+from packages.rag.source_index import refresh_bm25_after_source_index
 from packages.rag.vector_store import VectorStore
 
 logger = logging.getLogger("ai_platform.rag.pipeline")
