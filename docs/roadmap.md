@@ -272,7 +272,7 @@
 
 ---
 
-## Phase Q — 任务规划前沿对齐（🔄 Wave 1 完成）
+## Phase Q — 任务规划前沿对齐（🔄 Wave 2 完成）
 
 > **动机**：Phase O O1 为 JD 对齐 MVP（一次 LLM Plan + 串行执行）；对齐 Plan-and-Execute / LangGraph 思想需并行 DAG、重规划、Plan HITL、质量门禁  
 > **规划**：[phase-q-advanced-planning.md](./phase-q-advanced-planning.md) · [issues-backlog-phase-q.md](./issues-backlog-phase-q.md)  
@@ -285,7 +285,7 @@
 | [#116](https://github.com/xingyun0812/ai-platform-lab/issues/116) | Structured Plan 输出 | ✅ PR #123 |
 | [#117](https://github.com/xingyun0812/ai-platform-lab/issues/117) | DAG 并行 step 执行 | ✅ PR #122 |
 | [#118](https://github.com/xingyun0812/ai-platform-lab/issues/118) | 失败重规划 Critic | ✅ PR #124 |
-| [#119](https://github.com/xingyun0812/ai-platform-lab/issues/119) | Plan 级 HITL | 📋 |
+| [#119](https://github.com/xingyun0812/ai-platform-lab/issues/119) | Plan 级 HITL | ✅ PR #125 |
 | [#120](https://github.com/xingyun0812/ai-platform-lab/issues/120) | Planner ↔ Orchestrator 桥接 | 📋 |
 | [#121](https://github.com/xingyun0812/ai-platform-lab/issues/121) | 规划质量 eval + tag | 📋 |
 

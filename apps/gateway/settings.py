@@ -140,6 +140,11 @@ class Settings(BaseSettings):
         validation_alias="PLAN_MAX_REPLAN_ATTEMPTS",
         description="失败重规划最大次数（Q3 Critic）",
     )
+    plan_require_approval: bool = Field(
+        default=False,
+        validation_alias="PLAN_REQUIRE_APPROVAL",
+        description="是否默认开启 Plan 级审批（Q4 HITL）",
+    )
 
     # 观测（第 5 周）
     otel_enabled: bool = Field(default=False, validation_alias="OTEL_ENABLED")
