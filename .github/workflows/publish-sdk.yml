@@ -1,0 +1,57 @@
+name: Publish Python SDK
+
+on:
+  pull_request:
+    paths:
+      - "sdk/python/**"
+      - ".github/workflows/publish-sdk.yml"
+  workflow_dispatch:
+    inputs:
+      testpypi:
+        description: Publish to TestPyPI (manual only)
+        type: boolean
+        default: false
+  push:
+    tags:
+      - "sdk-v*"
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Build wheel and sdist
+        working-directory: sdk/python
+        run: |
+          pip install build
+          python -m build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: python-sdk-dist
+          path: sdk/python/dist/*
+
+  publish:
+    needs: build
+    if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/sdk-v')
+    runs-on: ubuntu-latest
+    environment: ${{ github.event_name == 'workflow_dispatch' && inputs.testpypi == true && 'testpypi' || 'pypi' }}
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: python-sdk-dist
+          path: dist
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: dist
+          repository-url: ${{ github.event_name == 'workflow_dispatch' && inputs.testpypi == true && 'https://test.pypi.org/legacy/' || 'https://upload.pypi.org/legacy/' }}
+          password: ${{ secrets.PYPI_API_TOKEN }}
