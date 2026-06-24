@@ -65,6 +65,7 @@ import Memory from "../src/pages/Memory";
 import Orchestrator from "../src/pages/Orchestrator";
 import Audit from "../src/pages/Audit";
 import Settings from "../src/pages/Settings";
+import Embedding from "../src/pages/Embedding";
 import RequireAuth from "../src/components/RequireAuth";
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
@@ -285,6 +286,30 @@ describe("Console V2 — App & Pages", () => {
 
     await waitFor(() => {
       expect(screen.getByTestId("settings-page")).toBeDefined();
+    });
+  });
+
+  // 13. Embedding page renders multimodal playground
+  it("13. Embedding page renders multimodal playground", async () => {
+    const apiClient = await import("../src/api/client");
+    vi.mocked(apiClient.default.get).mockResolvedValueOnce({
+      data: {
+        models: [
+          {
+            model_id: "stub-multimodal",
+            provider: "stub",
+            dimensions: 16,
+            modalities: ["text", "image"],
+          },
+        ],
+      },
+    });
+
+    renderWithRouter(<Embedding />, { initialEntries: ["/embedding"] });
+
+    await waitFor(() => {
+      expect(screen.getByText("多模态 Embedding")).toBeDefined();
+      expect(screen.getByText("生成 Embedding")).toBeDefined();
     });
   });
 });

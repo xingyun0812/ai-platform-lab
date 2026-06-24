@@ -1,6 +1,6 @@
 # Phase P — 多模态 Embedding
 
-> **状态**：进行中（P1 ✅ · P2 ✅ · P3 Console/SDK 待做）  
+> **状态**：进行中（P1 ✅ · P2 ✅ · P3 ✅ · P4 待做）  
 > **前置**：Phase G Embedding 独立服务 ✅ · Phase O ✅  
 > **Tag**（完成后）：`phase-p-multimodal`  
 > **非目标**：自托管 CLIP 训推、视频/音频 embedding、分布式向量缓存
@@ -46,7 +46,7 @@ flowchart LR
 |-------|------|------|------|
 | **P1** | 多模态 inputs + stub + API | ✅ | PR #109 |
 | **P2** | RAG 图文 chunk 索引 | ✅ | PR #109 · #110 |
-| **P3** | Console / SDK embed inputs | ⏳ | console-v2 + Python SDK |
+| **P3** | Console / SDK embed inputs | ✅ | PR 待开 |
 | **P4** | eval 门禁 + tag | ⏳ | `multimodal_embedding_gate` |
 
 ---
@@ -99,12 +99,24 @@ curl -s -X POST http://127.0.0.1:8000/internal/embeddings/embed \
 python -m unittest tests.test_multimodal_embedding -q
 python eval/multimodal_embedding_smoke.py
 python eval/rag_multimodal_smoke.py
+python eval/sdk_multimodal_smoke.py
 python -m unittest tests.test_embedding -q   # 回归
 ```
 
 ---
 
-## 8. 诚实边界
+## 8. P3 验收（Console / SDK）
+
+- [x] `console-v2/src/api/embedding.ts` — `/internal/embeddings/*` + `inputs` 类型
+- [x] `console-v2/src/pages/Embedding.tsx` — 多模态试玩页（text / URL / 上传）
+- [x] `sdk/.../embedding.py` — `create_with_inputs` + internal API
+- [x] `tests/test_sdk.py` — multimodal SDK 单测
+- [x] `eval/sdk_multimodal_smoke.py`
+- [x] Console 路由 `/embedding` + vitest #13
+
+---
+
+## 9. 诚实边界
 
 | 项 | 说明 |
 |----|------|
@@ -115,7 +127,7 @@ python -m unittest tests.test_embedding -q   # 回归
 
 ---
 
-## 9. 相关文档
+## 10. 相关文档
 
 | 文档 | 用途 |
 |------|------|

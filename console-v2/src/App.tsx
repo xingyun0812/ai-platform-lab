@@ -12,6 +12,7 @@ import {
   CloudServerOutlined,
   LogoutOutlined,
   ExperimentOutlined,
+  ApiOutlined,
 } from "@ant-design/icons";
 import RequireAuth from "./components/RequireAuth";
 
@@ -28,12 +29,14 @@ const Memory = lazy(() => import("./pages/Memory"));
 const Orchestrator = lazy(() => import("./pages/Orchestrator"));
 const Audit = lazy(() => import("./pages/Audit"));
 const Settings = lazy(() => import("./pages/Settings"));
+const Embedding = lazy(() => import("./pages/Embedding"));
 
 const menuItems = [
   { key: "/dashboard", icon: <DashboardOutlined />, label: <Link to="/dashboard">Dashboard</Link> },
   { key: "/tenants", icon: <TeamOutlined />, label: <Link to="/tenants">租户管理</Link> },
   { key: "/agents", icon: <RobotOutlined />, label: <Link to="/agents">Agent 管理</Link> },
   { key: "/rag", icon: <DatabaseOutlined />, label: <Link to="/rag">RAG 知识库</Link> },
+  { key: "/embedding", icon: <ApiOutlined />, label: <Link to="/embedding">Embedding</Link> },
   { key: "/memory", icon: <CloudServerOutlined />, label: <Link to="/memory">记忆管理</Link> },
   { key: "/orchestrator", icon: <BranchesOutlined />, label: <Link to="/orchestrator">工作流编排</Link> },
   { key: "/audit", icon: <AuditOutlined />, label: <Link to="/audit">审计日志</Link> },
@@ -150,6 +153,7 @@ function AppLayout() {
               <Route path="/tenants" element={<Tenants />} />
               <Route path="/agents" element={<Agents />} />
               <Route path="/rag" element={<RAG />} />
+              <Route path="/embedding" element={<Embedding />} />
               <Route path="/memory" element={<Memory />} />
               <Route path="/orchestrator" element={<Orchestrator />} />
               <Route path="/audit" element={<Audit />} />
