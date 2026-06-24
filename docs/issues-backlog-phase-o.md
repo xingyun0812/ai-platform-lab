@@ -11,7 +11,7 @@
 | O1 Task Planner | [#87](https://github.com/xingyun0812/ai-platform-lab/issues/87) | ✅ #99 |
 | O2 CoT 推理 | [#88](https://github.com/xingyun0812/ai-platform-lab/issues/88) | ✅ #100 |
 | O4 Multi-Agent v2 | [#89](https://github.com/xingyun0812/ai-platform-lab/issues/89) | ✅ #101 |
-| O5 Plugin Manifest | [#90](https://github.com/xingyun0812/ai-platform-lab/issues/90) | ⏳ |
+| O5 Plugin Manifest | [#90](https://github.com/xingyun0812/ai-platform-lab/issues/90) | ✅ #102 |
 | O6 web_search | [#91](https://github.com/xingyun0812/ai-platform-lab/issues/91) | ⏳ |
 | O7 sql_query | [#92](https://github.com/xingyun0812/ai-platform-lab/issues/92) | ⏳ |
 | O9 数据分析 Vertical | [#93](https://github.com/xingyun0812/ai-platform-lab/issues/93) | ⏳ |
@@ -116,10 +116,10 @@
 **目标**：`config/plugins/*.yaml` 声明工具，启动加载到 registry；租户 ACL 不变。
 
 **验收**：
-- [ ] `packages/agent/plugins/loader.py`
-- [ ] 示例 `config/plugins/demo_echo.yaml`
-- [ ] 单测 ≥10
-- [ ] 插件作者 mini 文档
+- [x] `packages/agent/plugins/loader.py`
+- [x] 示例 `config/plugins/demo_echo.yaml`
+- [x] 单测 ≥10
+- [x] 插件作者 mini 文档
 
 **依赖**：无
 
