@@ -46,6 +46,8 @@ jobs:
           exit 1
       - name: Acceptance smoke
         run: python eval/acceptance_smoke.py
+      - name: Agent JD2 offline gate
+        run: python eval/agent_jd2_gate.py run
       - name: Audit API
         run: |
           curl -sf -H "X-Tenant-Id: admin" -H "Authorization: Bearer sk-tenant-admin-change-me" \
