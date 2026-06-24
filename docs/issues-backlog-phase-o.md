@@ -13,7 +13,7 @@
 | O4 Multi-Agent v2 | [#89](https://github.com/xingyun0812/ai-platform-lab/issues/89) | ✅ #101 |
 | O5 Plugin Manifest | [#90](https://github.com/xingyun0812/ai-platform-lab/issues/90) | ✅ #102 |
 | O6 web_search | [#91](https://github.com/xingyun0812/ai-platform-lab/issues/91) | ✅ #103 |
-| O7 sql_query | [#92](https://github.com/xingyun0812/ai-platform-lab/issues/92) | ⏳ |
+| O7 sql_query | [#92](https://github.com/xingyun0812/ai-platform-lab/issues/92) | ✅ #104 |
 | O9 数据分析 Vertical | [#93](https://github.com/xingyun0812/ai-platform-lab/issues/93) | ⏳ |
 | O10 Agent 性能 | [#94](https://github.com/xingyun0812/ai-platform-lab/issues/94) | ⏳ |
 | O11 文档 Demo 门禁 | [#95](https://github.com/xingyun0812/ai-platform-lab/issues/95) | ⏳ |
@@ -155,10 +155,10 @@
 **目标**：仅允许 SELECT；强制 LIMIT；拒绝 DML/DDL；只读连接 URL。
 
 **验收**：
-- [ ] `packages/agent/tools/sql_query.py`
-- [ ] SQL 解析拒绝写操作
-- [ ] `samples/analytics_demo.sql` seed
-- [ ] 单测 ≥10
+- [x] `packages/agent/tools/sql_query.py`
+- [x] SQL 解析拒绝写操作
+- [x] `samples/analytics_demo.sql` seed
+- [x] 单测 ≥10
 
 **依赖**：沙箱 #41 已有；可与 O6 同 Wave
 
