@@ -7,7 +7,7 @@
 
 | Backlog | GitHub Issue | 状态 |
 |---------|--------------|------|
-| 规划文档 | [#86](https://github.com/xingyun0812/ai-platform-lab/issues/86) | ⏳ |
+| 规划文档 | [#86](https://github.com/xingyun0812/ai-platform-lab/issues/86) | ✅ |
 | O1 Task Planner | [#87](https://github.com/xingyun0812/ai-platform-lab/issues/87) | ✅ #99 |
 | O2 CoT 推理 | [#88](https://github.com/xingyun0812/ai-platform-lab/issues/88) | ✅ #100 |
 | O4 Multi-Agent v2 | [#89](https://github.com/xingyun0812/ai-platform-lab/issues/89) | ✅ #101 |
@@ -15,8 +15,8 @@
 | O6 web_search | [#91](https://github.com/xingyun0812/ai-platform-lab/issues/91) | ✅ #103 |
 | O7 sql_query | [#92](https://github.com/xingyun0812/ai-platform-lab/issues/92) | ✅ #104 |
 | O9 数据分析 Vertical | [#93](https://github.com/xingyun0812/ai-platform-lab/issues/93) | ✅ #105 |
-| O10 Agent 性能 | [#94](https://github.com/xingyun0812/ai-platform-lab/issues/94) | ⏳ |
-| O11 文档 Demo 门禁 | [#95](https://github.com/xingyun0812/ai-platform-lab/issues/95) | ⏳ |
+| O10 Agent 性能 | [#94](https://github.com/xingyun0812/ai-platform-lab/issues/94) | ✅ #106 |
+| O11 文档 Demo 门禁 | [#95](https://github.com/xingyun0812/ai-platform-lab/issues/95) | ✅ |
 
 ---
 
@@ -27,9 +27,9 @@
 **目标**：对照 JD2 §4.1，补齐 Planner / CoT / Multi-Agent v2 / 外部工具 / 数据分析 vertical / 性能与叙事。
 
 **验收**：
-- [ ] `docs/phase-o-agent-jd2-alignment.md` 评审通过
-- [ ] Milestone 内 O1～O11 Issue 创建完毕
-- [ ] `roadmap.md` 增加 Phase O 章节
+- [x] `docs/phase-o-agent-jd2-alignment.md` 评审通过
+- [x] Milestone 内 O1～O11 Issue 创建完毕
+- [x] `roadmap.md` 增加 Phase O 章节
 
 **非目标**：RPA、PyTorch、LangChain 依赖
 
@@ -212,10 +212,10 @@
 **目标**：更新 narrative / demo / JD 对照；CI gate；打 tag。
 
 **验收**：
-- [ ] `eval/agent_jd2_gate.py` + CI
-- [ ] `interview-narrative.md` / `demo-walkthrough.md` 更新
-- [ ] `tmp-jd-platform-comparison.md` §4.1 评级更新
-- [ ] Tag `phase-o-agent-jd2`
+- [x] `eval/agent_jd2_gate.py` + CI
+- [x] `interview-narrative.md` / `demo-walkthrough.md` 更新
+- [x] `tmp-jd-platform-comparison.md` §4.1 评级更新
+- [x] Tag `phase-o-agent-jd2`
 
 **依赖**：O1～O10
 

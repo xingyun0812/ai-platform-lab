@@ -234,24 +234,24 @@
 
 ---
 
-## Phase O — Agent 能力对齐 JD2（规划中）
+## Phase O — Agent 能力对齐 JD2（✅ 已完成）
 
 > **动机**：智能体研发岗 JD §4.1 缺口补齐（Planner / CoT / Multi-Agent v2 / 外部工具 / 数据分析 vertical）  
 > **规划**：[phase-o-agent-jd2-alignment.md](./phase-o-agent-jd2-alignment.md) · Issue 正文：[issues-backlog-phase-o.md](./issues-backlog-phase-o.md) · 规划 Issue [#86](https://github.com/xingyun0812/ai-platform-lab/issues/86)  
-> **Tag**（完成后）：`phase-o-agent-jd2`
+> **Tag**：`phase-o-agent-jd2` · **门禁**：`python eval/agent_jd2_gate.py run`
 
 | Issue | 内容 | 状态 |
 |-------|------|------|
-| #86 | 规划文档 | ⏳ PR |
-| #87 | Task Planner + 任务分解 | ⏳ |
-| #88 | CoT 推理模式 | ⏳ |
-| #89 | Multi-Agent v2 黑板 | ⏳ |
-| #90 | Plugin Manifest | ⏳ |
-| #91 | web_search 工具 | ⏳ |
-| #92 | sql_query 只读 | ⏳ |
-| #93 | 数据分析 Vertical | ⏳ |
-| #94 | Agent 性能 | ⏳ |
-| #95 | 文档 Demo gate | ⏳ |
+| #86 | 规划文档 | ✅ |
+| #87 | Task Planner + 任务分解 | ✅ #99 |
+| #88 | CoT 推理模式 | ✅ #100 |
+| #89 | Multi-Agent v2 黑板 | ✅ #101 |
+| #90 | Plugin Manifest | ✅ #102 |
+| #91 | web_search 工具 | ✅ #103 |
+| #92 | sql_query 只读 | ✅ #104 |
+| #93 | 数据分析 Vertical | ✅ #105 |
+| #94 | Agent 性能 | ✅ #106 |
+| #95 | 文档 Demo gate | ✅ |
 
 **非目标**：RPA、PyTorch、LangChain 依赖绑定。
 

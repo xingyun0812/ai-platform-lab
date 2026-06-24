@@ -7,7 +7,7 @@
 
 ## 一句话定位
 
-这是一个 **从模型网关到生产基础设施的完整 AI 平台参考实现**：按 Phase A～M 渐进交付；Phase L 把 stub 做深，Phase M 把 **RAG 增量索引** 做到可演示、可观测。
+这是一个 **从模型网关到生产基础设施的完整 AI 平台参考实现**：按 Phase A～M 渐进交付；Phase L 把 stub 做深，Phase M 把 **RAG 增量索引** 做到可演示、可观测；**Phase O** 把 Agent 对齐 JD2 智能体研发岗（Planner / CoT / Multi-Agent v2 / 外部工具 / 数据分析 vertical）。
 
 ---
 
@@ -80,11 +80,13 @@ flowchart TB
 **讲什么**：Agent 不是裸调 LLM，而是 **网关 enforce 工具白名单 + 全链路审计**。
 
 **亮点**：
+- **Phase O**：LLM Task Planner（`auto_plan`）、CoT `reasoning_mode`、Multi-Agent 黑板、YAML 插件、`web_search` / `sql_query`、数据分析 vertical
 - MCP 工具桥接（config 注册 → `mcp_{server}_{tool}`）
 - destructive 工具 → HITL `202 pending_approval`
-- Orchestrator workflow + Multi-Agent 委托 + **Vertical 演示链**（#59 `agent-vertical-rag` + HITL）
+- Orchestrator workflow + Multi-Agent 委托 + **Vertical 演示链**（RAG + HITL + data-analysis-vertical）
+- `tool_call_strategy=parallel` + Prometheus `agent_*` 指标（性能调优可讲）
 
-**关键词**：`packages/agent/`、`packages/hitl/`、`packages/orchestrator/`
+**关键词**：`packages/agent/planner.py`、`packages/agent/reasoning.py`、`packages/agent/multi_agent/`、`eval/agent_jd2_gate.py`
 
 ---
 
@@ -94,7 +96,7 @@ flowchart TB
 
 **亮点**：
 - OTel trace、Prometheus `/metrics`（含 `rag_index_*` 增量指标）、Grafana dashboard
-- `baseline.jsonl` + CI 门禁（RAG + Agent 双 gate）
+- `baseline.jsonl` + CI 门禁（RAG + Agent 双 gate + **Phase O `agent_jd2_gate`**）
 - 反馈飞轮：**live 已验**（#61 `feedback_loop_demo --live`）
 
 **关键词**：`packages/observability/`、`eval/pipeline.py`、`packages/feedback/`
@@ -159,7 +161,7 @@ Phase A～K 先打通链路；Phase L #54 已接真 provider，可用 `eval comp
 
 ### Q4：测试怎么保证质量？
 
-484+ 单测、无外部依赖可跑；live eval 需 Key；CI 跑 lint + acceptance_smoke + RAG/Agent gate。
+484+ 单测、无外部依赖可跑；live eval 需 Key；CI 跑 lint + acceptance_smoke + RAG/Agent gate + **`python eval/agent_jd2_gate.py`**。
 
 ### Q7：反馈飞轮怎么演示？
 
@@ -173,7 +175,16 @@ live 路径：点踩 → `cycle` → `suggestion_id`（experiment 需先 apply s
 ### Q5：Multi-Agent 和 Orchestrator 区别？
 
 - **Orchestrator**：显式 workflow 步骤（DAG 式编排）
-- **Multi-Agent**：Agent 间委托/通信，偏运行时协作
+- **Multi-Agent**：Agent 间委托/通信，Phase O 起有 **共享黑板**（`GET /v1/agent/blackboard/{session_id}`）
+
+### Q8：Phase O / JD2 智能体岗怎么讲？
+
+> Planner 拆目标 → CoT 可选显式 thinking → Multi-Agent 黑板协作 → web_search/sql_query 外部工具 → `data-analysis-vertical` 一条业务演示链；CI 用 `eval/agent_jd2_gate.py` 离线跑通 O1～O10 单测矩阵。
+
+```bash
+python eval/agent_jd2_gate.py run
+./eval/data_analysis_vertical.sh --mock
+```
 
 ### Q6：HITL 怎么工作的？
 
@@ -209,8 +220,23 @@ python eval/sdk_smoke.py
 | `platform_demo --with-llm` | exit 0（chat/agent；RAG 可能 LOW_CONFIDENCE） |
 | `feedback_loop_demo --live` | `passed` + suggestion_id |
 | `agent_vertical_smoke` | 6/6（无 Key 时 live vertical skip 不判失败） |
+| `agent_jd2_gate` | exit 0（Phase O 离线矩阵） |
 
 ---
+
+## 5 分钟 Agent JD2 路线（Phase O）
+
+> 无 Key 可跑 mock 段；有 Key 可加 live plan / CoT。
+
+| 分钟 | 命令 / 动作 | 话术 |
+|------|-------------|------|
+| 0～1 | `python eval/agent_jd2_gate.py run` | Phase O CI 门禁，覆盖 Planner/CoT/工具/vertical |
+| 1～2 | `python eval/agent_planner_smoke.py` | LLM 结构化 Plan → 逐步执行 |
+| 2～3 | `reasoning_mode=cot` on `/v1/agent/run`（需 Key） | `<thinking>` trace 可审计 |
+| 3～4 | `./eval/data_analysis_vertical.sh --mock` | 搜索 → SQL → calc 业务 vertical |
+| 4～5 | `curl .../metrics \| rg agent_` | 并行工具 + plan steps Prometheus |
+
+详见 [demo-walkthrough.md](./demo-walkthrough.md) §Agent JD2。
 
 ## 相关文档
 

@@ -2,7 +2,7 @@
 
 > **用途**：投递前自查、面试准备、补叙事缺口。  
 > **性质**：临时文档，研究完可删或合并进 `interview-narrative.md`。  
-> **基准**：仓库 `main` Phase A～M + Phase N 进行中（PyPI SDK）；对照三份真实 JD 原文。  
+> **基准**：仓库 `main` Phase A～M + Phase N（PyPI SDK）+ **Phase O**（Agent JD2 对齐 · tag `phase-o-agent-jd2`）；对照三份真实 JD 原文。  
 > **图例**：✅ 有且能讲 · ⚠️ 有但偏 lab/浅 · ❌ 无或不对口
 
 ---
@@ -12,7 +12,7 @@
 | # | 岗位侧重 | 核心关键词 | 与本仓库匹配度 |
 |---|----------|------------|----------------|
 | **JD1** | 元宝在线 **Agent 系统架构** | Runtime、Tool/Memory/Context、Multi-Agent、HITL、架构演进 | **~80%** |
-| **JD2** | **智能体研发**（业务落地） | 任务规划、RAG、工具/MCP、CoT、LangChain 生态、RPA、PyTorch | **~75%～85%** |
+| **JD2** | **智能体研发**（业务落地） | 任务规划、RAG、工具/MCP、CoT、LangChain 生态、RPA、PyTorch | **~85%～90%**（Phase O 后） |
 | **JD3** | **云原生中间件 + AI 网关基础设施** | 分布式、注册中心、超大规模、Java/Go/C++、TCP 底层 | **~45%～55%** |
 
 ---
@@ -56,10 +56,10 @@ flowchart LR
 | Memory 跨 Session | ● | ● | — | ✅ | 强 |
 | Context 压缩 / Token 预算 | ● | ● | — | ✅ | 强 |
 | RAG + 增量索引 | △ | ● | — | ✅ | 强 |
-| Multi-Agent | ● | ● | △ | ⚠️ | 有边界 |
+| Multi-Agent | ● | ● | △ | ✅ | Phase O 黑板 + 委托 |
 | HITL | ● | △ | — | ✅ | 强 |
-| Orchestrator / 任务规划 | ● | ● | △ | ✅ | 强 |
-| MCP / 插件 / 外部 API | △ | ● | — | ⚠️ | MCP 有，RPA 无 |
+| Orchestrator / 任务规划 | ● | ● | △ | ✅ | Planner + DAG |
+| MCP / 插件 / 外部 API | △ | ● | — | ✅ | MCP + plugins + web/sql |
 | AI 网关 / 模型路由 | △ | △ | ● | ✅ | **最强** |
 | 微服务 / 超大规模 | — | △ | ● | ⚠️ | Helm 模板级 |
 | LangChain / LlamaIndex 生态 | △ | ● | — | ❌ | 自研，未绑框架 |
@@ -106,22 +106,22 @@ flowchart LR
 
 | JD 原文要点 | 覆盖 | 关键文件 / API | 说明 |
 |-------------|------|----------------|------|
-| **任务规划** | ⚠️ | `packages/agent/orchestrator/engine.py`、`graph.py` | DAG workflow；**无独立 Planner LLM 模块** |
-| **工具调用** | ✅ | `packages/agent/runner.py`、`tools/builtin.py` | function calling + 超时/重试 |
+| **任务规划** | ✅ | `packages/agent/planner.py`、`POST /v1/agent/plan` | LLM 结构化 Plan + 逐步执行 |
+| **工具调用** | ✅ | `packages/agent/runner.py`、`tool_strategy.py` | function calling + 并行/顺序策略 |
 | **记忆管理** | ✅ | `packages/memory/`、`packages/agent/session.py`、`session_redis.py` | 短会话 + 长记忆 |
 | **知识检索** | ✅ | `packages/rag/`、`apps/gateway/rag/pipeline.py` | 向量 + BM25 hybrid + rerank |
 | **对话管理** | ✅ | `packages/agent/session_state.py` | Session append、滚动摘要 |
-| **自动化任务分解** | ⚠️ | Orchestrator 步骤 + Agent `max_steps` | 非 AutoGPT 式长期自治 |
-| **链式推理 CoT** | ⚠️ | ReAct 隐含推理 | **无显式 CoT prompt 模块** |
-| **Multi-Agent 协作** | ⚠️ | `packages/agent/multi_agent/` | 见 `docs/phase-h-multi-agent.md` 诚实边界 |
+| **自动化任务分解** | ✅ | `planner.execute_plan_with_agent` | Plan → subtasks → Runner |
+| **链式推理 CoT** | ✅ | `packages/agent/reasoning.py` | `reasoning_mode=cot` + thinking trace |
+| **Multi-Agent 协作** | ✅ | `multi_agent/blackboard.py`、`delegation.py` | 黑板 + 委托完整 Runner |
 | **API 调用** | ✅ | `tools/builtin.py`（httpbin）、MCP HTTP | — |
-| **插件系统** | ⚠️ | `packages/agent/marketplace.py`、`config/mcp_tools.json` | 工具市场 + MCP；非完整 Plugin SDK |
+| **插件系统** | ✅ | `packages/agent/plugins/loader.py` | YAML manifest 注册 |
 | **RPA** | ❌ | — | 无 UI 自动化 |
 | **知识库** | ✅ | `kb_id` + `version`、`/internal/index` | Qdrant + BM25 |
-| **搜索引擎** | ⚠️ | `packages/rag/` BM25 | **无** Bing/Google 外部搜索工具 |
-| **数据库** | ⚠️ | Postgres 存 audit/memory/billing | **无** 任意 SQL Agent 工具 |
-| **办公/数据分析场景** | ⚠️ | `eval/agent_vertical_smoke.py`、vertical RAG 链 | 演示级，非生产业务 |
-| **性能调优** | ⚠️ | 见 §4.3 | 网关层有，推理引擎层无 |
+| **搜索引擎** | ✅ | `packages/agent/tools/web_search.py` | mock/http 模式 |
+| **数据库** | ✅ | `packages/agent/tools/sql_query.py` | 只读 SELECT + LIMIT |
+| **办公/数据分析场景** | ✅ | `config/workflows/data_analysis.yaml`、`eval/data_analysis_vertical.sh` | web_search → sql → calc 演示链 |
+| **性能调优** | ✅ | `perf_metrics.py`、`tool_call_strategy` | 并行工具 + Prometheus 指标 |
 | 与产品推动落地 | ❌ | — | 经历项 |
 
 ### 4.2 任职要求
@@ -144,9 +144,9 @@ flowchart LR
 | JD 子项 | 覆盖 | 文件 | 缺口 |
 |---------|------|------|------|
 | 推理效率 | ⚠️ | `packages/semantic_cache/` | 语义缓存降本；**无** vLLM/批推理 |
-| 工具调用策略 | ✅ | `config/agent.yaml`、`risk.py` | 白名单、分级、HITL |
-| 上下文管理 | ✅ | `context_compress.py`、`context_budget.py` | — |
-| 长文本处理 | ⚠️ | 压缩 + RAG 分块 | **无** 128k 专项优化 |
+| 工具调用策略 | ✅ | `tool_strategy.py`、`config/agent.yaml` | sequential / parallel |
+| 上下文管理 | ✅ | `context_compress.py`、`context_budget.py` | 记忆/RAG 引用分离 |
+| 长文本处理 | ⚠️ | 压缩 + RAG 分块 + budget | **无** 128k 专项优化 |
 
 ### 4.4 JD2 ↔ LangChain 概念对照（面试防问）
 
@@ -162,7 +162,7 @@ flowchart LR
 
 ### 4.5 JD2 面试话术（30 秒）
 
-> 智能体侧我自研 ReAct Runtime，工具走 Function Calling + 租户白名单；RAG 是完整管道（hybrid + rerank + 金丝雀 + 增量索引）；编排用 DAG Orchestrator，协作用 Multi-Agent 委托，危险操作用 HITL。没绑 LangChain，但模块划分和生态概念一致；缺口是 RPA、PyTorch 训推和真实业务场景数据。
+> 智能体侧我自研 ReAct Runtime，工具走 Function Calling + 租户白名单；**Phase O** 补齐 LLM Planner、显式 CoT、Multi-Agent 黑板、web_search/sql_query 与数据分析 vertical；RAG 是完整管道（hybrid + rerank + 金丝雀 + 增量索引）；并行工具与 Prometheus 指标覆盖性能调优。没绑 LangChain，但模块划分和生态概念一致；缺口是 RPA、PyTorch 训推和真实业务场景数据。
 
 ---
 
