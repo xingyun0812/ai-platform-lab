@@ -20,6 +20,11 @@ classifications:
     requires_approval: false
     description: Web 搜索（网络请求）
 
+  - tool_name: web_search
+    action_level: network
+    requires_approval: false
+    description: 外部网页搜索（mock 或 HTTP API）
+
   - tool_name: httpbin_delay
     action_level: network
     requires_approval: false

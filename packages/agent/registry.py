@@ -10,6 +10,7 @@ from packages.agent.tools.builtin import (
     handle_math_llm_stub,
     handle_search_web_stub,
 )
+from packages.agent.tools.web_search import handle_web_search
 
 logger = logging.getLogger("ai_platform.agent.registry")
 
@@ -77,6 +78,24 @@ def build_default_registry() -> dict[str, ToolDefinition]:
                 "required": ["query"],
             },
             handler=handle_search_web_stub,
+        ),
+        "web_search": ToolDefinition(
+            name="web_search",
+            description=(
+                "搜索公开互联网信息，返回 top-k 标题/摘要/链接（When NOT：查企业内部知识库请用 get_kb_snippet）"
+            ),
+            parameters_schema={
+                "type": "object",
+                "properties": {
+                    "query": {"type": "string", "description": "搜索关键词"},
+                    "top_k": {
+                        "type": "integer",
+                        "description": "返回条数，默认 3，最大 10",
+                    },
+                },
+                "required": ["query"],
+            },
+            handler=handle_web_search,
         ),
         "math_llm_stub": ToolDefinition(
             name="math_llm_stub",

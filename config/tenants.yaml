@@ -27,6 +27,7 @@ tenants:
       - "deepseek-v4-flash-thinking"
       - "minimax-m2.7"
     # 仅允许知识库检索与计算器（不可调用 httpbin_delay）
+    # 可选开放外部搜索：- "web_search"
     allowed_tools:
       - "get_kb_snippet"
       - "calc"
