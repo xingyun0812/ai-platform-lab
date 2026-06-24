@@ -257,18 +257,18 @@
 
 ---
 
-## Phase P — 多模态 Embedding（进行中）
+## Phase P — 多模态 Embedding ✅
 
 > **动机**：Phase G Embedding 仅文本；甘特图 Phase G3「多模态 Embedding」落地  
 > **规划**：[phase-p-multimodal-embedding.md](./phase-p-multimodal-embedding.md) · [issues-backlog-phase-p.md](./issues-backlog-phase-p.md)  
-> **Tag**（完成后）：`phase-p-multimodal`
+> **Tag**：`phase-p-multimodal` · **门禁**：`python eval/multimodal_embedding_gate.py run`
 
 | Issue | 内容 | 状态 |
 |-------|------|------|
-| P1 | 多模态 inputs + stub API | 🚧 |
-| P2 | RAG 图文索引 | ⏳ |
-| P3 | Console / SDK | ⏳ |
-| P4 | eval 门禁 + tag | ⏳ |
+| P1 | 多模态 inputs + stub API | ✅ #108 |
+| P2 | RAG 图文索引 | ✅ #110 |
+| P3 | Console / SDK | ✅ #111 |
+| P4 | eval 门禁 + tag | ✅ #113 |
 
 ---
 

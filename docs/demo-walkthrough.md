@@ -275,6 +275,7 @@ python eval/sdk_smoke.py \
 ./eval/platform_demo.sh --no-llm          # 不依赖 LLM（含 feedback mock + agent vertical）
 ./eval/platform_demo.sh --with-llm        # 含二次索引 skipped 断言 + RAG live
 python eval/agent_jd2_gate.py run         # Phase O JD2 离线矩阵
+python eval/multimodal_embedding_gate.py run  # Phase P 多模态 Embedding 离线矩阵
 python eval/acceptance_smoke.py --platform-demo
 python eval/sdk_smoke.py                  # SDK 三接口
 ```

@@ -1,7 +1,7 @@
 # ai-platform-lab 项目状态总览
 
 > **最后更新**：2026-06-24
-> **当前状态**：Phase A～N 代码交付完成；tag `phase-m-incremental-index` · Phase N 待 tag `phase-n-pypi-sdk`
+> **当前状态**：Phase A～P 代码交付；tag `phase-p-multimodal` · Phase N 待 tag `phase-n-pypi-sdk`
 > **主分支**：`main` @ `ecc625a`
 
 ---
@@ -14,7 +14,7 @@
 
 | 层次 | 完成度 | 强项 | 主要缺口 |
 |------|--------|------|---------|
-| 模型服务层 | ~95% | Gateway、路由、熔断、计费、语义缓存、Embedding 服务 | 多模态 Embedding |
+| 模型服务层 | ~98% | Gateway、路由、熔断、计费、语义缓存、**多模态 Embedding** | 真 CLIP 本地推理 |
 | 基础设施层 | ~90% | 对象存储、K8s Helm、多 AZ、GPU 调度 | 跨 Region、Service Mesh |
 | 能力中台 | ~90% | RAG、Prompt 版本化+A/B、长记忆、MCP、上下文压缩 | — |
 | Agent 应用层 | ~90% | 控制流编排、Multi-Agent、生命周期、HITL | — |
@@ -40,6 +40,8 @@ Phase K — 生产基础设施      ✅ tag: phase-k-infra-base + phase-jk-compl
 Phase L — 工程深度与面试叙事 ✅ tag: phase-l-engineering-depth                      ← 2026-06-23
 Phase M — RAG 增量索引做满    ✅ tag: phase-m-incremental-index                      ← 2026-06-23
 Phase N — Python SDK PyPI       ✅ PR #82～#84 · tag phase-n-pypi-sdk 待打            ← 2026-06-24
+Phase O — Agent JD2 对齐        ✅ tag phase-o-agent-jd2                               ← 2026-06-24
+Phase P — 多模态 Embedding      ✅ tag phase-p-multimodal                              ← 2026-06-24
 ```
 
 ## 4. 代码规模
