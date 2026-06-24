@@ -35,7 +35,9 @@ class Settings(BaseSettings):
         validation_alias="TENANTS_CONFIG_PATH",
     )
 
-    upstream_timeout_seconds: float = Field(default=60.0, validation_alias="UPSTREAM_TIMEOUT_SECONDS")
+    upstream_timeout_seconds: float = Field(
+        default=60.0, validation_alias="UPSTREAM_TIMEOUT_SECONDS"
+    )
     upstream_max_retries: int = Field(default=2, validation_alias="UPSTREAM_MAX_RETRIES")
 
     # RAG（第 2 周）
@@ -132,6 +134,11 @@ class Settings(BaseSettings):
         default="structured",
         validation_alias="PLAN_OUTPUT_MODE",
         description="Plan 输出模式：structured（json_schema response_format）或 legacy（prompt-only）",
+    )
+    plan_max_replan_attempts: int = Field(
+        default=2,
+        validation_alias="PLAN_MAX_REPLAN_ATTEMPTS",
+        description="失败重规划最大次数（Q3 Critic）",
     )
 
     # 观测（第 5 周）

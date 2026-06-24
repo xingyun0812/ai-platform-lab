@@ -284,7 +284,7 @@
 | [#115](https://github.com/xingyun0812/ai-platform-lab/issues/115) | 规划文档 + milestone | ✅ |
 | [#116](https://github.com/xingyun0812/ai-platform-lab/issues/116) | Structured Plan 输出 | ✅ PR #123 |
 | [#117](https://github.com/xingyun0812/ai-platform-lab/issues/117) | DAG 并行 step 执行 | ✅ PR #122 |
-| [#118](https://github.com/xingyun0812/ai-platform-lab/issues/118) | 失败重规划 Critic | 📋 |
+| [#118](https://github.com/xingyun0812/ai-platform-lab/issues/118) | 失败重规划 Critic | ✅ PR #124 |
 | [#119](https://github.com/xingyun0812/ai-platform-lab/issues/119) | Plan 级 HITL | 📋 |
 | [#120](https://github.com/xingyun0812/ai-platform-lab/issues/120) | Planner ↔ Orchestrator 桥接 | 📋 |
 | [#121](https://github.com/xingyun0812/ai-platform-lab/issues/121) | 规划质量 eval + tag | 📋 |
