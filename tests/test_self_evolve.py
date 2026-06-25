@@ -447,7 +447,7 @@ class TestTriggerSelfEvolve(unittest.TestCase):
         _exp_mod.reset_experience_store_for_tests()
         # 传 None plan 测试容错
         try:
-            result = _run_async(se.trigger_self_evolve(None, "success", tenant_id="t3"))
+            _run_async(se.trigger_self_evolve(None, "success", tenant_id="t3"))
         except Exception as exc:
             self.fail(f"trigger_self_evolve raised unexpected exception: {exc}")
 

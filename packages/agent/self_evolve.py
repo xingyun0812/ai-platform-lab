@@ -348,7 +348,6 @@ async def trigger_self_evolve(
     try:
         from packages.agent.experience_store import (
             build_experience_record,
-            compute_task_signature,
             store_experience,
         )
 
