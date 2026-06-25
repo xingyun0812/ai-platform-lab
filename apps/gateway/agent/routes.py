@@ -12,13 +12,13 @@ from apps.gateway.request_guards import check_rate_limit, check_token_budget
 from apps.gateway.settings import get_settings
 from apps.gateway.tenants import TenantRecord, load_tenants
 from packages.agent.multi_agent.blackboard import get_blackboard
+from packages.agent.graph_runtime import GraphRuntimeError, execute_agent_graph
 from packages.agent.planner import (
     PlannerError,
     generate_plan,
-    get_plan_executor,
 )
 from packages.agent.reasoning import ReasoningModeError, resolve_reasoning_mode
-from packages.agent.runner import AgentRunError, run_agent
+from packages.agent.runner import AgentRunError
 from packages.agent.session import get_session_store
 from packages.contracts.agent_schemas import (
     AgentPlanRequest,
@@ -163,15 +163,24 @@ async def agent_run(
     if not quota_tracker.has_quota(tenant.tenant_id, tenant.daily_request_quota):
         return json_error(429, "QUOTA_EXCEEDED", "租户日配额已用尽")
 
-    if not body.approval_id and not body.messages and not body.auto_plan:
-        return json_error(400, "INVALID_REQUEST", "messages 与 approval_id 不能同时为空")
+    if (
+        not body.approval_id
+        and not body.plan_approval_id
+        and not body.messages
+        and not body.auto_plan
+    ):
+        return json_error(400, "INVALID_REQUEST", "messages / approval_id / plan_approval_id / auto_plan 至少一项")
 
-    if body.auto_plan and not body.approval_id:
+    if body.auto_plan and not body.approval_id and not body.plan_approval_id:
         goal = (body.goal or _last_user_goal(body.messages) or "").strip()
         if not goal:
             return json_error(400, "INVALID_REQUEST", "auto_plan 需要 goal 或 user 消息")
 
-    if not body.approval_id and not (settings.llm_api_key or "").strip():
+    if (
+        not body.approval_id
+        and not body.plan_approval_id
+        and not (settings.llm_api_key or "").strip()
+    ):
         return json_error(503, "UPSTREAM_NOT_CONFIGURED", "LLM_API_KEY 未配置")
 
     try:
@@ -200,43 +209,20 @@ async def agent_run(
             tenant_id=tenant.tenant_id,
             session_id=body.session_id.strip(),
         ):
-            if body.auto_plan and not body.approval_id:
-                goal = (body.goal or _last_user_goal(body.messages) or "").strip()
-                plan, _ = await generate_plan(
-                    goal=goal,
-                    context=None,
-                    model=body.model,
-                    allowed_models=tenant.allowed_models,
-                    allowed_tools=tenant.allowed_tools,
-                )
-                execute_plan = get_plan_executor(mode=settings.plan_execution_mode)
-                result = await execute_plan(
-                    plan=plan,
-                    tenant_id=tenant.tenant_id,
-                    session_id=body.session_id.strip(),
-                    allowed_tools=tenant.allowed_tools,
-                    allowed_models=tenant.allowed_models,
-                    model=body.model,
-                    session_store=get_session_store(),
-                    step_system_messages=step_system_messages,
-                    max_replan_attempts=settings.plan_max_replan_attempts,
-                    require_plan_approval=body.require_plan_approval,
-                )
-            else:
-                result = await run_agent(
-                    tenant_id=tenant.tenant_id,
-                    session_id=body.session_id.strip(),
-                    new_messages=new_messages,
-                    allowed_tools=tenant.allowed_tools,
-                    allowed_models=tenant.allowed_models,
-                    model=body.model,
-                    session_store=get_session_store(),
-                    token_budget_daily=tenant.token_budget_daily,
-                    token_budget_monthly=tenant.token_budget_monthly,
-                    shadow_mode=(x_agent_shadow or "").lower() == "true",
-                    approval_id=body.approval_id,
-                    reasoning_mode=body.reasoning_mode,
-                )
+            result = await execute_agent_graph(
+                body=body,
+                tenant=tenant,
+                settings=settings,
+                session_store=get_session_store(),
+                new_messages=new_messages,
+                step_system_messages=step_system_messages,
+                shadow_mode=(x_agent_shadow or "").lower() == "true",
+            )
+    except GraphRuntimeError as e:
+        status = 404 if e.code.endswith("NOT_FOUND") else 422
+        if e.code == "PLAN_APPROVAL_PENDING":
+            status = 409
+        return json_error(status, e.code, e.message, detail=e.detail)
     except PlannerError as e:
         return _planner_error_response(e)
     except AgentRunError as e:
@@ -273,10 +259,16 @@ async def agent_run(
         return json_error(503, "AGENT_RUN_ERROR", str(e))
 
     platform = result.pop("_platform", None)
+    graph_state = result.pop("_graph_state", None)
+    resumed_from = result.pop("resumed_from_plan_approval_id", None)
     response = AgentRunResponse(**result)
     content = response.model_dump()
     if platform:
         content["_platform"] = platform
+    if graph_state:
+        content["_graph_state"] = graph_state
+    if resumed_from:
+        content["resumed_from_plan_approval_id"] = resumed_from
     status_code = 202 if content.get("status") in ("pending_approval", "pending_plan_approval") else 200
     return JSONResponse(status_code=status_code, content=content)
 

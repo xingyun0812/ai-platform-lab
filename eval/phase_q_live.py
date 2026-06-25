@@ -156,16 +156,41 @@ async def run_phase_q_live(
             )
             body3 = r3.json() if r3.content else {}
             ok_approve = r3.status_code == 200 and body3.get("status") == "approved"
-            ok = ok_get and ok_approve
+            if not ok_approve:
+                out.append(
+                    PhaseQLiveCheck(
+                        "phase_q_plan_approval_live",
+                        False,
+                        f"approve failed get={r2.status_code} approve={r3.status_code}",
+                    )
+                )
+                return out
+
+            r4 = await client.post(
+                "/v1/agent/run",
+                headers=hdrs,
+                json={
+                    "tenant_id": "admin",
+                    "session_id": "phase-q-live-approval",
+                    "plan_approval_id": aid,
+                    "model": "chat-fast",
+                },
+            )
+            body4 = r4.json() if r4.content else {}
+            ok_resume = (
+                r4.status_code == 200
+                and body4.get("resumed_from_plan_approval_id") == aid
+                and body4.get("status") == "completed"
+            )
             out.append(
                 PhaseQLiveCheck(
-                    "phase_q_plan_approval_live",
-                    ok,
-                    f"pending aid={aid} get={r2.status_code} approve={r3.status_code}",
+                    "phase_q_plan_approval_resume_live",
+                    ok_resume,
+                    f"resume http={r4.status_code} status={body4.get('status')}",
                 )
             )
         except Exception as e:
-            out.append(PhaseQLiveCheck("phase_q_plan_approval_live", False, str(e)))
+            out.append(PhaseQLiveCheck("phase_q_plan_approval_resume_live", False, str(e)))
 
     return out
 

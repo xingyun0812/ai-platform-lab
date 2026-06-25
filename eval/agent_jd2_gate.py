@@ -71,6 +71,7 @@ CHECKS: tuple[Jd2GateCheck, ...] = (
             "tests.test_plan_parallel",
             "tests.test_plan_critic",
             "tests.test_plan_quality_gate",
+            "tests.test_graph_runtime",
             "-q",
         ),
         "Phase Q 单测矩阵",

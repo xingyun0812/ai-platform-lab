@@ -150,6 +150,11 @@ class Settings(BaseSettings):
         validation_alias="PLAN_EXECUTION_MODE",
         description="Plan 执行模式：parallel（DAG 层内并行）或 serial（拓扑序串行）",
     )
+    graph_checkpoint_enabled: bool = Field(
+        default=True,
+        validation_alias="GRAPH_CHECKPOINT_ENABLED",
+        description="Orchestrator 执行时启用节点级 checkpoint（内存）",
+    )
 
     # 观测（第 5 周）
     otel_enabled: bool = Field(default=False, validation_alias="OTEL_ENABLED")

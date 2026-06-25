@@ -82,6 +82,11 @@ class ExecuteRequest(BaseModel):
     inputs: dict[str, Any] = Field(default_factory=dict)
     max_steps: int | None = None
     timeout_seconds: float | None = None
+    execution_id: str | None = Field(
+        default=None,
+        description="resume 时指定 checkpoint execution_id",
+    )
+    resume: bool = Field(default=False, description="从 checkpoint 继续执行")
 
 
 @router.post("/workflows")
@@ -195,23 +200,112 @@ async def execute_workflow_api(
     merged_inputs.setdefault("allowed_tools", list(tenant.allowed_tools or ()))
     merged_inputs.setdefault("allowed_models", list(tenant.allowed_models or ()))
     try:
-        result = await execute_workflow(
-            wf,
-            inputs=merged_inputs,
-            max_steps=body.max_steps or settings.orchestrator_max_steps,
-            timeout_seconds=body.timeout_seconds or settings.orchestrator_timeout_seconds,
-        )
+        if body.resume or settings.graph_checkpoint_enabled:
+            from packages.agent.orchestrator.checkpoint_engine import (
+                execute_workflow_checkpointed,
+            )
+
+            result = await execute_workflow_checkpointed(
+                wf,
+                tenant_id=tenant.tenant_id,
+                inputs=merged_inputs,
+                max_steps=body.max_steps or settings.orchestrator_max_steps,
+                timeout_seconds=body.timeout_seconds or settings.orchestrator_timeout_seconds,
+                execution_id=body.execution_id,
+                resume=body.resume,
+            )
+        else:
+            result = await execute_workflow(
+                wf,
+                inputs=merged_inputs,
+                max_steps=body.max_steps or settings.orchestrator_max_steps,
+                timeout_seconds=body.timeout_seconds or settings.orchestrator_timeout_seconds,
+            )
     except OrchestratorError as e:
         return json_error(500, e.code, e.message)
     return JSONResponse(
         {
             "workflow_id": workflow_id,
+            "execution_id": result.execution_id,
             "status": result.status,
             "final_output": result.final_output,
             "outputs": result.outputs,
             "trace": result.trace,
             "error": result.error,
             "execution_time_ms": round(result.execution_time_ms, 2),
+        }
+    )
+
+
+@router.get("/executions/{execution_id}")
+async def get_execution_checkpoint(
+    execution_id: str,
+    x_tenant_id: Annotated[str | None, Header(alias="X-Tenant-Id")] = None,
+    authorization: Annotated[str | None, Header()] = None,
+) -> JSONResponse:
+    tenant = _resolve(x_tenant_id, authorization)
+    if isinstance(tenant, JSONResponse):
+        return tenant
+    from packages.agent.graph_checkpoint import get_graph_checkpoint_store
+
+    cp = get_graph_checkpoint_store().get(execution_id)
+    if cp is None:
+        return json_error(404, "NOT_FOUND", f"execution {execution_id} 不存在")
+    if cp.tenant_id != tenant.tenant_id:
+        return json_error(403, "FORBIDDEN", "租户不匹配")
+    return JSONResponse(cp.to_dict())
+
+
+@router.post("/executions/{execution_id}/resume")
+async def resume_execution(
+    execution_id: str,
+    body: ExecuteRequest,
+    x_tenant_id: Annotated[str | None, Header(alias="X-Tenant-Id")] = None,
+    authorization: Annotated[str | None, Header()] = None,
+) -> JSONResponse:
+    tenant = _resolve(x_tenant_id, authorization)
+    if isinstance(tenant, JSONResponse):
+        return tenant
+    from packages.agent.graph_checkpoint import get_graph_checkpoint_store
+    from packages.agent.orchestrator.checkpoint_engine import execute_workflow_checkpointed
+
+    cp = get_graph_checkpoint_store().get(execution_id)
+    if cp is None:
+        return json_error(404, "NOT_FOUND", f"execution {execution_id} 不存在")
+    if cp.tenant_id != tenant.tenant_id:
+        return json_error(403, "FORBIDDEN", "租户不匹配")
+    store = _store()
+    if isinstance(store, JSONResponse):
+        return store
+    wf = store.get_workflow(cp.workflow_id)
+    if wf is None:
+        return json_error(404, "NOT_FOUND", f"workflow {cp.workflow_id} 不存在")
+    from apps.gateway.settings import get_settings
+
+    settings = get_settings()
+    try:
+        result = await execute_workflow_checkpointed(
+            wf,
+            tenant_id=tenant.tenant_id,
+            inputs=body.inputs or cp.inputs,
+            max_steps=body.max_steps or settings.orchestrator_max_steps,
+            timeout_seconds=body.timeout_seconds or settings.orchestrator_timeout_seconds,
+            execution_id=execution_id,
+            resume=True,
+        )
+    except OrchestratorError as e:
+        return json_error(500, e.code, e.message)
+    return JSONResponse(
+        {
+            "workflow_id": cp.workflow_id,
+            "execution_id": result.execution_id,
+            "status": result.status,
+            "final_output": result.final_output,
+            "outputs": result.outputs,
+            "trace": result.trace,
+            "error": result.error,
+            "execution_time_ms": round(result.execution_time_ms, 2),
+            "resumed": True,
         }
     )
 
