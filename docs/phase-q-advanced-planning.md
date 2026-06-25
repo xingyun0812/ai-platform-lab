@@ -108,6 +108,13 @@ flowchart TB
 - `eval/plan_quality_gate.py` 接入 CI（mock LLM）
 - 打 tag `phase-q-advanced-planning`
 
+### Q7 — Graph Runtime（最小 LangGraph 等价物）
+
+- `packages/agent/graph_runtime.py` — `execute_agent_graph` 统一入口
+- `plan_approval_id` resume：`POST /v1/agent/run`
+- Orchestrator checkpoint：`execution_id` + `POST /internal/orchestrator/executions/{id}/resume`
+- 配置：`GRAPH_CHECKPOINT_ENABLED=true`（默认）
+
 ---
 
 ## 5. 面试一句话
