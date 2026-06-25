@@ -68,9 +68,20 @@ export interface AgentRunResponse {
   steps: number;
   model: string;
   status: string;
+  plan_approval_id?: string | null;
+  plan_summary?: string | null;
   plan?: AgentPlan | null;
   plan_steps_completed?: number | null;
   reasoning_trace?: Array<{ step: number; thinking?: string | null }> | null;
+  resumed_from_plan_approval_id?: string | null;
+}
+
+export interface PlanApprovalStatus {
+  plan_approval_id: string;
+  tenant_id: string;
+  status: string;
+  created_at?: number;
+  plan: AgentPlan | null;
 }
 
 export interface BlackboardEntry {
@@ -122,7 +133,13 @@ export const agentApi = {
       })
       .then((r) => r.data),
 
-  runAutoPlan: (tenantId: string, sessionId: string, goal: string, model = "chat-fast") =>
+  runAutoPlan: (
+    tenantId: string,
+    sessionId: string,
+    goal: string,
+    model = "chat-fast",
+    options?: { requirePlanApproval?: boolean }
+  ) =>
     apiClient
       .post<AgentRunResponse>(
         "/v1/agent/run",
@@ -132,8 +149,47 @@ export const agentApi = {
           auto_plan: true,
           goal,
           model,
+          require_plan_approval: options?.requirePlanApproval ?? false,
         },
         { timeout: 180_000 }
+      )
+      .then((r) => r.data),
+
+  resumePlanApproval: (
+    tenantId: string,
+    sessionId: string,
+    planApprovalId: string,
+    model = "chat-fast"
+  ) =>
+    apiClient
+      .post<AgentRunResponse>(
+        "/v1/agent/run",
+        {
+          tenant_id: tenantId,
+          session_id: sessionId,
+          plan_approval_id: planApprovalId,
+          model,
+        },
+        { timeout: 180_000 }
+      )
+      .then((r) => r.data),
+
+  getPlanApproval: (planApprovalId: string) =>
+    apiClient
+      .get<PlanApprovalStatus>(`/v1/agent/plan/approval/${planApprovalId}`)
+      .then((r) => r.data),
+
+  approvePlan: (planApprovalId: string) =>
+    apiClient
+      .post<{ plan_approval_id: string; status: string }>(
+        `/v1/agent/plan/approval/${planApprovalId}/approve`
+      )
+      .then((r) => r.data),
+
+  rejectPlan: (planApprovalId: string) =>
+    apiClient
+      .post<{ plan_approval_id: string; status: string }>(
+        `/v1/agent/plan/approval/${planApprovalId}/reject`
       )
       .then((r) => r.data),
 

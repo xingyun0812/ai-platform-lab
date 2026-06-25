@@ -28,6 +28,9 @@ import {
   PartitionOutlined,
   PlayCircleOutlined,
   ReloadOutlined,
+  CheckOutlined,
+  CloseOutlined,
+  SafetyCertificateOutlined,
 } from "@ant-design/icons";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
@@ -62,6 +65,8 @@ export default function Agents() {
     "数据分析：搜索 AI analytics 背景，对 demo_sales SQL 区域聚合，再 calc 算同比";
   const [plannerGoal, setPlannerGoal] = useState(defaultGoal);
   const [plannerSession, setPlannerSession] = useState("console-plan-demo");
+  const [requirePlanApproval, setRequirePlanApproval] = useState(false);
+  const [planApprovalId, setPlanApprovalId] = useState<string | null>(null);
   const [planPreview, setPlanPreview] = useState<AgentPlan | null>(null);
   const [runResult, setRunResult] = useState<AgentRunResponse | null>(null);
   const tenantId = localStorage.getItem("tenant_id") || "admin";
@@ -75,11 +80,45 @@ export default function Agents() {
   });
 
   const autoPlanMutation = useMutation({
-    mutationFn: () => agentApi.runAutoPlan(tenantId, plannerSession, plannerGoal),
+    mutationFn: () =>
+      agentApi.runAutoPlan(tenantId, plannerSession, plannerGoal, "chat-fast", {
+        requirePlanApproval,
+      }),
     onSuccess: (data) => {
       setRunResult(data);
       if (data.plan) setPlanPreview(data.plan);
-      message.success(`执行完成：${data.status}`);
+      if (data.status === "pending_plan_approval" && data.plan_approval_id) {
+        setPlanApprovalId(data.plan_approval_id);
+        message.info("Plan 已生成，等待审批");
+      } else {
+        setPlanApprovalId(null);
+        message.success(`执行完成：${data.status}`);
+        qc.invalidateQueries({ queryKey: ["blackboard", plannerSession] });
+      }
+    },
+  });
+
+  const approvePlanMutation = useMutation({
+    mutationFn: () => agentApi.approvePlan(planApprovalId!),
+    onSuccess: () => message.success("Plan 已批准"),
+  });
+
+  const rejectPlanMutation = useMutation({
+    mutationFn: () => agentApi.rejectPlan(planApprovalId!),
+    onSuccess: () => {
+      setPlanApprovalId(null);
+      message.warning("Plan 已拒绝");
+    },
+  });
+
+  const resumePlanMutation = useMutation({
+    mutationFn: () =>
+      agentApi.resumePlanApproval(tenantId, plannerSession, planApprovalId!, "chat-fast"),
+    onSuccess: (data) => {
+      setRunResult(data);
+      setPlanApprovalId(null);
+      if (data.plan) setPlanPreview(data.plan);
+      message.success(`审批后执行完成：${data.status}`);
       qc.invalidateQueries({ queryKey: ["blackboard", plannerSession] });
     },
   });
@@ -248,16 +287,24 @@ export default function Agents() {
         title={
           <Space>
             <PartitionOutlined />
-            <span>Task Planner 演示（O1）</span>
+            <span>Task Planner 演示（O1 / Q4）</span>
           </Space>
         }
         style={{ marginBottom: 24, background: "#161b22", borderColor: "#30363d" }}
         data-testid="planner-demo-card"
       >
         <Text type="secondary" style={{ display: "block", marginBottom: 12 }}>
-          生成结构化 Plan 或 <code>auto_plan</code> 逐步执行；会话黑板与 Multi-Agent 共享。
+          生成结构化 Plan 或 <code>auto_plan</code> 逐步执行；开启 Plan 审批后可在下方批准并 resume。
         </Text>
         <Space direction="vertical" style={{ width: "100%" }} size="middle">
+          <Space wrap>
+            <Switch
+              checked={requirePlanApproval}
+              onChange={setRequirePlanApproval}
+              data-testid="planner-require-approval-switch"
+            />
+            <Text type="secondary">require_plan_approval（Plan 级 HITL）</Text>
+          </Space>
           <Input
             addonBefore="session_id"
             value={plannerSession}
@@ -287,7 +334,7 @@ export default function Agents() {
               onClick={() => autoPlanMutation.mutate()}
               data-testid="planner-autoplan-btn"
             >
-              auto_plan 执行
+              {requirePlanApproval ? "auto_plan（需审批）" : "auto_plan 执行"}
             </Button>
             <Button
               icon={<ReloadOutlined />}
@@ -297,6 +344,50 @@ export default function Agents() {
               刷新黑板
             </Button>
           </Space>
+          {planApprovalId && (
+            <Alert
+              type="warning"
+              showIcon
+              icon={<SafetyCertificateOutlined />}
+              message="Plan 等待审批"
+              description={
+                <Space direction="vertical" style={{ width: "100%" }}>
+                  <Text>
+                    <code data-testid="plan-approval-id">{planApprovalId}</code>
+                  </Text>
+                  <Space wrap>
+                    <Button
+                      type="primary"
+                      icon={<CheckOutlined />}
+                      loading={approvePlanMutation.isPending}
+                      onClick={() => approvePlanMutation.mutate()}
+                      data-testid="plan-approve-btn"
+                    >
+                      批准 Plan
+                    </Button>
+                    <Button
+                      danger
+                      icon={<CloseOutlined />}
+                      loading={rejectPlanMutation.isPending}
+                      onClick={() => rejectPlanMutation.mutate()}
+                      data-testid="plan-reject-btn"
+                    >
+                      拒绝
+                    </Button>
+                    <Button
+                      icon={<PlayCircleOutlined />}
+                      loading={resumePlanMutation.isPending}
+                      onClick={() => resumePlanMutation.mutate()}
+                      data-testid="plan-resume-btn"
+                    >
+                      批准后继续执行
+                    </Button>
+                  </Space>
+                </Space>
+              }
+              data-testid="plan-approval-panel"
+            />
+          )}
           {planPreview && planPreview.steps?.length > 0 && (
             <Table
               size="small"

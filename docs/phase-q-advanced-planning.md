@@ -113,7 +113,7 @@ flowchart TB
 - `packages/agent/graph_runtime.py` — `execute_agent_graph` 统一入口
 - `plan_approval_id` resume：`POST /v1/agent/run`
 - Orchestrator checkpoint：`execution_id` + `POST /internal/orchestrator/executions/{id}/resume`
-- 配置：`GRAPH_CHECKPOINT_ENABLED=true`（默认）
+- 配置：`GRAPH_CHECKPOINT_ENABLED=true`（默认）；`REDIS_URL` 可达时 checkpoint 持久化到 Redis
 
 ---
 

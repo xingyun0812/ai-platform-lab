@@ -33,6 +33,14 @@ from packages.agent.orchestrator.workflow_store import (
 router = APIRouter(prefix="/internal/orchestrator", tags=["orchestrator"])
 
 
+def _checkpoint_store():
+    from apps.gateway.settings import get_settings
+    from packages.agent.graph_checkpoint import resolve_graph_checkpoint_store
+
+    settings = get_settings()
+    return resolve_graph_checkpoint_store(settings.redis_url)
+
+
 def _resolve(x_tenant_id: str | None, authorization: str | None) -> TenantRecord | JSONResponse:
     tenants = load_tenants()
     try:
@@ -213,6 +221,7 @@ async def execute_workflow_api(
                 timeout_seconds=body.timeout_seconds or settings.orchestrator_timeout_seconds,
                 execution_id=body.execution_id,
                 resume=body.resume,
+                checkpoint_store=_checkpoint_store(),
             )
         else:
             result = await execute_workflow(
@@ -246,9 +255,7 @@ async def get_execution_checkpoint(
     tenant = _resolve(x_tenant_id, authorization)
     if isinstance(tenant, JSONResponse):
         return tenant
-    from packages.agent.graph_checkpoint import get_graph_checkpoint_store
-
-    cp = get_graph_checkpoint_store().get(execution_id)
+    cp = _checkpoint_store().get(execution_id)
     if cp is None:
         return json_error(404, "NOT_FOUND", f"execution {execution_id} 不存在")
     if cp.tenant_id != tenant.tenant_id:
@@ -266,10 +273,9 @@ async def resume_execution(
     tenant = _resolve(x_tenant_id, authorization)
     if isinstance(tenant, JSONResponse):
         return tenant
-    from packages.agent.graph_checkpoint import get_graph_checkpoint_store
     from packages.agent.orchestrator.checkpoint_engine import execute_workflow_checkpointed
 
-    cp = get_graph_checkpoint_store().get(execution_id)
+    cp = _checkpoint_store().get(execution_id)
     if cp is None:
         return json_error(404, "NOT_FOUND", f"execution {execution_id} 不存在")
     if cp.tenant_id != tenant.tenant_id:
@@ -292,6 +298,7 @@ async def resume_execution(
             timeout_seconds=body.timeout_seconds or settings.orchestrator_timeout_seconds,
             execution_id=execution_id,
             resume=True,
+            checkpoint_store=_checkpoint_store(),
         )
     except OrchestratorError as e:
         return json_error(500, e.code, e.message)

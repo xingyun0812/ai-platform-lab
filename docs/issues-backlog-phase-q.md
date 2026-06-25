@@ -89,7 +89,7 @@
 **验收**：
 - [x] `AgentRunRequest.require_plan_approval` + approval action `approve_plan`
 - [x] `apps/gateway/agent/plan_approval_routes.py` 挂载
-- [ ] Console Plan 审批 UI（最小）
+- [x] Console Plan 审批 UI（最小）
 - [x] 单测 + smoke（`eval/phase_q_live.py` live 链）
 
 **依赖**：无 · **预估**：2～3d
