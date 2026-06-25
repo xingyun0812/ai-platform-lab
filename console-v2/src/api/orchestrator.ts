@@ -6,14 +6,16 @@ export interface WorkflowDefinition {
   description?: string;
   nodes: WorkflowNode[];
   edges: WorkflowEdge[];
-  enabled: boolean;
-  created_at: string;
-  updated_at: string;
+  enabled?: boolean;
+  created_at?: string;
+  updated_at?: string;
+  start_node?: string;
+  end_node?: string;
 }
 
 export interface WorkflowNode {
   node_id: string;
-  node_type: "start" | "end" | "llm_call" | "agent_call" | "tool_call" | "condition" | "parallel";
+  node_type: "start" | "end" | "llm_call" | "agent_call" | "tool_call" | "condition" | "parallel" | "output";
   name?: string;
   config?: Record<string, unknown>;
 }
@@ -25,23 +27,38 @@ export interface WorkflowEdge {
 }
 
 export interface ExecuteWorkflowRequest {
-  input: Record<string, unknown>;
-  timeout?: number;
+  inputs?: Record<string, unknown>;
+  max_steps?: number;
+  timeout_seconds?: number;
+  execution_id?: string;
+  resume?: boolean;
 }
 
 export interface ExecuteWorkflowResult {
-  run_id: string;
   workflow_id: string;
-  status: "running" | "completed" | "failed" | "timeout";
-  output?: Record<string, unknown>;
-  error?: string;
-  steps: Array<{
-    node_id: string;
-    status: string;
-    output?: unknown;
-    latency_ms: number;
-  }>;
-  total_latency_ms: number;
+  execution_id?: string | null;
+  status: string;
+  final_output?: unknown;
+  outputs?: Record<string, unknown>;
+  trace?: Array<Record<string, unknown>>;
+  error?: string | null;
+  execution_time_ms?: number;
+  resumed?: boolean;
+}
+
+export interface ExecutionCheckpoint {
+  execution_id: string;
+  tenant_id: string;
+  workflow_id: string;
+  status: string;
+  current_node: string | null;
+  inputs: Record<string, unknown>;
+  outputs: Record<string, unknown>;
+  variables: Record<string, unknown>;
+  trace: Array<Record<string, unknown>>;
+  error?: string | null;
+  created_at?: number;
+  updated_at?: number;
 }
 
 export const orchestratorApi = {
@@ -64,6 +81,24 @@ export const orchestratorApi = {
 
   execute: (workflowId: string, req: ExecuteWorkflowRequest) =>
     apiClient
-      .post<ExecuteWorkflowResult>(`/internal/orchestrator/workflows/${workflowId}/execute`, req)
+      .post<ExecuteWorkflowResult>(`/internal/orchestrator/workflows/${workflowId}/execute`, {
+        inputs: req.inputs ?? {},
+        max_steps: req.max_steps,
+        timeout_seconds: req.timeout_seconds,
+        execution_id: req.execution_id,
+        resume: req.resume ?? false,
+      })
+      .then((r) => r.data),
+
+  getExecution: (executionId: string) =>
+    apiClient
+      .get<ExecutionCheckpoint>(`/internal/orchestrator/executions/${executionId}`)
+      .then((r) => r.data),
+
+  resumeExecution: (executionId: string, inputs?: Record<string, unknown>) =>
+    apiClient
+      .post<ExecuteWorkflowResult>(`/internal/orchestrator/executions/${executionId}/resume`, {
+        inputs: inputs ?? {},
+      })
       .then((r) => r.data),
 };

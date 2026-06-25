@@ -22,9 +22,16 @@ import {
   DeleteOutlined,
   CheckCircleOutlined,
   CloseCircleOutlined,
+  ReloadOutlined,
+  RedoOutlined,
 } from "@ant-design/icons";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { orchestratorApi, WorkflowDefinition, ExecuteWorkflowResult } from "../api/orchestrator";
+import {
+  orchestratorApi,
+  WorkflowDefinition,
+  ExecuteWorkflowResult,
+  ExecutionCheckpoint,
+} from "../api/orchestrator";
 
 const { Title, Text } = Typography;
 const { TextArea } = Input;
@@ -60,8 +67,10 @@ export default function Orchestrator() {
   const [editTarget, setEditTarget] = useState<WorkflowDefinition | null>(null);
   const [executeModalOpen, setExecuteModalOpen] = useState(false);
   const [selectedWorkflow, setSelectedWorkflow] = useState<WorkflowDefinition | null>(null);
-  const [executeInput, setExecuteInput] = useState('{"message": "Hello!"}');
+  const [executeInput, setExecuteInput] = useState('{"topic": "AI analytics demo"}');
   const [executeResult, setExecuteResult] = useState<ExecuteWorkflowResult | null>(null);
+  const [lastExecutionId, setLastExecutionId] = useState<string | null>(null);
+  const [checkpoint, setCheckpoint] = useState<ExecutionCheckpoint | null>(null);
   const [jsonError, setJsonError] = useState<string | null>(null);
   const [workflowJson, setWorkflowJson] = useState(WORKFLOW_TEMPLATE);
   const [form] = Form.useForm<{ workflow_id: string; name: string; description: string; enabled: boolean }>();
@@ -84,10 +93,33 @@ export default function Orchestrator() {
   });
 
   const executeMutation = useMutation({
-    mutationFn: ({ id, input }: { id: string; input: Record<string, unknown> }) =>
-      orchestratorApi.execute(id, { input }),
+    mutationFn: ({ id, inputs }: { id: string; inputs: Record<string, unknown> }) =>
+      orchestratorApi.execute(id, { inputs }),
     onSuccess: (result) => {
       setExecuteResult(result);
+      setLastExecutionId(result.execution_id ?? null);
+      setCheckpoint(null);
+    },
+  });
+
+  const checkpointMutation = useMutation({
+    mutationFn: (executionId: string) => orchestratorApi.getExecution(executionId),
+    onSuccess: (cp) => {
+      setCheckpoint(cp);
+      message.success(`checkpoint: ${cp.status}`);
+    },
+  });
+
+  const resumeMutation = useMutation({
+    mutationFn: ({ executionId, inputs }: { executionId: string; inputs: Record<string, unknown> }) =>
+      orchestratorApi.resumeExecution(executionId, inputs),
+    onSuccess: (result) => {
+      setExecuteResult(result);
+      setLastExecutionId(result.execution_id ?? lastExecutionId);
+      if (result.execution_id) {
+        checkpointMutation.mutate(result.execution_id);
+      }
+      message.success(`resume 完成: ${result.status}`);
     },
   });
 
@@ -113,12 +145,25 @@ export default function Orchestrator() {
   const handleExecute = () => {
     if (!selectedWorkflow) return;
     try {
-      const input = JSON.parse(executeInput);
-      executeMutation.mutate({ id: selectedWorkflow.workflow_id, input });
+      const inputs = JSON.parse(executeInput);
+      executeMutation.mutate({ id: selectedWorkflow.workflow_id, inputs });
     } catch {
       message.error("输入 JSON 格式错误");
     }
   };
+
+  const handleResume = () => {
+    if (!lastExecutionId || !selectedWorkflow) return;
+    try {
+      const inputs = JSON.parse(executeInput);
+      resumeMutation.mutate({ executionId: lastExecutionId, inputs });
+    } catch {
+      message.error("输入 JSON 格式错误");
+    }
+  };
+
+  const canResume =
+    checkpoint != null && ["failed", "paused", "running"].includes(checkpoint.status);
 
   const columns = [
     {
@@ -153,6 +198,8 @@ export default function Orchestrator() {
             onClick={() => {
               setSelectedWorkflow(record);
               setExecuteResult(null);
+              setLastExecutionId(null);
+              setCheckpoint(null);
               setExecuteModalOpen(true);
             }}
             data-testid={`execute-btn-${record.workflow_id}`}
@@ -271,7 +318,7 @@ export default function Orchestrator() {
         {executeResult && (
           <>
             <Divider />
-            <Space>
+            <Space wrap>
               {executeResult.status === "completed" ? (
                 <CheckCircleOutlined style={{ color: "#52c41a" }} />
               ) : (
@@ -280,10 +327,74 @@ export default function Orchestrator() {
               <Tag color={executeResult.status === "completed" ? "success" : "error"}>
                 {executeResult.status}
               </Tag>
-              <Text style={{ color: "#8b949e" }}>
-                {executeResult.total_latency_ms}ms
-              </Text>
+              {executeResult.execution_time_ms != null && (
+                <Text style={{ color: "#8b949e" }}>{executeResult.execution_time_ms}ms</Text>
+              )}
             </Space>
+            {lastExecutionId && (
+              <Alert
+                type="info"
+                showIcon
+                style={{ marginTop: 12 }}
+                message="Graph Checkpoint"
+                description={
+                  <Space direction="vertical" style={{ width: "100%" }}>
+                    <Text>
+                      <code data-testid="execution-id">{lastExecutionId}</code>
+                    </Text>
+                    <Space wrap>
+                      <Button
+                        size="small"
+                        icon={<ReloadOutlined />}
+                        loading={checkpointMutation.isPending}
+                        onClick={() => checkpointMutation.mutate(lastExecutionId)}
+                        data-testid="checkpoint-refresh-btn"
+                      >
+                        查看 checkpoint
+                      </Button>
+                      {canResume && (
+                        <Button
+                          size="small"
+                          type="primary"
+                          icon={<RedoOutlined />}
+                          loading={resumeMutation.isPending}
+                          onClick={handleResume}
+                          data-testid="checkpoint-resume-btn"
+                        >
+                          Resume 继续
+                        </Button>
+                      )}
+                    </Space>
+                    {checkpoint && (
+                      <pre
+                        style={{
+                          background: "#0d1117",
+                          padding: 8,
+                          borderRadius: 4,
+                          fontSize: 11,
+                          maxHeight: 120,
+                          overflow: "auto",
+                          color: "#e6edf3",
+                          margin: 0,
+                        }}
+                        data-testid="checkpoint-json"
+                      >
+                        {JSON.stringify(
+                          {
+                            status: checkpoint.status,
+                            current_node: checkpoint.current_node,
+                            trace_len: checkpoint.trace?.length ?? 0,
+                          },
+                          null,
+                          2
+                        )}
+                      </pre>
+                    )}
+                  </Space>
+                }
+                data-testid="execution-checkpoint-panel"
+              />
+            )}
             <pre
               style={{
                 background: "#0d1117",

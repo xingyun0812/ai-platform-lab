@@ -298,7 +298,9 @@ python eval/sdk_smoke.py \
 
 ---
 
-## Phase Q 段落（#116～#121）
+## Phase Q 段落（#116～#121 + Q7 Graph Runtime）
+
+**Tag**：`phase-q-advanced-planning`（Q1～Q6）· `phase-q-graph-runtime`（Q7 + Console HITL + Redis checkpoint）
 
 **离线门禁**（无 LLM Key）：
 
@@ -318,8 +320,9 @@ python eval/live_gate.py run --require-live
 | 检查项 | 是否需要 Key | 说明 |
 |--------|-------------|------|
 | `phase_q_plan_export_live` | 否 | Q5 `POST /v1/agent/plan/export` |
+| `phase_q_orchestrator_checkpoint_live` | 否 | Q7 执行 `data-analysis-vertical` + GET checkpoint |
 | `phase_q_plan_generate_live` | 是 | Q1 `POST /v1/agent/plan` |
-| `phase_q_plan_approval_live` | 是 | Q4 `require_plan_approval` + 审批 API |
+| `phase_q_plan_approval_resume_live` | 是 | Q4 审批 + `plan_approval_id` resume |
 
 ---
 
