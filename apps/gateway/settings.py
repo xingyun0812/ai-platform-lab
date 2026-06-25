@@ -145,6 +145,11 @@ class Settings(BaseSettings):
         validation_alias="PLAN_REQUIRE_APPROVAL",
         description="是否默认开启 Plan 级审批（Q4 HITL）",
     )
+    plan_execution_mode: str = Field(
+        default="parallel",
+        validation_alias="PLAN_EXECUTION_MODE",
+        description="Plan 执行模式：parallel（DAG 层内并行）或 serial（拓扑序串行）",
+    )
 
     # 观测（第 5 周）
     otel_enabled: bool = Field(default=False, validation_alias="OTEL_ENABLED")
