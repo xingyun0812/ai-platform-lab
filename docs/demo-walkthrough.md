@@ -298,12 +298,38 @@ python eval/sdk_smoke.py \
 
 ---
 
+## Phase Q 段落（#116～#121）
+
+**离线门禁**（无 LLM Key）：
+
+```bash
+python eval/plan_quality_gate.py run
+python eval/agent_jd2_gate.py run    # 含 Q6 plan_quality + Phase Q 单测
+```
+
+**Live E2E**（需 Gateway + `.env` 中 `LLM_API_KEY`）：
+
+```bash
+uvicorn apps.gateway.main:app --host 127.0.0.1 --port 8000
+python eval/phase_q_live.py          # 见 eval/live_gate.py 统一入口
+python eval/live_gate.py run --require-live
+```
+
+| 检查项 | 是否需要 Key | 说明 |
+|--------|-------------|------|
+| `phase_q_plan_export_live` | 否 | Q5 `POST /v1/agent/plan/export` |
+| `phase_q_plan_generate_live` | 是 | Q1 `POST /v1/agent/plan` |
+| `phase_q_plan_approval_live` | 是 | Q4 `require_plan_approval` + 审批 API |
+
+---
+
 ## 一键冒烟
 
 ```bash
 ./eval/platform_demo.sh --no-llm          # 不依赖 LLM（含 feedback mock + agent vertical）
 ./eval/platform_demo.sh --with-llm        # 含二次索引 skipped 断言 + RAG live
-python eval/agent_jd2_gate.py run         # Phase O JD2 离线矩阵
+python eval/agent_jd2_gate.py run         # Phase O JD2 + Phase Q 离线矩阵
+python eval/live_gate.py run              # Live E2E（含 Phase Q export/plan/approval）
 python eval/multimodal_embedding_gate.py run  # Phase P 多模态 Embedding 离线矩阵
 python eval/acceptance_smoke.py --platform-demo
 python eval/sdk_smoke.py                  # SDK 三接口
