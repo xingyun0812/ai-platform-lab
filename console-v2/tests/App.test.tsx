@@ -325,4 +325,17 @@ describe("Console V2 — App & Pages", () => {
     });
     expect(screen.getByTestId("planner-demo-card")).toBeDefined();
   });
+
+  // 15. Orchestrator page renders workflow create button
+  it("15. Orchestrator page renders workflow create button", async () => {
+    const { default: apiClient } = await import("../src/api/client");
+    (apiClient.get as ReturnType<typeof vi.fn>).mockResolvedValue({ data: { workflows: [] } });
+
+    renderWithRouter(<Orchestrator />, { initialEntries: ["/orchestrator"] });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("orchestrator-page")).toBeDefined();
+    });
+    expect(screen.getByTestId("create-workflow-btn")).toBeDefined();
+  });
 });

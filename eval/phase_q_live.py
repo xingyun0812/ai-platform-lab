@@ -75,6 +75,34 @@ async def run_phase_q_live(
         except Exception as e:
             out.append(PhaseQLiveCheck("phase_q_plan_export_live", False, str(e)))
 
+        # Q7 — orchestrator checkpoint（无需 LLM，依赖内置 data-analysis-vertical）
+        try:
+            r = await client.post(
+                "/internal/orchestrator/workflows/data-analysis-vertical/execute",
+                headers=hdrs,
+                json={"inputs": {"topic": "Phase Q checkpoint live"}},
+                timeout=timeout,
+            )
+            body = r.json() if r.content else {}
+            eid = body.get("execution_id")
+            ok_exec = r.status_code == 200 and bool(eid) and body.get("status") == "completed"
+            cp_status = "n/a"
+            ok_cp = False
+            if ok_exec:
+                r2 = await client.get(f"/internal/orchestrator/executions/{eid}", headers=hdrs)
+                body2 = r2.json() if r2.content else {}
+                cp_status = str(body2.get("status"))
+                ok_cp = r2.status_code == 200 and body2.get("status") == "completed"
+            out.append(
+                PhaseQLiveCheck(
+                    "phase_q_orchestrator_checkpoint_live",
+                    ok_exec and ok_cp,
+                    f"exec={r.status_code} eid={eid} cp_status={cp_status}",
+                )
+            )
+        except Exception as e:
+            out.append(PhaseQLiveCheck("phase_q_orchestrator_checkpoint_live", False, str(e)))
+
         if not has_key:
             out.append(
                 PhaseQLiveCheck(
