@@ -13,6 +13,8 @@ class AgentPerfMetrics:
         self._parallel_steps: defaultdict[str, int] = defaultdict(int)
         self._cot_thinking_tokens: defaultdict[str, int] = defaultdict(int)
         self._parallel_durations: defaultdict[tuple[str, str], list[float]] = defaultdict(list)
+        self._self_evolve_experiences: defaultdict[str, int] = defaultdict(int)
+        self._self_evolve_strategy_patches: defaultdict[str, int] = defaultdict(int)
 
     def record_parallel_steps(self, *, tenant_id: str, steps: int) -> None:
         """记录并行执行的 step 数量 (agent_plan_parallel_steps_total)。"""
@@ -55,6 +57,18 @@ class AgentPerfMetrics:
             if len(bucket) > 500:
                 del bucket[: len(bucket) - 500]
 
+    def record_self_evolve_experience(self, tenant_id: str) -> None:
+        """记录一次经验沉淀 (agent_self_evolve_experiences_total)。"""
+        tenant = tenant_id or "unknown"
+        with self._lock:
+            self._self_evolve_experiences[tenant] += 1
+
+    def record_self_evolve_strategy_patch(self, tenant_id: str) -> None:
+        """记录一次策略 patch 提案 (agent_self_evolve_strategy_patches_total)。"""
+        tenant = tenant_id or "unknown"
+        with self._lock:
+            self._self_evolve_strategy_patches[tenant] += 1
+
     @staticmethod
     def _p95(values: list[float]) -> float:
         if not values:
@@ -69,6 +83,8 @@ class AgentPerfMetrics:
             parallel_steps = dict(self._parallel_steps)
             cot_tokens = dict(self._cot_thinking_tokens)
             parallel = {k: list(v) for k, v in self._parallel_durations.items()}
+            se_experiences = dict(self._self_evolve_experiences)
+            se_patches = dict(self._self_evolve_strategy_patches)
 
         lines: list[str] = []
         lines.append("# HELP agent_plan_steps_total Planner steps executed")
@@ -93,6 +109,18 @@ class AgentPerfMetrics:
             lines.append(
                 f'agent_tool_parallel_duration_ms{{tenant_id="{tenant}",strategy="{strategy}"}} {p95:.2f}'
             )
+        lines.append("# HELP agent_self_evolve_experiences_total Total experiences stored")
+        lines.append("# TYPE agent_self_evolve_experiences_total counter")
+        for tenant, count in sorted(se_experiences.items()):
+            lines.append(f'agent_self_evolve_experiences_total{{tenant="{tenant}"}} {count}')
+
+        lines.append(
+            "# HELP agent_self_evolve_strategy_patches_total Total strategy patches proposed"
+        )
+        lines.append("# TYPE agent_self_evolve_strategy_patches_total counter")
+        for tenant, count in sorted(se_patches.items()):
+            lines.append(f'agent_self_evolve_strategy_patches_total{{tenant="{tenant}"}} {count}')
+
         return "\n".join(lines) + "\n"
 
 
