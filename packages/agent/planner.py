@@ -786,3 +786,21 @@ async def execute_plan_parallel(
         "plan_steps_completed": total_steps,
         "plan_revisions": plan_revisions,
     }
+
+
+def is_parallel_plan_execution(mode: str | None = None) -> bool:
+    """Plan 执行是否走 DAG 层内并行（默认 parallel）。"""
+    resolved = (
+        mode if mode is not None else get_settings().plan_execution_mode
+    ).strip().lower()
+    return resolved != "serial"
+
+
+def get_plan_executor(
+    *,
+    mode: str | None = None,
+) -> Callable[..., Awaitable[dict[str, Any]]]:
+    """按 PLAN_EXECUTION_MODE 返回 plan 执行函数。"""
+    if is_parallel_plan_execution(mode):
+        return execute_plan_parallel
+    return execute_plan_with_agent

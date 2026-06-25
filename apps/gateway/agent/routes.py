@@ -14,8 +14,8 @@ from apps.gateway.tenants import TenantRecord, load_tenants
 from packages.agent.multi_agent.blackboard import get_blackboard
 from packages.agent.planner import (
     PlannerError,
-    execute_plan_with_agent,
     generate_plan,
+    get_plan_executor,
 )
 from packages.agent.reasoning import ReasoningModeError, resolve_reasoning_mode
 from packages.agent.runner import AgentRunError, run_agent
@@ -209,7 +209,8 @@ async def agent_run(
                     allowed_models=tenant.allowed_models,
                     allowed_tools=tenant.allowed_tools,
                 )
-                result = await execute_plan_with_agent(
+                execute_plan = get_plan_executor(mode=settings.plan_execution_mode)
+                result = await execute_plan(
                     plan=plan,
                     tenant_id=tenant.tenant_id,
                     session_id=body.session_id.strip(),
@@ -218,6 +219,7 @@ async def agent_run(
                     model=body.model,
                     session_store=get_session_store(),
                     step_system_messages=step_system_messages,
+                    max_replan_attempts=settings.plan_max_replan_attempts,
                     require_plan_approval=body.require_plan_approval,
                 )
             else:
