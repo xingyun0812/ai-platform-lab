@@ -272,11 +272,11 @@
 
 ---
 
-## Phase Q — 任务规划前沿对齐（🔄 Wave 2 完成）
+## Phase Q — 任务规划前沿对齐（✅ 全部完成）
 
 > **动机**：Phase O O1 为 JD 对齐 MVP（一次 LLM Plan + 串行执行）；对齐 Plan-and-Execute / LangGraph 思想需并行 DAG、重规划、Plan HITL、质量门禁  
 > **规划**：[phase-q-advanced-planning.md](./phase-q-advanced-planning.md) · [issues-backlog-phase-q.md](./issues-backlog-phase-q.md)  
-> **Tag**（计划）：`phase-q-advanced-planning` · **门禁**（计划）：`python eval/plan_quality_gate.py run`  
+> **Tag**：`phase-q-advanced-planning` · **门禁**：`python eval/plan_quality_gate.py run`  
 > **前置**：Phase O O1 ✅（#87）
 
 | Issue | 内容 | 状态 |
@@ -286,12 +286,10 @@
 | [#117](https://github.com/xingyun0812/ai-platform-lab/issues/117) | DAG 并行 step 执行 | ✅ PR #122 |
 | [#118](https://github.com/xingyun0812/ai-platform-lab/issues/118) | 失败重规划 Critic | ✅ PR #124 |
 | [#119](https://github.com/xingyun0812/ai-platform-lab/issues/119) | Plan 级 HITL | ✅ PR #125 |
-| [#120](https://github.com/xingyun0812/ai-platform-lab/issues/120) | Planner ↔ Orchestrator 桥接 | 📋 |
-| [#121](https://github.com/xingyun0812/ai-platform-lab/issues/121) | 规划质量 eval + tag | 📋 |
+| [#120](https://github.com/xingyun0812/ai-platform-lab/issues/120) | Planner ↔ Orchestrator 桥接 | ✅ PR #126 |
+| [#121](https://github.com/xingyun0812/ai-platform-lab/issues/121) | 规划质量 eval + tag | ✅ PR #127 |
 
-**非目标**：LangGraph 依赖、Tree-of-Thoughts、替换现有 ReAct Runtime。
-
-**是否开搞**：冲 JD2 演示可暂缓；被追问与 LangGraph 差距或要做技术深度时，优先 **Q1 + Q2 + Q6**。
+**Phase Q 全部完成！** 728 tests pass。Planner 从 MVP 升级为 Plan-and-Execute / LangGraph 对齐：结构化输出 → DAG 并行 → 重规划 → Plan HITL → Workflow 桥接 → 质量门禁。
 
 ---
 

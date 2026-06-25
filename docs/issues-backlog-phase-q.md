@@ -12,8 +12,8 @@
 | Q2 DAG 并行执行 | [#117](https://github.com/xingyun0812/ai-platform-lab/issues/117) | ✅ PR #122 |
 | Q3 失败重规划 | [#118](https://github.com/xingyun0812/ai-platform-lab/issues/118) | ✅ PR #124 |
 | Q4 Plan 级 HITL | [#119](https://github.com/xingyun0812/ai-platform-lab/issues/119) | ✅ PR #125 |
-| Q5 Orchestrator 桥接 | [#120](https://github.com/xingyun0812/ai-platform-lab/issues/120) | 📋 |
-| Q6 eval 门禁 + tag | [#121](https://github.com/xingyun0812/ai-platform-lab/issues/121) | 📋 |
+| Q5 Orchestrator 桥接 | [#120](https://github.com/xingyun0812/ai-platform-lab/issues/120) | ✅ PR #126 |
+| Q6 eval 门禁 + tag | [#121](https://github.com/xingyun0812/ai-platform-lab/issues/121) | ✅ PR #127 |
 
 ---
 
