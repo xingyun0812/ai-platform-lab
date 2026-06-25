@@ -10,6 +10,8 @@ from fastapi.responses import JSONResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 
 from apps.gateway.agent.approval_routes import router as agent_approval_router
+from apps.gateway.agent.plan_approval_routes import router as plan_approval_router
+from apps.gateway.agent.plan_workflow_routes import router as plan_workflow_router
 from apps.gateway.agent.routes import router as agent_router
 from apps.gateway.agent_lifecycle_routes import router as agent_lifecycle_router
 from apps.gateway.audit_action_routes import router as audit_action_router
@@ -317,6 +319,8 @@ def create_app() -> FastAPI:
     app.include_router(rag_query_router)
     app.include_router(agent_router)
     app.include_router(agent_approval_router)
+    app.include_router(plan_workflow_router)
+    app.include_router(plan_approval_router)
     app.include_router(audit_router)
     app.include_router(audit_action_router)
     app.include_router(auth_router)

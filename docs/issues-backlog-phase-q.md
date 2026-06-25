@@ -39,10 +39,10 @@
 **目标**：`generate_plan` 优先使用 upstream structured output；保留 JSON 解析降级。
 
 **验收**：
-- [ ] `packages/agent/planner.py` 支持 `PLAN_OUTPUT_MODE=structured|legacy`
-- [ ] OpenAI 兼容 `response_format` 路径 + mock 单测
-- [ ] `eval/agent_planner_smoke.py` 覆盖 structured 路径
-- [ ] 单测 ≥8 新增或扩展
+- [x] `packages/agent/planner.py` 支持 `PLAN_OUTPUT_MODE=structured|legacy`
+- [x] OpenAI 兼容 `response_format` 路径 + mock 单测
+- [x] `eval/agent_planner_smoke.py` 覆盖 structured 路径
+- [x] 单测 ≥8 新增或扩展（`tests/test_plan_structured.py`）
 
 **依赖**：无 · **预估**：2～3d
 
@@ -55,10 +55,10 @@
 **目标**：无依赖关系的 Plan step 同层并行 `run_agent`。
 
 **验收**：
-- [ ] `plan_execution_layers()` + `execute_plan_parallel()`
-- [ ] session / blackboard 并发策略文档化 + 单测
-- [ ] Prometheus `agent_plan_parallel_*` 指标
-- [ ] `eval/agent_planner_smoke.py` 增并行用例
+- [x] `plan_execution_layers()` + `execute_plan_parallel()`
+- [x] session / blackboard 并发策略文档化 + 单测
+- [x] Prometheus `agent_plan_parallel_*` 指标
+- [x] `eval/agent_planner_smoke.py` 增并行用例
 
 **依赖**：无（可与 Q1 并行 merge） · **预估**：3～4d
 
@@ -71,10 +71,10 @@
 **目标**：step 失败时 LLM critic 局部修订 Plan，限制 `max_replan_attempts`。
 
 **验收**：
-- [ ] `packages/agent/plan_critic.py`
-- [ ] `execute_plan_*` 集成 replan；trace 含 `plan_revisions`
-- [ ] 单测：失败 → replan → 成功
-- [ ] Prompt `agent_plan_critic` in `config/prompts.yaml`
+- [x] `packages/agent/plan_critic.py`
+- [x] `execute_plan_*` 集成 replan；trace 含 `plan_revisions`
+- [x] 单测：失败 → replan → 成功
+- [x] Prompt `agent_plan_critic` in `config/prompts.yaml`
 
 **依赖**：Q2 推荐 · **预估**：3～4d
 
@@ -87,10 +87,10 @@
 **目标**：`require_plan_approval` 时暂停在 Plan 审批；Console 展示步骤树。
 
 **验收**：
-- [ ] `AgentRunRequest.require_plan_approval` + approval action `approve_plan`
-- [ ] `apps/gateway/agent/approval_routes.py` 扩展
+- [x] `AgentRunRequest.require_plan_approval` + approval action `approve_plan`
+- [x] `apps/gateway/agent/plan_approval_routes.py` 挂载
 - [ ] Console Plan 审批 UI（最小）
-- [ ] 单测 + smoke
+- [x] 单测 + smoke（`eval/phase_q_live.py` live 链）
 
 **依赖**：无 · **预估**：2～3d
 
@@ -103,10 +103,10 @@
 **目标**：Plan 导出为 workflow YAML 或与 Orchestrator 统一执行入口。
 
 **验收**：
-- [ ] `packages/agent/plan_workflow.py` — `plan_to_workflow()`
-- [ ] `POST /v1/agent/plan/export` 或 CLI
-- [ ] 与 `config/workflows/data_analysis.yaml` 字段对齐说明
-- [ ] 单测 ≥6
+- [x] `packages/agent/plan_workflow.py` — `plan_to_workflow()`
+- [x] `POST /v1/agent/plan/export` 或 CLI
+- [x] 与 `config/workflows/data_analysis.yaml` 字段对齐说明
+- [x] 单测 ≥6
 
 **依赖**：Q1 · **预估**：3～5d
 
@@ -119,9 +119,9 @@
 **目标**：规划质量回归门禁；文档与 demo 同步；打 tag。
 
 **验收**：
-- [ ] `eval/plan_baseline.jsonl` + `eval/plan_quality_gate.py`
-- [ ] CI 接入（mock LLM）
-- [ ] `demo-walkthrough.md` 增 Phase Q 段
-- [ ] Tag `phase-q-advanced-planning`
+- [x] `eval/plan_baseline.jsonl` + `eval/plan_quality_gate.py`
+- [x] CI 接入（`agent_jd2_gate` → `ci.yml` smoke）
+- [x] `demo-walkthrough.md` 增 Phase Q 段
+- [ ] Tag `phase-q-advanced-planning`（merge closure 后打）
 
 **依赖**：Q1～Q5（至少 Q1+Q2+Q3） · **预估**：2～3d

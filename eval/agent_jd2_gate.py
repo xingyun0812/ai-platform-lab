@@ -54,6 +54,28 @@ CHECKS: tuple[Jd2GateCheck, ...] = (
         "O1 auto_plan + 数据分析 vertical 闭环",
     ),
     Jd2GateCheck(
+        "plan_quality_gate",
+        "Q6",
+        (PYTHON, str(REPO_ROOT / "eval" / "plan_quality_gate.py"), "run"),
+        "Phase Q Plan 质量门禁（mock baseline）",
+    ),
+    Jd2GateCheck(
+        "phase_q_unit",
+        "Q1-Q6",
+        (
+            PYTHON,
+            "-m",
+            "unittest",
+            "tests.test_plan_structured",
+            "tests.test_plan_workflow",
+            "tests.test_plan_parallel",
+            "tests.test_plan_critic",
+            "tests.test_plan_quality_gate",
+            "-q",
+        ),
+        "Phase Q 单测矩阵",
+    ),
+    Jd2GateCheck(
         "reasoning_unit",
         "O2",
         (PYTHON, "-m", "unittest", "tests.test_agent_reasoning", "-q"),

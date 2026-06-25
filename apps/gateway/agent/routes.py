@@ -218,6 +218,7 @@ async def agent_run(
                     model=body.model,
                     session_store=get_session_store(),
                     step_system_messages=step_system_messages,
+                    require_plan_approval=body.require_plan_approval,
                 )
             else:
                 result = await run_agent(
@@ -274,7 +275,7 @@ async def agent_run(
     content = response.model_dump()
     if platform:
         content["_platform"] = platform
-    status_code = 202 if content.get("status") == "pending_approval" else 200
+    status_code = 202 if content.get("status") in ("pending_approval", "pending_plan_approval") else 200
     return JSONResponse(status_code=status_code, content=content)
 
 

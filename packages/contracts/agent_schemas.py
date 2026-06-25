@@ -34,6 +34,10 @@ class AgentRunRequest(BaseModel):
         default=None,
         description="auto_plan 时的任务目标；缺省取最后一条 user 消息",
     )
+    require_plan_approval: bool = Field(
+        default=False,
+        description="Phase Q Q4：auto_plan 时先生成 Plan 并暂停 plan 级审批",
+    )
     reasoning_mode: str | None = Field(
         default=None,
         description="react | cot；缺省用 AGENT_REASONING_MODE / config/agent.yaml",
@@ -98,6 +102,9 @@ class AgentRunResponse(BaseModel):
     trace_id: str | None = None
     status: str = "completed"
     approval_id: str | None = None
+    plan_approval_id: str | None = None
+    plan_summary: str | None = None
+    plan_revisions: list[dict[str, Any]] | None = None
     plan: AgentPlan | None = None
     plan_steps_completed: int | None = None
     reasoning_mode: str | None = None

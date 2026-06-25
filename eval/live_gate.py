@@ -141,9 +141,21 @@ async def run_live_gate(
 ) -> list[LiveCheck]:
     from eval.auto_plan_vertical import run_auto_plan_vertical
     from eval.data_analysis_vertical import run_data_analysis_vertical
+    from eval.phase_q_live import run_phase_q_live
 
     checks: list[LiveCheck] = []
     has_key = bool((os.environ.get("LLM_API_KEY") or "").strip())
+
+    async with httpx.AsyncClient(base_url=base_url.rstrip("/"), timeout=180.0) as client:
+        hz = await _healthz(client)
+        checks.append(hz)
+        if not hz.passed:
+            return checks
+
+    for qc in await run_phase_q_live(base_url=base_url):
+        checks.append(
+            LiveCheck(qc.name, qc.passed, qc.detail, blocked=qc.blocked)
+        )
 
     if not has_key:
         checks.append(
@@ -158,12 +170,6 @@ async def run_live_gate(
             checks[-1].passed = False
             checks[-1].detail = "required but LLM_API_KEY missing"
         return checks
-
-    async with httpx.AsyncClient(base_url=base_url.rstrip("/"), timeout=180.0) as client:
-        hz = await _healthz(client)
-        checks.append(hz)
-        if not hz.passed:
-            return checks
 
     # 复用各 vertical 模块的 live 检查（跳过重复 healthz）
     for vc in await run_auto_plan_vertical(mock=False, live=True, base_url=base_url):
