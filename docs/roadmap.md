@@ -293,6 +293,27 @@
 
 ---
 
+## Phase R — Agent Harness 前沿（📋 规划中）
+
+> **动机**：对照 DeepSeek Harness 团队 JD，补齐 3 个核心缺口：自进化 Agent、跨 session 长程任务、Harness-side 模型能力探测  
+> **规划**：[phase-r-agent-harness.md](./phase-r-agent-harness.md) · [issues-backlog-phase-r.md](./issues-backlog-phase-r.md)  
+> **Tag**（计划）：`phase-r-agent-harness` · **门禁**（计划）：`python eval/harness_capability_gate.py run`  
+> **前置**：Phase Q ✅（#121） · Phase F #31 长记忆 ✅ · Phase J #48 反馈飞轮 ✅
+
+| Issue | 内容 | 状态 |
+|-------|------|------|
+| [#133](https://github.com/xingyun0812/ai-platform-lab/issues/133) | 规划文档 + milestone | ✅ |
+| [#134](https://github.com/xingyun0812/ai-platform-lab/issues/134) | 自进化 Agent — 经验库 + 策略自改 | 📋 |
+| [#135](https://github.com/xingyun0812/ai-platform-lab/issues/135) | 跨 session 长程任务 — checkpoint + resume | 📋 |
+| [#136](https://github.com/xingyun0812/ai-platform-lab/issues/136) | Harness-side 模型能力探测 | 📋 |
+| [#137](https://github.com/xingyun0812/ai-platform-lab/issues/137) | eval 门禁 + tag | 📋 |
+
+**非目标**：训练模型；在线 RL；亿级在线推理；替换现有 ReAct Runtime。
+
+**是否开搞**：冲 DeepSeek Harness 岗 **必做 R1**；想做 AgentOps 深度优先 R2；想做 Harness 与模型协同进化优先 R3。
+
+---
+
 ## 已知限制（面试时主动说）
 
 > **说明**：Phase A～K 已交付大量能力（MCP、HITL、Multi-Agent、语义缓存、PII、Console V2 等），本节区分 **「已有但 opt-in / 实验级」** 与 **「仍缺或仍为 stub」**，避免与 README 矛盾。Phase L 目标是把 stub 做深，见 [phase-l-engineering-depth.md](./phase-l-engineering-depth.md)。
