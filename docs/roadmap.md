@@ -293,7 +293,7 @@
 
 ---
 
-## Phase R — Agent Harness 前沿（📋 规划中）
+## Phase R — Agent Harness 前沿（🔄 Wave 1 完成）
 
 > **动机**：对照 DeepSeek Harness 团队 JD，补齐 3 个核心缺口：自进化 Agent、跨 session 长程任务、Harness-side 模型能力探测  
 > **规划**：[phase-r-agent-harness.md](./phase-r-agent-harness.md) · [issues-backlog-phase-r.md](./issues-backlog-phase-r.md)  
@@ -303,10 +303,12 @@
 | Issue | 内容 | 状态 |
 |-------|------|------|
 | [#133](https://github.com/xingyun0812/ai-platform-lab/issues/133) | 规划文档 + milestone | ✅ |
-| [#134](https://github.com/xingyun0812/ai-platform-lab/issues/134) | 自进化 Agent — 经验库 + 策略自改 | 📋 |
-| [#135](https://github.com/xingyun0812/ai-platform-lab/issues/135) | 跨 session 长程任务 — checkpoint + resume | 📋 |
+| [#134](https://github.com/xingyun0812/ai-platform-lab/issues/134) | 自进化 Agent — 经验库 + 策略自改 | ✅ PR #138 |
+| [#135](https://github.com/xingyun0812/ai-platform-lab/issues/135) | 跨 session 长程任务 — checkpoint + resume | ✅ PR #138 |
 | [#136](https://github.com/xingyun0812/ai-platform-lab/issues/136) | Harness-side 模型能力探测 | 📋 |
 | [#137](https://github.com/xingyun0812/ai-platform-lab/issues/137) | eval 门禁 + tag | 📋 |
+
+**Wave 1 完成！** R1 自进化 Agent（经验库 + 策略自改 + HITL）+ R2 长程任务（checkpoint/resume + 跨 session）已合并，64 新测试全 pass。
 
 **非目标**：训练模型；在线 RL；亿级在线推理；替换现有 ReAct Runtime。
 
