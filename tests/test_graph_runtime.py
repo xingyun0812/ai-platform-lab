@@ -15,7 +15,6 @@ from packages.agent.plan_approval import (
     reset_plan_approval_store_for_tests,
     store_plan_approval,
 )
-from packages.agent.planner import parse_plan
 from packages.contracts.agent_schemas import AgentPlan, AgentRunRequest, PlanStep
 
 SAMPLE_PLAN = AgentPlan(
@@ -104,10 +103,13 @@ class TestPlanApprovalResume(unittest.IsolatedAsyncioTestCase):
 class TestWorkflowCheckpoint(unittest.IsolatedAsyncioTestCase):
     def setUp(self) -> None:
         reset_graph_checkpoint_store_for_tests()
+        from packages.state.redis_client import reset_redis_availability_for_tests
+
+        reset_redis_availability_for_tests()
 
     async def test_checkpoint_create_and_get(self) -> None:
         from packages.agent.orchestrator.checkpoint_engine import execute_workflow_checkpointed
-        from packages.agent.orchestrator.graph import Workflow, GraphNode, GraphEdge
+        from packages.agent.orchestrator.graph import GraphEdge, GraphNode, Workflow
 
         wf = Workflow(
             workflow_id="cp-test",
@@ -131,6 +133,18 @@ class TestWorkflowCheckpoint(unittest.IsolatedAsyncioTestCase):
         cp = get_graph_checkpoint_store().get(result.execution_id or "")
         self.assertIsNotNone(cp)
         self.assertEqual(cp.status, "completed")
+
+    def test_resolve_checkpoint_store_falls_back_memory(self) -> None:
+        from packages.agent.graph_checkpoint import (
+            InMemoryGraphCheckpointStore,
+            resolve_graph_checkpoint_store,
+        )
+        from packages.state.redis_client import reset_redis_availability_for_tests
+
+        reset_graph_checkpoint_store_for_tests()
+        reset_redis_availability_for_tests()
+        store = resolve_graph_checkpoint_store("")
+        self.assertIsInstance(store, InMemoryGraphCheckpointStore)
 
 
 if __name__ == "__main__":

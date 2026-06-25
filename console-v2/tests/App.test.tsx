@@ -312,4 +312,17 @@ describe("Console V2 — App & Pages", () => {
       expect(screen.getByText("生成 Embedding")).toBeDefined();
     });
   });
+
+  // 14. Agents page renders plan approval HITL switch (Q4)
+  it("14. Agents page renders plan approval HITL switch", async () => {
+    const { default: apiClient } = await import("../src/api/client");
+    (apiClient.get as ReturnType<typeof vi.fn>).mockResolvedValue({ data: [] });
+
+    renderWithRouter(<Agents />, { initialEntries: ["/agents"] });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("planner-require-approval-switch")).toBeDefined();
+    });
+    expect(screen.getByTestId("planner-demo-card")).toBeDefined();
+  });
 });
