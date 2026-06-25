@@ -122,6 +122,6 @@
 - [x] `eval/plan_baseline.jsonl` + `eval/plan_quality_gate.py`
 - [x] CI 接入（`agent_jd2_gate` → `ci.yml` smoke）
 - [x] `demo-walkthrough.md` 增 Phase Q 段
-- [ ] Tag `phase-q-advanced-planning`（merge closure 后打）
+- [x] Tag `phase-q-advanced-planning`（`cb3ac2e` closure merge）
 
 **依赖**：Q1～Q5（至少 Q1+Q2+Q3） · **预估**：2～3d

@@ -1,6 +1,6 @@
 # Phase Q — 任务规划前沿对齐（Advanced Planning）
 
-> **状态**：✅ **Q1～Q6 已交付**（PR #122～#127）· Tag 待打 `phase-q-advanced-planning`  
+> **状态**：✅ **Q1～Q6 已交付** · Tag：`phase-q-advanced-planning`（`cb3ac2e`）
 > **前置**：Phase O O1 Task Planner ✅（#87 / #99）  
 > **Tag**（计划）：`phase-q-advanced-planning`  
 > **门禁**（计划）：`python eval/plan_quality_gate.py run`

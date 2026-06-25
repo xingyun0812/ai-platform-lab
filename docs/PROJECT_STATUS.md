@@ -1,7 +1,7 @@
 # ai-platform-lab 项目状态总览
 
 > **最后更新**：2026-05-19  
-> **当前状态**：Phase A～Q 已交付 · tags：`phase-o-agent-jd2`、`phase-p-multimodal`、`phase-n-pypi-sdk` · Phase Q tag 待打  
+> **当前状态**：Phase A～Q 已交付 · tags：`phase-o-agent-jd2`、`phase-p-multimodal`、`phase-n-pypi-sdk`、`phase-q-advanced-planning`  
 > **主分支**：`main`
 
 ---
