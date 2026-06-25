@@ -59,6 +59,7 @@ class ExecutionResult:
     trace: list[dict[str, Any]]
     error: str | None = None
     execution_time_ms: float = 0.0
+    execution_id: str | None = None
 
 
 async def execute_workflow(

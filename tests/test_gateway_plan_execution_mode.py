@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import unittest
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 from fastapi.testclient import TestClient
 
@@ -63,60 +63,44 @@ class TestGatewayPlanExecutionMode(unittest.TestCase):
             },
         ).status_code
 
-    @patch("apps.gateway.agent.routes.get_plan_executor")
-    @patch("apps.gateway.agent.routes.generate_plan", new_callable=AsyncMock)
-    def test_gateway_uses_get_plan_executor(
+    @patch("apps.gateway.agent.routes.execute_agent_graph", new_callable=AsyncMock)
+    def test_gateway_delegates_to_execute_agent_graph(
         self,
-        mock_generate: AsyncMock,
-        mock_get_executor: MagicMock,
+        mock_execute_graph: AsyncMock,
     ) -> None:
-        mock_generate.return_value = (SAMPLE_PLAN, "chat-fast")
-        mock_execute = AsyncMock(
-            return_value={
-                "tenant_id": "admin",
-                "session_id": "plan-exec-mode-test",
-                "final_message": "ok",
-                "tool_calls": [],
-                "steps": 1,
-                "model": "chat-fast",
-                "status": "completed",
-                "plan": SAMPLE_PLAN,
-                "plan_steps_completed": 1,
-            }
-        )
-        mock_get_executor.return_value = mock_execute
+        mock_execute_graph.return_value = {
+            "tenant_id": "admin",
+            "session_id": "plan-exec-mode-test",
+            "final_message": "ok",
+            "tool_calls": [],
+            "steps": 1,
+            "model": "chat-fast",
+            "status": "completed",
+            "plan": SAMPLE_PLAN,
+            "plan_steps_completed": 1,
+        }
 
         settings = __import__("apps.gateway.settings", fromlist=["get_settings"]).get_settings()
         with patch.object(settings, "llm_api_key", "sk-test"):
-            with patch.object(settings, "plan_execution_mode", "parallel"):
-                status = self._post_auto_plan()
+            status = self._post_auto_plan()
 
         self.assertEqual(status, 200)
-        mock_get_executor.assert_called_once_with(mode="parallel")
-        mock_execute.assert_awaited_once()
+        mock_execute_graph.assert_awaited_once()
 
-    @patch("apps.gateway.agent.routes.get_plan_executor")
-    @patch("apps.gateway.agent.routes.generate_plan", new_callable=AsyncMock)
-    def test_gateway_serial_mode_passes_setting(
+    @patch("apps.gateway.agent.routes.execute_agent_graph", new_callable=AsyncMock)
+    def test_gateway_auto_plan_calls_graph_runtime(
         self,
-        mock_generate: AsyncMock,
-        mock_get_executor: MagicMock,
+        mock_execute_graph: AsyncMock,
     ) -> None:
-        mock_generate.return_value = (SAMPLE_PLAN, "chat-fast")
-        mock_execute = AsyncMock(
-            return_value={
-                "tenant_id": "admin",
-                "session_id": "plan-exec-mode-test",
-                "final_message": "ok",
-                "tool_calls": [],
-                "steps": 1,
-                "model": "chat-fast",
-                "status": "completed",
-                "plan": SAMPLE_PLAN,
-                "plan_steps_completed": 1,
-            }
-        )
-        mock_get_executor.return_value = mock_execute
+        mock_execute_graph.return_value = {
+            "tenant_id": "admin",
+            "session_id": "plan-exec-mode-test",
+            "final_message": "ok",
+            "tool_calls": [],
+            "steps": 1,
+            "model": "chat-fast",
+            "status": "completed",
+        }
 
         settings = __import__("apps.gateway.settings", fromlist=["get_settings"]).get_settings()
         with patch.object(settings, "llm_api_key", "sk-test"):
@@ -124,8 +108,7 @@ class TestGatewayPlanExecutionMode(unittest.TestCase):
                 status = self._post_auto_plan()
 
         self.assertEqual(status, 200)
-        mock_get_executor.assert_called_once_with(mode="serial")
-        mock_execute.assert_awaited_once()
+        mock_execute_graph.assert_awaited_once()
 
 
 if __name__ == "__main__":

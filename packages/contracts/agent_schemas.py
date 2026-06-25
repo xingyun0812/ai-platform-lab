@@ -26,6 +26,10 @@ class AgentRunRequest(BaseModel):
         default=None,
         description="Phase E5：人工确认后 resume 执行已批准的工具调用",
     )
+    plan_approval_id: str | None = Field(
+        default=None,
+        description="Phase Q Q4：Plan 审批通过后 resume 执行已批准的 Plan",
+    )
     auto_plan: bool = Field(
         default=False,
         description="Phase O #87：先生成 Plan 再逐步执行",

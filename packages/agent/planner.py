@@ -365,7 +365,7 @@ async def execute_plan_with_agent(
         from packages.agent.plan_approval import store_plan_approval
 
         plan_approval_id = str(uuid.uuid4())
-        store_plan_approval(plan_approval_id, plan, tenant_id)
+        store_plan_approval(plan_approval_id, plan, tenant_id, session_id=session_id)
         return {
             "tenant_id": tenant_id,
             "session_id": session_id,
@@ -607,7 +607,7 @@ async def execute_plan_parallel(
         from packages.agent.plan_approval import store_plan_approval
 
         plan_approval_id = str(uuid.uuid4())
-        store_plan_approval(plan_approval_id, plan, tenant_id)
+        store_plan_approval(plan_approval_id, plan, tenant_id, session_id=session_id)
         return {
             "tenant_id": tenant_id,
             "session_id": session_id,
