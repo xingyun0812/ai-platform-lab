@@ -281,6 +281,31 @@ async def generate_plan(
     if not goal:
         raise PlannerError("PLAN_INVALID", "goal 不能为空")
 
+    # === Phase R R1: 注入相似经验 ===
+    past_lessons: str = ""
+    try:
+        from packages.agent.experience_store import (
+            compute_task_signature,
+            retrieve_similar_experiences,
+        )
+
+        sig = compute_task_signature(goal)
+        similar = retrieve_similar_experiences(sig, top_k=2)
+        if similar:
+            lessons_lines = [
+                f"- {e.lessons}" for e in similar if e.outcome == "success" and e.lessons
+            ]
+            if lessons_lines:
+                past_lessons = "\n".join(lessons_lines)
+                logger.debug("injecting %d past lessons for goal=%r", len(lessons_lines), goal[:50])
+    except Exception as exc:
+        logger.warning("experience injection failed: %s", exc)
+
+    # 将 past_lessons 追加到 context
+    if past_lessons:
+        lessons_block = f"\n\n【历史经验】\n{past_lessons}"
+        context = (context or "") + lessons_block
+
     settings = get_settings()
     reg = registry or ToolRegistry()
     available = tuple(t.name for t in reg.list_for_tenant(allowed_tools))
@@ -590,6 +615,7 @@ async def execute_plan_parallel(
     _replan_attempt: int = 0,
     _plan_revisions: list[dict[str, Any]] | None = None,
     require_plan_approval: bool = False,
+    long_run_task_id: str | None = None,  # Phase R R2
 ) -> dict[str, Any]:
     """按 DAG 层并行执行 Plan steps。
 
@@ -640,8 +666,21 @@ async def execute_plan_parallel(
     completed_count = 0
     plan_revisions: list[dict[str, Any]] = _plan_revisions if _plan_revisions is not None else []
 
+    # Phase R R2: load already-completed step IDs from long-run store
+    completed_step_ids: set[str] = set()
+    if long_run_task_id:
+        from packages.agent.long_horizon import get_long_run
+
+        lr_task = get_long_run(long_run_task_id)
+        if lr_task is not None:
+            completed_step_ids = {s.step_id for s in lr_task.step_states if s.status == "completed"}
+
     for layer_idx, layer in enumerate(layers):
-        # Build per-step coroutines
+        # Build per-step coroutines — skip already-completed steps (Phase R R2)
+        pending_steps = [s for s in layer if s.id not in completed_step_ids]
+        skipped_count = len(layer) - len(pending_steps)
+        completed_count += skipped_count  # count skipped-as-already-done toward progress
+
         async def _run_step(step: PlanStep, layer_pos: int) -> dict[str, Any]:
             step_msg = format_step_user_message(step, index=layer_pos + 1, total=total_steps)
             new_messages: list[dict[str, Any]] = [{"role": "user", "content": step_msg}]
@@ -658,17 +697,19 @@ async def execute_plan_parallel(
                 session_store=session_store,
             )
 
-        coros = [_run_step(step, i) for i, step in enumerate(layer)]
+        coros = [_run_step(step, i) for i, step in enumerate(pending_steps)]
         raw_results = await asyncio.gather(*coros, return_exceptions=True)
 
         # Process layer results
         layer_has_pending = False
-        for step, raw in zip(layer, raw_results):
+        layer_completed = True
+        for step, raw in zip(pending_steps, raw_results):
             if isinstance(raw, BaseException):
                 logger.warning(
                     "parallel step %s failed with exception: %s", step.id, raw, exc_info=False
                 )
                 last_status = "failed"
+                layer_completed = False
                 completed_count += 1
                 continue
 
@@ -687,13 +728,24 @@ async def execute_plan_parallel(
 
             if step_status == "pending_approval":
                 layer_has_pending = True
+                layer_completed = False
                 last_status = "pending_approval"
             elif step_status == "failed":
                 last_status = "failed"
+                layer_completed = False
             completed_count += 1
 
         # Record metrics for this layer
         get_agent_perf_metrics().record_parallel_steps(tenant_id=tenant_id, steps=len(layer))
+
+        # Phase R R2: auto-checkpoint after each completed layer
+        if long_run_task_id and layer_completed and last_status != "failed":
+            from packages.agent.long_horizon import checkpoint_task
+
+            try:
+                checkpoint_task(long_run_task_id)
+            except Exception as exc:
+                logger.warning("auto-checkpoint failed: %s", exc)
 
         if layer_has_pending:
             return {
@@ -790,9 +842,7 @@ async def execute_plan_parallel(
 
 def is_parallel_plan_execution(mode: str | None = None) -> bool:
     """Plan 执行是否走 DAG 层内并行（默认 parallel）。"""
-    resolved = (
-        mode if mode is not None else get_settings().plan_execution_mode
-    ).strip().lower()
+    resolved = (mode if mode is not None else get_settings().plan_execution_mode).strip().lower()
     return resolved != "serial"
 
 
