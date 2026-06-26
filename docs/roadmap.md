@@ -296,7 +296,7 @@
 ## Phase R — Agent Harness 前沿（🔄 Wave 1 完成）
 
 > **动机**：对照 DeepSeek Harness 团队 JD，补齐 3 个核心缺口：自进化 Agent、跨 session 长程任务、Harness-side 模型能力探测  
-> **规划**：[phase-r-agent-harness.md](./phase-r-agent-harness.md) · [issues-backlog-phase-r.md](./issues-backlog-phase-r.md)  
+> **规划**：[phase-r-agent-harness.md](./phase-r-agent-harness.md)（[Q7 边界](./phase-r-agent-harness.md#21-phase-q-q7-与-phase-r-边界避免概念打架) · [非 SOTA 表述](./phase-r-agent-harness.md#7-业界定位与诚实边界非-sota-表述)） · [issues-backlog-phase-r.md](./issues-backlog-phase-r.md)  
 > **Tag**（计划）：`phase-r-agent-harness` · **门禁**（计划）：`python eval/harness_capability_gate.py run`  
 > **前置**：Phase Q ✅（#121） · Phase F #31 长记忆 ✅ · Phase J #48 反馈飞轮 ✅
 

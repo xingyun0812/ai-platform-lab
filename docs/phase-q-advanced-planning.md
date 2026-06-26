@@ -115,6 +115,8 @@ flowchart TB
 - Orchestrator checkpoint：`execution_id` + `POST /internal/orchestrator/executions/{id}/resume`
 - 配置：`GRAPH_CHECKPOINT_ENABLED=true`（默认）；`REDIS_URL` 可达时 checkpoint 持久化到 Redis
 
+与 Phase R 边界（`task_id` / 长程 Plan vs `execution_id` / 工作流节点）：见 [phase-r-agent-harness.md §2.1](./phase-r-agent-harness.md#21-phase-q-q7-与-phase-r-边界避免概念打架)。
+
 ---
 
 ## 5. 面试一句话
