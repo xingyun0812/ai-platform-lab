@@ -1,7 +1,7 @@
 # Phase R — Agent Harness 前沿（Harness Frontier）
 
-> **状态**：📋 **R0 已完成**（#133）· R1～R4 待开发  
-> **前置**：Phase Q ✅（Plan-and-Execute 对齐已完成） · Phase F #31 长记忆 ✅ · Phase J #48 反馈飞轮 ✅  
+> **状态**：🔄 **Wave 1 已完成**（R1/R2 · PR #138）· R3/R4 待开发 · R0 ✅（#133）  
+> **前置**：Phase Q ✅（含 Q7 Graph Runtime · tag `phase-q-graph-runtime`） · Phase F #31 长记忆 ✅ · Phase J #48 反馈飞轮 ✅  
 > **Tag**（计划）：`phase-r-agent-harness`  
 > **门禁**（计划）：`python eval/harness_capability_gate.py run`
 
@@ -16,9 +16,9 @@ Phase A～Q 已交付完整的「AI 中台骨架」：从模型网关、RAG、Ag
 2. **跨 session 长程任务** — Phase Q 的 Plan + Replan 有边界（max_replan_attempts=2）；不能跨天/跨 session 断点续跑
 3. **Harness-side 模型能力探测** — Model Router 只做路由/降级；没有"测出某个模型在哪个 Harness 维度强/弱"的反哺机制
 
-**Phase R 目标**：把这 3 个缺口补到「能跑 demo + 能讲清楚 + 有 eval 门禁」的深度，对齐 Harness 研究方向。
+**Phase R 目标**：把这 3 个缺口补到「能跑 demo + 能讲清楚 + 有 eval 门禁」的深度，**对齐 Harness 工程研究方向**（见 [§7 业界定位](#7-业界定位与诚实边界非-sota-表述)）。
 
-**非目标**：训练自己的模型；在线 RL；亿级在线推理；替换现有 ReAct Runtime。
+**非目标**：训练自己的模型；在线 RL；亿级在线推理；替换现有 ReAct Runtime；对外宣称学术/榜单 SOTA。
 
 ---
 
@@ -49,6 +49,60 @@ flowchart TB
 | 任务长度 | 单次 Plan + ≤2 次 Replan | **跨 session 长程任务**：checkpoint/resume + 任务持久化 |
 | 模型适配 | Model Router 路由/降级 | **能力探测**：自动测出模型在 context/memory/tool/planning 维度的强弱 |
 | 评测 | plan_quality_gate | **harness_capability_gate** — 3 维度联合评测 |
+
+### 2.1 Phase Q Q7 与 Phase R 边界（避免概念打架）
+
+Phase Q **Q7 Graph Runtime**（tag `phase-q-graph-runtime`）与 Phase R **R2 长程任务**都涉及 checkpoint / resume，但 **层次与 ID 不同**，面试与联调时需分开讲：
+
+```mermaid
+%%{init: {'theme': 'dark', 'themeVariables': { 'primaryColor': '#1e3a5f', 'primaryTextColor': '#e6edf3', 'lineColor': '#8b949e', 'secondaryColor': '#2d333b', 'tertiaryColor': '#21262d'}}}%%
+flowchart TB
+  subgraph Q7["Phase Q7 — 运行时图 / 编排层"]
+    GR[execute_agent_graph]
+    PA[plan_approval_id<br/>Plan 审批 resume]
+    OE[Orchestrator execution_id<br/>工作流节点 checkpoint]
+  end
+
+  subgraph R2["Phase R2 — 业务任务层"]
+    LR[long_run task_id<br/>Plan 逐步执行状态]
+    EX[experience_id<br/>经验沉淀 R1]
+  end
+
+  GR --> PA
+  GR --> OE
+  GR -.->|execute_plan 可挂 long_run_task_id| LR
+  LR -->|每完成一层 auto-checkpoint| LR
+```
+
+| 概念 | 模块 | 主键 | 持久化 | 典型场景 |
+|------|------|------|--------|----------|
+| **Plan 审批挂起** | Q7 `graph_runtime` | `plan_approval_id` | 内存 `plan_approval` store | 生成 Plan 后等人批，再 `POST /v1/agent/run` resume |
+| **工作流节点断点** | Q7 `graph_checkpoint` + Orchestrator | `execution_id` | 内存 / `REDIS_URL` | `data-analysis-vertical` 等 YAML 工作流节点级 resume |
+| **长程 Plan 任务** | R2 `long_horizon` | `task_id` | Postgres + Redis 缓存 | 跨天、跨 session 的多步 Plan；管理员查进度 / 取消 |
+| **自进化经验** | R1 `experience_store` | `experience_id` | 内存（规划：Postgres + embedding） | 相似 goal 复用历史 plan / lessons |
+
+**分工原则（维护者约定）**：
+
+1. **不要合并 ID**：`execution_id` ≠ `task_id` ≠ `plan_approval_id`；API 与 Console 字段名保持原样。
+2. **Q7 管「怎么跑起来」**：统一入口、审批 interrupt、Orchestrator 图 checkpoint。
+3. **R2 管「任务跑多久」**：Plan step 级状态机、跨 session、运维可见性。
+4. **未来可选统一**：`AgentGraphState`（Q7）可 **引用** `long_run_task_id`，但不在 R2 中重复实现 Orchestrator 节点引擎。
+
+**用户视角一句话**：
+
+> 批 Plan 用 `plan_approval_id`；跑 YAML 工作流看 `execution_id`；跨天的大任务用 `task_id` 查长程列表。
+
+详见 [phase-q-advanced-planning.md §Q7](./phase-q-advanced-planning.md#q7--graph-runtime最小-langgraph-等价物)。
+
+### 2.2 Phase J 反馈飞轮 vs R1 自进化
+
+| | Phase J 反馈飞轮 | Phase R1 自进化 |
+|--|------------------|-----------------|
+| 改什么 | 主要是 **Prompt 模板** | **经验库** + plan/tool **策略**（仍走 HITL） |
+| 触发 | bad case / 低分回流 | 每次 run 结束 `trigger_self_evolve` |
+| 检索 | 无任务级复用 | `retrieve_similar` / `retrieve_by_goal` 注入 Planner |
+
+两者 **并存**：飞轮修模板，自进化修「这类任务上次怎么成功的」。
 
 ---
 
@@ -150,9 +204,51 @@ flowchart TB
 
 ---
 
+## 7. 业界定位与诚实边界（非 SOTA 表述）
+
+### 7.1 我们是什么、不是什么
+
+| 表述 | 是否准确 |
+|------|----------|
+| 「对齐 DeepSeek Harness / 一线 Agent **平台工程**方向」 | ✅ 推荐 |
+| 「Plan-and-Execute + 自进化 + 长程 + 能力画像 **portfolio 深度**」 | ✅ 推荐 |
+| 「业界 **SOTA** / 超越 Voyager、HELM」 | ❌ 不准确，面试勿夸大 |
+
+本仓库目标是 **可演示、可门禁、可讲清架构** 的 Harness 参考实现，不是论文复现或权威榜单。
+
+### 7.2 与业界前沿的对照（诚实版）
+
+| Phase R 能力 | 本仓库实现层级 | 更前沿的研究/产品（了解即可） |
+|--------------|----------------|------------------------------|
+| **R1 自进化** | 经验回放 + LLM reflect + 策略 patch（HITL） | Voyager 技能库、ExpeL/Reflexion、TextGrad/DSPy 自动优化 |
+| **R1 相似检索** | 规划：embedding；当前：goal 签名 / 子串 | 向量库 + 任务 embedding 近邻（R1+ 待加强） |
+| **R2 长程** | Postgres 任务表 + Plan 层 checkpoint | LangGraph Cloud、Temporal/Inngest 分布式 durable workflow |
+| **R3 四维度** | 自建 `harness_capability_benchmark` | HELM、OpenCompass、BFCL、τ-bench、WebArena |
+| **Router 反哺** | offline profile → 路由启发 | 在线 A/B、与训练闭环联动 |
+
+### 7.3 对外 / 面试推荐话术
+
+**可以说**：
+
+> Phase R 把 Harness 从「被动跑 Agent」推进到「经验沉淀、长程可恢复、按能力选模型」——和 LangGraph checkpoint、平台级经验库、Router eval 反哺是同一类工程问题。
+
+**建议主动说的限制**：
+
+> 不做在线 RL 和模型训练；自进化改的是 prompt/策略而非代码；能力探测是内部 4 维 smoke，不是 HELM 级公开榜单；长程任务单进程 + Postgres，不是亿级调度。
+
+### 7.4 R1 / R3 验收加强（相对原规划的增量）
+
+| 项 | 原规划 | 建议验收加强 |
+|----|--------|--------------|
+| R1 第 2 次任务 | 「复用经验」 | 度量 **plan 步数或 tool 错误率下降**（smoke 硬指标） |
+| R1 检索 | embedding 相似 | 至少 **embedding 近邻** 或明确文档写「MVP 为签名匹配」 |
+| R3 benchmark | 4 维 mock 可跑 | 产出 **样例 capability report**，与 `plan_quality_gate` 并列演示 |
+
+---
+
 ## 5. 面试一句话
 
-> Phase Q 把 Planner 升级到 Plan-and-Execute；Phase R 进一步对齐 DeepSeek Harness 方向 —— **自进化 Agent**（经验库 + 策略自改 + HITL 守门）、**跨 session 长程任务**（checkpoint/resume + 任务持久化）、**Harness-side 模型能力探测**（4 维度 benchmark + 能力画像 + Router 反哺），让 Harness 从「被动承载」走向「与模型协同进化」。
+> Phase Q 把 Planner 升级到 Plan-and-Execute；Phase R 进一步对齐 DeepSeek Harness **工程方向** —— **自进化 Agent**（经验库 + 策略自改 + HITL 守门）、**跨 session 长程任务**（checkpoint/resume + 任务持久化）、**Harness-side 模型能力探测**（4 维度 benchmark + 能力画像 + Router 反哺）。与 Q7 分工：Q7 管运行时图与编排 checkpoint，R2 管业务长程任务（见 [§2.1](#21-phase-q-q7-与-phase-r-边界避免概念打架)）。
 
 ---
 

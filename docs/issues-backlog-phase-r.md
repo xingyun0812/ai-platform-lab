@@ -1,6 +1,6 @@
 # Phase R Issue Backlog — Agent Harness 前沿
 
-> 规划：[phase-r-agent-harness.md](./phase-r-agent-harness.md)  
+> 规划：[phase-r-agent-harness.md](./phase-r-agent-harness.md)（含 [Q7 边界](./phase-r-agent-harness.md#21-phase-q-q7-与-phase-r-边界避免概念打架)、[业界定位](./phase-r-agent-harness.md#7-业界定位与诚实边界非-sota-表述)）  
 > **Milestone**：Phase R — Agent Harness Frontier  
 > **Tag**：`phase-r-agent-harness`  
 > **前置**：Phase Q ✅（#121） · Phase F #31 长记忆 ✅ · Phase J #48 反馈飞轮 ✅
@@ -22,9 +22,9 @@
 **目标**：评审 `docs/phase-r-agent-harness.md`，创建 R1～R4 Issue，更新 `roadmap.md`。
 
 **验收**：
-- [ ] `docs/phase-r-agent-harness.md` 评审通过
-- [ ] Milestone Phase R 内 R1～R4 Issue 创建完毕（#134～#137）
-- [ ] `roadmap.md` 增加 Phase R 章节
+- [x] `docs/phase-r-agent-harness.md` 评审通过（含 Q7 边界 + 非 SOTA 表述 §7）
+- [x] Milestone Phase R 内 R1～R4 Issue 创建完毕（#134～#137）
+- [x] `roadmap.md` 增加 Phase R 章节
 
 **非目标**：训练模型；在线 RL；亿级在线推理。
 
