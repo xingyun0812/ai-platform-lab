@@ -19,6 +19,7 @@ from apps.gateway.rag.task_store import get_task_store as get_rag_task_store
 from apps.gateway.settings import REPO_ROOT, get_settings
 from apps.gateway.tenants import TenantRecord, load_tenants
 from packages.auth.rbac import can_patch_tenant_limits
+from packages.billing.budget import get_budget_snapshot
 from packages.observability.metrics import get_metrics_store
 from packages.rag.retrieval import retrieve_chunks
 
@@ -76,6 +77,30 @@ def _document_count(kb_id: str) -> int:
     return count
 
 
+def _tenant_console_row(tid: str, record: TenantRecord) -> dict[str, Any]:
+    """Console 租户列表行；本月用量来自 Postgres billing（需 DATABASE_URL）。"""
+    snap = get_budget_snapshot(
+        tid,
+        token_budget_daily=record.token_budget_daily,
+        token_budget_monthly=record.token_budget_monthly,
+    )
+    monthly_budget = record.token_budget_monthly
+    quota = monthly_budget if monthly_budget > 0 else None
+    return {
+        "tenant_id": tid,
+        "role": record.role,
+        "token_budget_monthly": monthly_budget,
+        "quota_tokens_per_month": quota,
+        "tokens_used_this_month": snap.used_monthly if snap else None,
+        "tokens_used_today": snap.used_daily if snap else None,
+        "billing_available": snap is not None,
+        "enabled": True,
+        "created_at": "2024-01-01T00:00:00Z",
+        "daily_request_quota": record.daily_request_quota,
+        "token_budget_daily": record.token_budget_daily,
+    }
+
+
 @router.get("/tenants")
 async def list_tenants_for_console(
     x_tenant_id: Annotated[str | None, Header(alias="X-Tenant-Id")] = None,
@@ -88,21 +113,7 @@ async def list_tenants_for_console(
         return json_error(403, "FORBIDDEN", "需要 platform_admin 查看租户列表")
 
     tenants = load_tenants()
-    rows: list[dict[str, Any]] = []
-    for tid, record in sorted(tenants.items()):
-        quota = record.token_budget_monthly if record.token_budget_monthly > 0 else 10_000_000
-        rows.append(
-            {
-                "tenant_id": tid,
-                "role": record.role,
-                "quota_tokens_per_month": quota,
-                "tokens_used_this_month": 0,
-                "enabled": True,
-                "created_at": "2024-01-01T00:00:00Z",
-                "daily_request_quota": record.daily_request_quota,
-                "token_budget_daily": record.token_budget_daily,
-            }
-        )
+    rows = [_tenant_console_row(tid, record) for tid, record in sorted(tenants.items())]
     return JSONResponse(rows)
 
 

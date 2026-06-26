@@ -150,13 +150,28 @@ describe("Console V2 — App & Pages", () => {
   // 5. Tenants table renders page container
   it("5. Tenants page renders container", async () => {
     const { default: apiClient } = await import("../src/api/client");
-    (apiClient.get as ReturnType<typeof vi.fn>).mockResolvedValue({ data: [] });
+    (apiClient.get as ReturnType<typeof vi.fn>).mockResolvedValue({
+      data: [
+        {
+          tenant_id: "admin",
+          role: "platform_admin",
+          token_budget_monthly: -1,
+          quota_tokens_per_month: null,
+          tokens_used_this_month: 42000,
+          billing_available: true,
+          enabled: true,
+          created_at: "2024-01-01T00:00:00Z",
+        },
+      ],
+    });
 
     renderWithRouter(<Tenants />, { initialEntries: ["/tenants"] });
 
     await waitFor(() => {
       expect(screen.getByTestId("tenants-page")).toBeDefined();
+      expect(screen.getByTestId("tenant-usage-admin")).toBeDefined();
     });
+    expect(screen.getByTestId("tenant-usage-admin").textContent).toContain("42.0K");
   });
 
   // 6. Agents page renders and has create button

@@ -122,8 +122,10 @@ interface LoginResponse {
 interface TenantRecord {
   tenant_id: string;
   role: "platform_admin" | "tenant_user" | "read_only";
-  quota_tokens_per_month: number;
-  tokens_used_this_month: number;
+  token_budget_monthly: number;       // -1 = 不限
+  quota_tokens_per_month: number | null;
+  tokens_used_this_month: number | null;  // Postgres billing；无 DB 时为 null
+  billing_available: boolean;
   enabled: boolean;
   created_at: string;
 }

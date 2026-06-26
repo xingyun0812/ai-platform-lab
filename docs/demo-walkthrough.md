@@ -45,6 +45,7 @@ cd console-v2 && npm install && npm run build && cd ..
 | `MEMORY_STORE_ENABLED=true` | Memory 页有数据 |
 | `MULTI_AGENT_ENABLED=true` | Agents 页（默认通常开） |
 | `WEB_SEARCH_MODE=ddg` | Agent 真实联网搜索（天气/新闻 demo）；CI 用 `mock` |
+| `DATABASE_URL` | 租户页 **本月使用**、Dashboard token 统计（见 [console-tenant-billing.md](./console-tenant-billing.md)） |
 
 **推荐模型别名**：`chat-fast`（deepseek-v4-flash）、`chat-thinking`、`chat-minimax`
 

@@ -12,18 +12,22 @@ import {
   Typography,
   Popconfirm,
   message,
+  Tooltip,
 } from "antd";
 import { PlusOutlined, EditOutlined, DeleteOutlined } from "@ant-design/icons";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import apiClient from "../api/client";
 
-const { Title } = Typography;
+const { Title, Text } = Typography;
 
 interface TenantRecord {
   tenant_id: string;
   role: "platform_admin" | "tenant_user" | "read_only";
-  quota_tokens_per_month: number;
-  tokens_used_this_month: number;
+  token_budget_monthly: number;
+  quota_tokens_per_month: number | null;
+  tokens_used_this_month: number | null;
+  tokens_used_today?: number | null;
+  billing_available: boolean;
   enabled: boolean;
   created_at: string;
 }
@@ -34,33 +38,18 @@ interface TenantForm {
   quota_tokens_per_month: number;
 }
 
+function formatTokenCount(value: number): string {
+  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M`;
+  if (value >= 1_000) return `${(value / 1_000).toFixed(1)}K`;
+  return String(value);
+}
+
 function useTenants() {
   return useQuery<TenantRecord[]>({
     queryKey: ["tenants"],
     queryFn: async () => {
-      try {
-        const res = await apiClient.get("/internal/tenants");
-        return res.data;
-      } catch {
-        return [
-          {
-            tenant_id: "admin",
-            role: "platform_admin",
-            quota_tokens_per_month: 10_000_000,
-            tokens_used_this_month: 1_280_000,
-            enabled: true,
-            created_at: "2024-01-01T00:00:00Z",
-          },
-          {
-            tenant_id: "tenant-a",
-            role: "tenant_user",
-            quota_tokens_per_month: 1_000_000,
-            tokens_used_this_month: 320_000,
-            enabled: true,
-            created_at: "2024-02-01T00:00:00Z",
-          },
-        ] as TenantRecord[];
-      }
+      const res = await apiClient.get("/internal/tenants");
+      return res.data;
     },
   });
 }
@@ -74,7 +63,10 @@ export default function Tenants() {
 
   const isAdmin =
     localStorage.getItem("tenant_id") === "admin" ||
-    data?.find((t) => t.tenant_id === localStorage.getItem("tenant_id"))?.role === "platform_admin";
+    data?.find((t) => t.tenant_id === localStorage.getItem("tenant_id"))?.role ===
+      "platform_admin";
+
+  const billingUnavailable = data?.some((t) => !t.billing_available) ?? false;
 
   const createMutation = useMutation({
     mutationFn: (values: TenantForm) =>
@@ -115,7 +107,9 @@ export default function Tenants() {
     form.setFieldsValue({
       tenant_id: record.tenant_id,
       role: record.role,
-      quota_tokens_per_month: record.quota_tokens_per_month,
+      quota_tokens_per_month:
+        record.quota_tokens_per_month ??
+        (record.token_budget_monthly > 0 ? record.token_budget_monthly : 1_000_000),
     });
     setModalOpen(true);
   };
@@ -150,18 +144,34 @@ export default function Tenants() {
     },
     {
       title: "配额 (Tokens/月)",
-      dataIndex: "quota_tokens_per_month",
       key: "quota",
-      render: (v: number) => `${(v / 1_000_000).toFixed(1)}M`,
+      render: (_: unknown, record: TenantRecord) =>
+        record.token_budget_monthly < 0 || record.quota_tokens_per_month == null ? (
+          <Tag>不限</Tag>
+        ) : (
+          formatTokenCount(record.quota_tokens_per_month)
+        ),
     },
     {
       title: "本月使用",
       key: "used",
       render: (_: unknown, record: TenantRecord) => {
-        const pct = (record.tokens_used_this_month / record.quota_tokens_per_month) * 100;
+        if (!record.billing_available || record.tokens_used_this_month == null) {
+          return (
+            <Tooltip title="配置 DATABASE_URL 并确保 Postgres 可达后显示真实用量">
+              <Tag color="default">未接入计费</Tag>
+            </Tooltip>
+          );
+        }
+        const used = record.tokens_used_this_month;
+        const quota = record.quota_tokens_per_month;
+        if (quota == null || quota <= 0) {
+          return <span data-testid={`tenant-usage-${record.tenant_id}`}>{formatTokenCount(used)}</span>;
+        }
+        const pct = (used / quota) * 100;
         return (
-          <Space>
-            <span>{(record.tokens_used_this_month / 1_000).toFixed(0)}K</span>
+          <Space data-testid={`tenant-usage-${record.tenant_id}`}>
+            <span>{formatTokenCount(used)}</span>
             <span style={{ color: pct > 80 ? "#f5222d" : "#52c41a" }}>
               ({pct.toFixed(1)}%)
             </span>
@@ -230,6 +240,16 @@ export default function Tenants() {
           </Button>
         )}
       </div>
+
+      {billingUnavailable && (
+        <Text
+          type="secondary"
+          style={{ display: "block", marginBottom: 12 }}
+          data-testid="tenants-billing-hint"
+        >
+          本月使用来自 Postgres 计费表（Phase B）；请配置 <code>DATABASE_URL</code> 并重启 Gateway。
+        </Text>
+      )}
 
       <Table
         dataSource={data ?? []}

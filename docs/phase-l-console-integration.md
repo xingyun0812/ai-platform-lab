@@ -35,7 +35,7 @@ Phase J 交付了 `console-v2/` 源码，但存在：
 | 方法 | 路径 | 用途 |
 |------|------|------|
 | POST | `/internal/auth/token` | Console 登录 |
-| GET | `/internal/tenants` | 租户列表（admin） |
+| GET | `/internal/tenants` | 租户列表（admin）；`tokens_used_this_month` 来自 Postgres billing |
 | GET | `/internal/metrics` | Dashboard JSON |
 | GET | `/internal/settings` | 功能开关只读 |
 | GET/POST/DELETE | `/internal/rag/knowledge-bases` | 知识库 CRUD |
@@ -75,7 +75,7 @@ cd console-v2 && npm run dev
 |------|----------|------|
 | Login | `POST /internal/auth/token` | 200 或 fallback 存 Bearer |
 | Dashboard | `GET /internal/metrics` | 200（进程内指标 + 可选 billing） |
-| Tenants | `GET /internal/tenants` | 200（admin） |
+| Tenants | `GET /internal/tenants` | 200（admin）；**本月使用** = `get_budget_snapshot` 真实 token，需 `DATABASE_URL` |
 | Agents | `GET /internal/agents` + Task Planner | 200（需 `MULTI_AGENT_ENABLED`）；Planner 展示 `final_message`，JSON 默认折叠 |
 | RAG | `GET /internal/rag/knowledge-bases` | 200 |
 | Memory | `GET /internal/memory/list` | 200（需 `MEMORY_STORE_ENABLED`） |
@@ -113,4 +113,5 @@ curl -s -H "X-Tenant-Id: admin" -H "Authorization: Bearer sk-tenant-admin-change
 
 - [demo-walkthrough.md](./demo-walkthrough.md)
 - [phase-j-console-v2.md](./phase-j-console-v2.md) — Phase J 原始设计
+- [console-tenant-billing.md](./console-tenant-billing.md) — 租户本月用量与 Billing 对接
 - [issues-backlog-phase-l.md](./issues-backlog-phase-l.md) — #62-console / #62 / #63

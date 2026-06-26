@@ -62,6 +62,16 @@ curl -s "http://127.0.0.1:8000/internal/billing/export?hours=24&format=csv" \
   -H "Authorization: Bearer sk-tenant-admin-change-me" -o usage.csv
 ```
 
+### Console 租户页「本月使用」
+
+`GET /internal/tenants` 对每个租户调用 `get_budget_snapshot()`，与上表 API 同源。详见 [console-tenant-billing.md](./console-tenant-billing.md)。
+
+```bash
+curl -s http://127.0.0.1:8000/internal/tenants \
+  -H "X-Tenant-Id: admin" \
+  -H "Authorization: Bearer sk-tenant-admin-change-me" | jq '.[0] | {tenant_id, tokens_used_this_month, billing_available}'
+```
+
 ### 预算拦截
 
 `demo-b` 配置了 `token_budget_daily: 500`。在 Postgres 中累计超过后：
