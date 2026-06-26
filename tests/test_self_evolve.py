@@ -159,8 +159,8 @@ class TestExperienceStore(unittest.TestCase):
     def test_store_and_get(self) -> None:
         """store() 后 get() 能返回同一条记录。"""
         record = _make_record()
-        _exp_mod.store_experience(record)
-        fetched = _exp_mod.get_experience_store().get(record.experience_id)
+        _run_async(_exp_mod.store_experience(record))
+        fetched = _run_async(_exp_mod.get_experience_store().get(record.experience_id))
         self.assertIsNotNone(fetched)
         self.assertEqual(fetched.experience_id, record.experience_id)  # type: ignore[union-attr]
 
@@ -168,10 +168,10 @@ class TestExperienceStore(unittest.TestCase):
         """retrieve_similar 能按 task_signature 精确检索。"""
         goal = "查询销售数据"
         r = _make_record(goal=goal)
-        _exp_mod.store_experience(r)
+        _run_async(_exp_mod.store_experience(r))
 
         sig = _exp_mod.compute_task_signature(goal)
-        results = _exp_mod.retrieve_similar_experiences(sig, top_k=3)
+        results = _run_async(_exp_mod.retrieve_similar_experiences(sig, top_k=3))
         self.assertEqual(len(results), 1)
         self.assertEqual(results[0].goal, goal)
 
@@ -180,54 +180,54 @@ class TestExperienceStore(unittest.TestCase):
         goal = "重复任务测试"
         for _ in range(5):
             r = _make_record(goal=goal)
-            _exp_mod.store_experience(r)
+            _run_async(_exp_mod.store_experience(r))
 
         sig = _exp_mod.compute_task_signature(goal)
-        results = _exp_mod.retrieve_similar_experiences(sig, top_k=2)
+        results = _run_async(_exp_mod.retrieve_similar_experiences(sig, top_k=2))
         self.assertLessEqual(len(results), 2)
 
     def test_retrieve_by_goal_substring(self) -> None:
         """retrieve_by_goal 能做 substring 模糊匹配。"""
         r = _make_record(goal="分析用户行为数据报告")
-        _exp_mod.store_experience(r)
+        _run_async(_exp_mod.store_experience(r))
 
         # 用子串查询
-        results = _exp_mod.get_experience_store().retrieve_by_goal("用户行为", top_k=3)
+        results = _run_async(_exp_mod.get_experience_store().retrieve_by_goal("用户行为", top_k=3))
         self.assertGreaterEqual(len(results), 1)
 
     def test_list_all(self) -> None:
         """list_all 返回所有记录。"""
         for i in range(3):
             r = _make_record(goal=f"任务 {i}")
-            _exp_mod.store_experience(r)
+            _run_async(_exp_mod.store_experience(r))
 
-        all_records = _exp_mod.get_experience_store().list_all()
+        all_records = _run_async(_exp_mod.get_experience_store().list_all())
         self.assertEqual(len(all_records), 3)
 
     def test_delete(self) -> None:
         """delete 能删除记录，并返回 True；再次删除返回 False。"""
         r = _make_record()
-        _exp_mod.store_experience(r)
+        _run_async(_exp_mod.store_experience(r))
         eid = r.experience_id
 
-        ok = _exp_mod.get_experience_store().delete(eid)
+        ok = _run_async(_exp_mod.get_experience_store().delete(eid))
         self.assertTrue(ok)
 
-        ok2 = _exp_mod.get_experience_store().delete(eid)
+        ok2 = _run_async(_exp_mod.get_experience_store().delete(eid))
         self.assertFalse(ok2)
 
-        fetched = _exp_mod.get_experience_store().get(eid)
+        fetched = _run_async(_exp_mod.get_experience_store().get(eid))
         self.assertIsNone(fetched)
 
     def test_sig_index_consistency(self) -> None:
         """删除后 sig_index 中不应再包含该 ID。"""
         goal = "索引一致性测试"
         r = _make_record(goal=goal)
-        _exp_mod.store_experience(r)
+        _run_async(_exp_mod.store_experience(r))
 
-        _exp_mod.get_experience_store().delete(r.experience_id)
+        _run_async(_exp_mod.get_experience_store().delete(r.experience_id))
         sig = _exp_mod.compute_task_signature(goal)
-        results = _exp_mod.retrieve_similar_experiences(sig, top_k=3)
+        results = _run_async(_exp_mod.retrieve_similar_experiences(sig, top_k=3))
         self.assertEqual(len(results), 0)
 
     def test_to_dict(self) -> None:
@@ -426,7 +426,7 @@ class TestTriggerSelfEvolve(unittest.TestCase):
         result = _run_async(se.trigger_self_evolve(plan, "success", tenant_id="t1", tool_calls=[]))
         self.assertIsNotNone(result["experience_id"])
         # 验证确实存储了
-        stored = _exp_mod.get_experience_store().get(result["experience_id"])
+        stored = _run_async(_exp_mod.get_experience_store().get(result["experience_id"]))
         self.assertIsNotNone(stored)
 
     def test_trigger_returns_lessons(self) -> None:
@@ -465,10 +465,10 @@ class TestPlannerExperienceInjection(unittest.TestCase):
         """当有成功经验时，应能检索并注入 lessons。"""
         goal = "生成财务报告"
         r = _make_record(goal=goal, outcome="success", lessons="经验 P1: 先对账再输出")
-        _exp_mod.store_experience(r)
+        _run_async(_exp_mod.store_experience(r))
 
         sig = _exp_mod.compute_task_signature(goal)
-        similar = _exp_mod.retrieve_similar_experiences(sig, top_k=2)
+        similar = _run_async(_exp_mod.retrieve_similar_experiences(sig, top_k=2))
         self.assertGreaterEqual(len(similar), 1)
 
         # 构造注入逻辑（与 planner.py 中一致）

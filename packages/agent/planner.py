@@ -281,23 +281,31 @@ async def generate_plan(
     if not goal:
         raise PlannerError("PLAN_INVALID", "goal 不能为空")
 
-    # === Phase R R1: 注入相似经验 ===
+    # === Phase R R1+: 注入相似经验（embedding 语义检索 + 降级链） ===
     past_lessons: str = ""
     try:
         from packages.agent.experience_store import (
+            compute_task_embedding,
             compute_task_signature,
             retrieve_similar_experiences,
         )
 
         sig = compute_task_signature(goal)
-        similar = retrieve_similar_experiences(sig, top_k=2)
+        # 尝试计算 embedding（服务不可用时返回 None，降级到 hash 精确匹配）
+        emb = await compute_task_embedding(goal)
+        similar = await retrieve_similar_experiences(sig, task_embedding=emb, top_k=2)
         if similar:
             lessons_lines = [
                 f"- {e.lessons}" for e in similar if e.outcome == "success" and e.lessons
             ]
             if lessons_lines:
                 past_lessons = "\n".join(lessons_lines)
-                logger.debug("injecting %d past lessons for goal=%r", len(lessons_lines), goal[:50])
+                logger.debug(
+                    "injecting %d past lessons for goal=%r (embedding=%s)",
+                    len(lessons_lines),
+                    goal[:50],
+                    "yes" if emb is not None else "no",
+                )
     except Exception as exc:
         logger.warning("experience injection failed: %s", exc)
 
