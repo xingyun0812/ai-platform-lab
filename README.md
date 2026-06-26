@@ -33,7 +33,7 @@ curl -s http://127.0.0.1:8000/v1/rag/query \
 python eval/run.py run
 ```
 
-平台叙事：[docs/architecture.md](docs/architecture.md) · 已知限制：[docs/roadmap.md](docs/roadmap.md) · Phase A：[docs/phase-a-internal-beta.md](docs/phase-a-internal-beta.md)
+平台叙事：[docs/architecture.md](docs/architecture.md) · 路线图与缺口：[docs/roadmap.md](docs/roadmap.md) · Phase A 起点：[docs/phase-a-internal-beta.md](docs/phase-a-internal-beta.md)
 
 ---
 
