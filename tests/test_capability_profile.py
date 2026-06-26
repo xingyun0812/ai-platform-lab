@@ -236,7 +236,7 @@ def test_tool_use_wrong_tool():
     # 参数键存在：0.3，参数值匹配：0.3 → 最多 0.6，工具名 0
     assert score < 0.7, f"expected <0.7, got {score}"
     # 但不会得满分
-    assert score < 1.0, f"should not be 1.0"
+    assert score < 1.0, "should not be 1.0"
     print(f"PASS test_tool_use_wrong_tool (score={score:.3f})")
 
 
@@ -536,7 +536,6 @@ def test_select_model_picks_best_dimension():
         "apps.gateway.model_router",
     )
     # 替换 get_capability_profile_store 引用
-    import types
 
     old_packages = sys.modules.get("packages.agent.capability_profile")
     sys.modules["packages.agent.capability_profile"] = profile_mod  # type: ignore[assignment]

@@ -74,7 +74,7 @@ async def create_long_run_task(
     if isinstance(tenant, JSONResponse):
         return tenant
 
-    task = create_long_run(
+    task = await create_long_run(
         plan=body.plan,
         tenant_id=tenant.tenant_id,
         session_id=body.session_id,
@@ -103,7 +103,7 @@ async def list_long_run_tasks(
         return tenant
 
     store = get_long_run_store()
-    tasks = store.list_by_tenant(tenant.tenant_id)
+    tasks = await store.list_by_tenant(tenant.tenant_id)
     return JSONResponse(
         content={
             "tasks": [
@@ -128,14 +128,14 @@ async def get_long_run_task(
     if isinstance(tenant, JSONResponse):
         return tenant
 
-    task = get_long_run(task_id)
+    task = await get_long_run(task_id)
     if task is None:
         return json_error(404, "TASK_NOT_FOUND", f"长程任务不存在: {task_id}")
 
     if task.tenant_id != tenant.tenant_id:
         return json_error(403, "FORBIDDEN", "无权访问此任务")
 
-    status_dict = get_task_status(task_id)
+    status_dict = await get_task_status(task_id)
     return JSONResponse(content=status_dict)
 
 
@@ -149,7 +149,7 @@ async def resume_long_run_task(
     if isinstance(tenant, JSONResponse):
         return tenant
 
-    task = get_long_run(task_id)
+    task = await get_long_run(task_id)
     if task is None:
         return json_error(404, "TASK_NOT_FOUND", f"长程任务不存在: {task_id}")
 
@@ -159,7 +159,7 @@ async def resume_long_run_task(
     if task.status in {"completed", "cancelled"}:
         return json_error(409, "TASK_NOT_RESUMABLE", f"任务状态 {task.status} 不可续跑")
 
-    updated = resume_task(task_id)
+    updated = await resume_task(task_id)
     if updated is None:
         return json_error(500, "RESUME_FAILED", "续跑失败")
 
@@ -183,18 +183,18 @@ async def cancel_long_run_task(
     if isinstance(tenant, JSONResponse):
         return tenant
 
-    task = get_long_run(task_id)
+    task = await get_long_run(task_id)
     if task is None:
         return json_error(404, "TASK_NOT_FOUND", f"长程任务不存在: {task_id}")
 
     if task.tenant_id != tenant.tenant_id:
         return json_error(403, "FORBIDDEN", "无权访问此任务")
 
-    ok = cancel_task(task_id)
+    ok = await cancel_task(task_id)
     if not ok:
         return json_error(409, "CANCEL_FAILED", f"任务状态 {task.status} 无法取消")
 
-    updated = get_long_run(task_id)
+    updated = await get_long_run(task_id)
     return JSONResponse(
         content={
             "task_id": task_id,

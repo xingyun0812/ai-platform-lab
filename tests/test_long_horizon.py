@@ -293,40 +293,40 @@ class TestLongRunTaskStore(unittest.TestCase):
 
     def test_create_and_get(self) -> None:
         plan = self._plan()
-        task = self.store.create(plan, "tenant1", "sess1")
+        task = _run_async(self.store.create(plan, "tenant1", "sess1"))
         self.assertIsNotNone(task.task_id)
-        fetched = self.store.get(task.task_id)
+        fetched = _run_async(self.store.get(task.task_id))
         self.assertIsNotNone(fetched)
         self.assertEqual(fetched.tenant_id, "tenant1")
 
     def test_get_missing_returns_none(self) -> None:
-        self.assertIsNone(self.store.get("nonexistent"))
+        self.assertIsNone(_run_async(self.store.get("nonexistent")))
 
     def test_list_by_tenant(self) -> None:
         plan = self._plan()
-        t1 = self.store.create(plan, "tenantA")
-        t2 = self.store.create(plan, "tenantA")
-        self.store.create(plan, "tenantB")
-        tasks = self.store.list_by_tenant("tenantA")
+        t1 = _run_async(self.store.create(plan, "tenantA"))
+        t2 = _run_async(self.store.create(plan, "tenantA"))
+        _run_async(self.store.create(plan, "tenantB"))
+        tasks = _run_async(self.store.list_by_tenant("tenantA"))
         ids = {t.task_id for t in tasks}
         self.assertIn(t1.task_id, ids)
         self.assertIn(t2.task_id, ids)
         self.assertEqual(len(tasks), 2)
 
     def test_update_status(self) -> None:
-        task = self.store.create(self._plan(), "t1")
-        ok = self.store.update_status(task.task_id, "running")
+        task = _run_async(self.store.create(self._plan(), "t1"))
+        ok = _run_async(self.store.update_status(task.task_id, "running"))
         self.assertTrue(ok)
-        updated = self.store.get(task.task_id)
+        updated = _run_async(self.store.get(task.task_id))
         self.assertEqual(updated.status, "running")
 
     def test_update_status_invalid(self) -> None:
-        task = self.store.create(self._plan(), "t1")
-        ok = self.store.update_status(task.task_id, "INVALID_STATUS")
+        task = _run_async(self.store.create(self._plan(), "t1"))
+        ok = _run_async(self.store.update_status(task.task_id, "INVALID_STATUS"))
         self.assertFalse(ok)
 
     def test_add_checkpoint_and_get_latest(self) -> None:
-        task = self.store.create(self._plan(), "t1")
+        task = _run_async(self.store.create(self._plan(), "t1"))
         cp = Checkpoint(
             checkpoint_id="cp1",
             task_id=task.task_id,
@@ -334,40 +334,40 @@ class TestLongRunTaskStore(unittest.TestCase):
             layer_index=1,
             created_at=time.time(),
         )
-        ok = self.store.add_checkpoint(task.task_id, cp)
+        ok = _run_async(self.store.add_checkpoint(task.task_id, cp))
         self.assertTrue(ok)
-        latest = self.store.get_latest_checkpoint(task.task_id)
+        latest = _run_async(self.store.get_latest_checkpoint(task.task_id))
         self.assertIsNotNone(latest)
         self.assertEqual(latest.checkpoint_id, "cp1")
 
     def test_get_latest_checkpoint_no_checkpoints(self) -> None:
-        task = self.store.create(self._plan(), "t1")
-        self.assertIsNone(self.store.get_latest_checkpoint(task.task_id))
+        task = _run_async(self.store.create(self._plan(), "t1"))
+        self.assertIsNone(_run_async(self.store.get_latest_checkpoint(task.task_id)))
 
     def test_cancel(self) -> None:
-        task = self.store.create(self._plan(), "t1")
-        ok = self.store.cancel(task.task_id)
+        task = _run_async(self.store.create(self._plan(), "t1"))
+        ok = _run_async(self.store.cancel(task.task_id))
         self.assertTrue(ok)
-        updated = self.store.get(task.task_id)
+        updated = _run_async(self.store.get(task.task_id))
         self.assertEqual(updated.status, "cancelled")
 
     def test_cancel_already_cancelled(self) -> None:
-        task = self.store.create(self._plan(), "t1")
-        self.store.cancel(task.task_id)
-        ok = self.store.cancel(task.task_id)
+        task = _run_async(self.store.create(self._plan(), "t1"))
+        _run_async(self.store.cancel(task.task_id))
+        ok = _run_async(self.store.cancel(task.task_id))
         self.assertFalse(ok)
 
     def test_delete(self) -> None:
-        task = self.store.create(self._plan(), "t1")
-        ok = self.store.delete(task.task_id)
+        task = _run_async(self.store.create(self._plan(), "t1"))
+        ok = _run_async(self.store.delete(task.task_id))
         self.assertTrue(ok)
-        self.assertIsNone(self.store.get(task.task_id))
+        self.assertIsNone(_run_async(self.store.get(task.task_id)))
 
     def test_set_final_result(self) -> None:
-        task = self.store.create(self._plan(), "t1")
-        ok = self.store.set_final_result(task.task_id, {"key": "value"})
+        task = _run_async(self.store.create(self._plan(), "t1"))
+        ok = _run_async(self.store.set_final_result(task.task_id, {"key": "value"}))
         self.assertTrue(ok)
-        updated = self.store.get(task.task_id)
+        updated = _run_async(self.store.get(task.task_id))
         self.assertEqual(updated.final_result, {"key": "value"})
 
 
@@ -383,15 +383,15 @@ class TestResumeTask(unittest.TestCase):
 
     def test_resume_from_checkpoint(self) -> None:
         plan = _plan(_step("s1"), _step("s2", ["s1"]))
-        task = create_long_run(plan, "t1", "sess1")
+        task = _run_async(create_long_run(plan, "t1", "sess1"))
         # Complete s1 and create checkpoint
         task.step_states[0].status = "completed"
-        self.store.update_step_states(task.task_id, task.step_states)
-        self.store.update_status(task.task_id, "paused")
-        checkpoint_task(task.task_id)
+        _run_async(self.store.update_step_states(task.task_id, task.step_states))
+        _run_async(self.store.update_status(task.task_id, "paused"))
+        _run_async(checkpoint_task(task.task_id))
 
         # Now resume
-        resumed = resume_task(task.task_id)
+        resumed = _run_async(resume_task(task.task_id))
         self.assertIsNotNone(resumed)
         self.assertEqual(resumed.status, "running")
         self.assertEqual(resumed.step_states[0].status, "completed")
@@ -399,10 +399,10 @@ class TestResumeTask(unittest.TestCase):
 
     def test_resume_without_checkpoint_starts_fresh(self) -> None:
         plan = _plan(_step("s1"), _step("s2"))
-        task = create_long_run(plan, "t1")
-        self.store.update_status(task.task_id, "paused")
+        task = _run_async(create_long_run(plan, "t1"))
+        _run_async(self.store.update_status(task.task_id, "paused"))
 
-        resumed = resume_task(task.task_id)
+        resumed = _run_async(resume_task(task.task_id))
         self.assertIsNotNone(resumed)
         self.assertEqual(resumed.status, "running")
         # No checkpoint, all still pending
@@ -410,17 +410,17 @@ class TestResumeTask(unittest.TestCase):
             self.assertEqual(ss.status, "pending")
 
     def test_resume_nonexistent_task(self) -> None:
-        result = resume_task("nonexistent-task-id")
+        result = _run_async(resume_task("nonexistent-task-id"))
         self.assertIsNone(result)
 
     def test_checkpoint_captures_current_state(self) -> None:
         plan = _plan(_step("s1"), _step("s2"), _step("s3"))
-        task = create_long_run(plan, "t1")
+        task = _run_async(create_long_run(plan, "t1"))
         task.step_states[0].status = "completed"
         task.step_states[1].status = "completed"
-        self.store.update_step_states(task.task_id, task.step_states)
+        _run_async(self.store.update_step_states(task.task_id, task.step_states))
 
-        cp = checkpoint_task(task.task_id)
+        cp = _run_async(checkpoint_task(task.task_id))
         self.assertIsNotNone(cp)
         self.assertEqual(cp.layer_index, 2)
         statuses = [s.status for s in cp.step_states]
@@ -438,15 +438,15 @@ class TestGetTaskStatus(unittest.TestCase):
 
     def test_get_task_status_returns_combined(self) -> None:
         plan = _plan(_step("s1"), _step("s2"))
-        task = create_long_run(plan, "t1")
-        status = get_task_status(task.task_id)
+        task = _run_async(create_long_run(plan, "t1"))
+        status = _run_async(get_task_status(task.task_id))
         self.assertIsNotNone(status)
         self.assertIn("progress", status)
         self.assertIn("task_id", status)
         self.assertEqual(status["progress"]["total"], 2)
 
     def test_get_task_status_missing(self) -> None:
-        self.assertIsNone(get_task_status("no-such-id"))
+        self.assertIsNone(_run_async(get_task_status("no-such-id")))
 
 
 # ---------------------------------------------------------------------------
@@ -495,10 +495,10 @@ class TestExecutePlanParallelLongRun(unittest.TestCase):
         plan = _plan(_step("s1"), _step("s2", ["s1"]))
 
         # Create task and mark s1 as completed
-        task = create_long_run(plan, "t1", "sess1")
+        task = _run_async(create_long_run(plan, "t1", "sess1"))
         store = get_long_run_store()
         task.step_states[0].status = "completed"
-        store.update_step_states(task.task_id, task.step_states)
+        _run_async(store.update_step_states(task.task_id, task.step_states))
 
         call_log: list[str] = []
 
@@ -551,7 +551,7 @@ class TestExecutePlanParallelLongRun(unittest.TestCase):
         execute_plan_parallel = planner.execute_plan_parallel
 
         plan = _plan(_step("s1"))
-        task = create_long_run(plan, "t1", "sess1")
+        task = _run_async(create_long_run(plan, "t1", "sess1"))
 
         async def mock_runner(**kwargs: object) -> dict:
             return {
@@ -589,7 +589,7 @@ class TestExecutePlanParallelLongRun(unittest.TestCase):
             )
 
         # Auto-checkpoint should have been saved
-        updated = get_long_run(task.task_id)
+        updated = _run_async(get_long_run(task.task_id))
         self.assertIsNotNone(updated)
         self.assertGreaterEqual(len(updated.checkpoints), 1)
 
@@ -751,7 +751,7 @@ class TestLongRunRoutes(unittest.TestCase):
 
         reset_long_run_store_for_tests()
         plan = _plan(_step("s1"), _step("s2", ["s1"]))
-        task = create_long_run(plan, "tenant1", "sess-get")
+        task = _run_async(create_long_run(plan, "tenant1", "sess-get"))
 
         app = self._make_app()
         tenants = self._make_tenants()
@@ -781,8 +781,8 @@ class TestLongRunRoutes(unittest.TestCase):
 
         reset_long_run_store_for_tests()
         plan = _plan(_step("s1"))
-        create_long_run(plan, "tenant1")
-        create_long_run(plan, "tenant1")
+        _run_async(create_long_run(plan, "tenant1"))
+        _run_async(create_long_run(plan, "tenant1"))
 
         app = self._make_app()
         tenants = self._make_tenants()
@@ -798,8 +798,8 @@ class TestLongRunRoutes(unittest.TestCase):
 
         reset_long_run_store_for_tests()
         plan = _plan(_step("s1"))
-        task = create_long_run(plan, "tenant1")
-        get_long_run_store().update_status(task.task_id, "paused")
+        task = _run_async(create_long_run(plan, "tenant1"))
+        _run_async(get_long_run_store().update_status(task.task_id, "paused"))
 
         app = self._make_app()
         tenants = self._make_tenants()
@@ -818,7 +818,7 @@ class TestLongRunRoutes(unittest.TestCase):
 
         reset_long_run_store_for_tests()
         plan = _plan(_step("s1"))
-        task = create_long_run(plan, "tenant1")
+        task = _run_async(create_long_run(plan, "tenant1"))
 
         app = self._make_app()
         tenants = self._make_tenants()
@@ -837,8 +837,8 @@ class TestLongRunRoutes(unittest.TestCase):
 
         reset_long_run_store_for_tests()
         plan = _plan(_step("s1"))
-        task = create_long_run(plan, "tenant1")
-        get_long_run_store().update_status(task.task_id, "completed")
+        task = _run_async(create_long_run(plan, "tenant1"))
+        _run_async(get_long_run_store().update_status(task.task_id, "completed"))
 
         app = self._make_app()
         tenants = self._make_tenants()
@@ -878,10 +878,10 @@ class TestUtilFunctions(unittest.TestCase):
     def test_cancel_convenience_fn(self) -> None:
         reset_long_run_store_for_tests()
         plan = _plan(_step("s1"))
-        task = create_long_run(plan, "t1")
-        ok = cancel_task(task.task_id)
+        task = _run_async(create_long_run(plan, "t1"))
+        ok = _run_async(cancel_task(task.task_id))
         self.assertTrue(ok)
-        self.assertEqual(get_long_run(task.task_id).status, "cancelled")
+        self.assertEqual(_run_async(get_long_run(task.task_id)).status, "cancelled")
 
 
 if __name__ == "__main__":
