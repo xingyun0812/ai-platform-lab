@@ -13,6 +13,98 @@ from apps.gateway.settings import get_settings
 
 logger = logging.getLogger("ai_platform.gateway.model_router")
 
+# ---------------------------------------------------------------------------
+# R3: 能力感知模型选择
+# ---------------------------------------------------------------------------
+
+# 已知模型列表（用于 capability-aware 路由）
+_KNOWN_MODELS = (
+    "chat-fast",
+    "chat-smart",
+    "gpt-4o",
+    "gpt-4o-mini",
+    "gpt-3.5-turbo",
+    "claude-3-5-sonnet",
+    "claude-3-haiku",
+    "gemini-1.5-pro",
+    "gemini-1.5-flash",
+)
+
+
+def select_model_with_capability(
+    prompt_type: str = "default",
+    required_dimension: str | None = None,
+) -> str:
+    """根据 prompt 类型 + 所需维度选模型。
+
+    Args:
+        prompt_type: 任务类型提示（当前作为日志信息）。
+        required_dimension: "context" | "memory" | "tool" | "planning" | None。
+            若 None，用默认模型。
+            若指定，从 profile store 查所有模型的该维度分数，选最高的。
+
+    Returns:
+        模型名称字符串。
+    """
+    default_model = get_settings().default_model
+
+    if required_dimension is None:
+        logger.debug(
+            "select_model_with_capability no dimension required, using default=%s",
+            default_model,
+        )
+        return default_model
+
+    try:
+        from packages.agent.capability_profile import (
+            dim_to_field,
+            get_capability_profile_store,
+        )
+
+        store = get_capability_profile_store()
+        field_name = dim_to_field(required_dimension)
+        if field_name is None:
+            logger.warning(
+                "select_model_with_capability unknown dimension=%s, using default",
+                required_dimension,
+            )
+            return default_model
+
+        candidates: list[tuple[str, float]] = []
+        for model_id in _KNOWN_MODELS:
+            profile = store.get_latest(model_id)
+            if profile is None:
+                continue
+            score = getattr(profile.scores, field_name, 0.0)
+            candidates.append((model_id, score))
+
+        if not candidates:
+            logger.debug(
+                "select_model_with_capability no profiles found for dimension=%s, using default=%s",
+                required_dimension,
+                default_model,
+            )
+            return default_model
+
+        candidates.sort(key=lambda x: x[1], reverse=True)
+        selected = candidates[0][0]
+        logger.info(
+            "select_model_with_capability dimension=%s selected=%s score=%.3f prompt_type=%s",
+            required_dimension,
+            selected,
+            candidates[0][1],
+            prompt_type,
+        )
+        return selected
+    except Exception as exc:  # noqa: BLE001
+        logger.warning(
+            "select_model_with_capability error=%s, falling back to default=%s",
+            exc,
+            default_model,
+        )
+        return default_model
+
+
 _RETRYABLE_STATUSES = frozenset({429, 500, 502, 503, 504})
 
 
@@ -46,7 +138,9 @@ def get_model_router_config() -> ModelRouterConfig:
     raw = _read_yaml(settings.models_config_path)
     aliases_raw = raw.get("aliases") or {}
     chains_raw = raw.get("fallback_chains") or {}
-    aliases = {str(k): str(v) for k, v in aliases_raw.items()} if isinstance(aliases_raw, dict) else {}
+    aliases = (
+        {str(k): str(v) for k, v in aliases_raw.items()} if isinstance(aliases_raw, dict) else {}
+    )
     chains: dict[str, tuple[str, ...]] = {}
     if isinstance(chains_raw, dict):
         for key, value in chains_raw.items():
@@ -103,7 +197,30 @@ async def forward_with_model_router(
     requested_model: str | None = None,
     tenant_default: str | None = None,
 ) -> ModelRouteResult:
-    """按降级链调用上游；成功时 meta 标明实际 model。"""
+    """按降级链调用上游；成功时 meta 标明实际 model。
+
+    R3 扩展：若 payload 带 ``required_capability`` 字段（如 "context" / "memory" /
+    "tool" / "planning"），则通过 select_model_with_capability 从能力画像中选出
+    该维度得分最高的模型，覆盖 requested_model。
+    """
+    required_capability: str | None = payload.get("required_capability")
+    if required_capability:
+        cap_model = select_model_with_capability(
+            prompt_type=payload.get("prompt_type", "default"),
+            required_dimension=required_capability,
+        )
+        if cap_model and cap_model != get_settings().default_model:
+            # 只有当 capability routing 选出了非默认模型时才覆盖
+            requested_model = cap_model
+            logger.info(
+                "R3 capability routing: required_capability=%s → model=%s",
+                required_capability,
+                cap_model,
+            )
+        elif cap_model:
+            # capability routing 返回默认模型也应采用
+            requested_model = requested_model or cap_model
+
     primary = resolve_model_name(requested_model, tenant_default=tenant_default)
     chain = _fallback_chain(primary)
     tried: list[str] = []

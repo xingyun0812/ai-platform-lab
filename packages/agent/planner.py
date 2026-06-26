@@ -671,7 +671,7 @@ async def execute_plan_parallel(
     if long_run_task_id:
         from packages.agent.long_horizon import get_long_run
 
-        lr_task = get_long_run(long_run_task_id)
+        lr_task = await get_long_run(long_run_task_id)
         if lr_task is not None:
             completed_step_ids = {s.step_id for s in lr_task.step_states if s.status == "completed"}
 
@@ -743,7 +743,7 @@ async def execute_plan_parallel(
             from packages.agent.long_horizon import checkpoint_task
 
             try:
-                checkpoint_task(long_run_task_id)
+                await checkpoint_task(long_run_task_id)
             except Exception as exc:
                 logger.warning("auto-checkpoint failed: %s", exc)
 
