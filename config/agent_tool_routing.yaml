@@ -36,7 +36,25 @@ intents:
       - delay
       - httpbin
       - 超时测试
+  web_search:
+    tools:
+      - web_search
+    keywords:
+      - 搜索
+      - 搜
+      - 查一下
+      - 网上
+      - 互联网
+      - 新闻
+      - 天气
+      - 气温
+      - 预报
+      - 实时
+      - 百度
+      - google
+      - 查询
 
 default_tools:
   - calc
   - get_kb_snippet
+  - web_search

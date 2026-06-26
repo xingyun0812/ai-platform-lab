@@ -369,7 +369,7 @@ class Settings(BaseSettings):
     web_search_mode: str = Field(
         default="mock",
         validation_alias="WEB_SEARCH_MODE",
-        description="web_search 模式：mock | http",
+        description="web_search 模式：mock | http | ddg（DuckDuckGo 真实检索）",
     )
     web_search_url: str = Field(
         default="",
@@ -390,6 +390,11 @@ class Settings(BaseSettings):
         default=10.0,
         validation_alias="WEB_SEARCH_TIMEOUT_SECONDS",
         description="http 模式请求超时",
+    )
+    web_search_weather_enrich: bool = Field(
+        default=True,
+        validation_alias="WEB_SEARCH_WEATHER_ENRICH",
+        description="天气类 query 时通过 Open-Meteo 补充实时气温/湿度等",
     )
 
     # Phase O — sql_query 工具 (#92)

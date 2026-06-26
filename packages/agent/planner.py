@@ -428,6 +428,7 @@ async def execute_plan_with_agent(
             new_messages = [*step_system_messages, *new_messages]
 
         try:
+            pinned = (step.tool_hint,) if getattr(step, "tool_hint", None) else None
             result = await runner(
                 tenant_id=tenant_id,
                 session_id=session_id,
@@ -436,6 +437,7 @@ async def execute_plan_with_agent(
                 allowed_models=allowed_models,
                 model=model,
                 session_store=session_store,
+                pinned_tools=pinned,
             )
         except Exception as exc:
             logger.warning("execute_plan_with_agent: step %s raised exception: %s", step.id, exc)
@@ -687,6 +689,7 @@ async def execute_plan_parallel(
             if step_system_messages and layer_idx == 0 and layer_pos == 0:
                 new_messages = [*step_system_messages, *new_messages]
             sub_session_id = f"{session_id}__step_{step.id}"
+            pinned = (step.tool_hint,) if getattr(step, "tool_hint", None) else None
             return await runner(
                 tenant_id=tenant_id,
                 session_id=sub_session_id,
@@ -695,6 +698,7 @@ async def execute_plan_parallel(
                 allowed_models=allowed_models,
                 model=model,
                 session_store=session_store,
+                pinned_tools=pinned,
             )
 
         coros = [_run_step(step, i) for i, step in enumerate(pending_steps)]

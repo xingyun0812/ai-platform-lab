@@ -76,7 +76,7 @@ cd console-v2 && npm run dev
 | Login | `POST /internal/auth/token` | 200 或 fallback 存 Bearer |
 | Dashboard | `GET /internal/metrics` | 200（进程内指标 + 可选 billing） |
 | Tenants | `GET /internal/tenants` | 200（admin） |
-| Agents | `GET /internal/agents` | 200（需 `MULTI_AGENT_ENABLED`） |
+| Agents | `GET /internal/agents` + Task Planner | 200（需 `MULTI_AGENT_ENABLED`）；Planner 展示 `final_message`，JSON 默认折叠 |
 | RAG | `GET /internal/rag/knowledge-bases` | 200 |
 | Memory | `GET /internal/memory/list` | 200（需 `MEMORY_STORE_ENABLED`） |
 | Orchestrator | `GET /internal/orchestrator/workflows` | 200 |

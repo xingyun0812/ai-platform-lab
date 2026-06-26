@@ -193,6 +193,23 @@ def routing_meta(result: ToolRoutingResult) -> dict[str, Any]:
     }
 
 
+def merge_pinned_tools(
+    routing: ToolRoutingResult,
+    *,
+    registry: ToolRegistry,
+    allowed_tools: tuple[str, ...],
+    pinned_tools: tuple[str, ...] | None = None,
+) -> tuple[str, ...]:
+    """将 Plan step 的 tool_hint 等强制并入候选工具（与白名单取交）。"""
+    names = set(routing.tool_names)
+    if pinned_tools:
+        allowed = _allowed_name_set(registry, allowed_tools)
+        for tool in pinned_tools:
+            if isinstance(tool, str) and tool.strip() and tool.strip() in allowed:
+                names.add(tool.strip())
+    return tuple(sorted(names))
+
+
 def select_tools_from_messages(
     messages: list[dict[str, Any]],
     *,

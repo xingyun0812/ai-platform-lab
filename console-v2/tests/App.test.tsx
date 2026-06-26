@@ -326,6 +326,42 @@ describe("Console V2 — App & Pages", () => {
     expect(screen.getByTestId("planner-demo-card")).toBeDefined();
   });
 
+  // 16. Agents planner shows final_message and collapses run JSON by default
+  it("16. Agents planner shows final_message after auto_plan", async () => {
+    const { default: apiClient } = await import("../src/api/client");
+    (apiClient.get as ReturnType<typeof vi.fn>).mockResolvedValue({ data: [] });
+    (apiClient.post as ReturnType<typeof vi.fn>).mockImplementation((url: string) => {
+      if (url === "/v1/agent/run") {
+        return Promise.resolve({
+          data: {
+            status: "completed",
+            final_message: "北京昌平今天晴，15°C。",
+            tool_calls: [{ tool: "web_search", args: { query: "昌平天气" } }],
+            plan: { goal: "查天气", steps: [] },
+          },
+        });
+      }
+      return Promise.resolve({ data: {} });
+    });
+
+    renderWithRouter(<Agents />, { initialEntries: ["/agents"] });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("planner-autoplan-btn")).toBeDefined();
+    });
+
+    fireEvent.click(screen.getByTestId("planner-autoplan-btn"));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("planner-final-message")).toBeDefined();
+    });
+    expect(screen.getByTestId("planner-final-message").textContent).toContain(
+      "北京昌平今天晴"
+    );
+    expect(screen.getByText("执行结果 JSON")).toBeDefined();
+    expect(screen.queryByTestId("planner-run-json")).toBeNull();
+  });
+
   // 15. Orchestrator page renders workflow create button
   it("15. Orchestrator page renders workflow create button", async () => {
     const { default: apiClient } = await import("../src/api/client");

@@ -412,8 +412,39 @@ export default function Agents() {
               ]}
             />
           )}
+          {runResult && (
+            <Card
+              size="small"
+              title="执行结果"
+              style={{ background: "#0d1117", borderColor: "#30363d" }}
+              data-testid="planner-final-message-card"
+              extra={
+                <Space size="small">
+                  <Tag color={runResult.status === "completed" ? "success" : "processing"}>
+                    {runResult.status}
+                  </Tag>
+                  {runResult.tool_calls?.length > 0 && (
+                    <Tag color="blue">{runResult.tool_calls.length} 次工具调用</Tag>
+                  )}
+                </Space>
+              }
+            >
+              <Text
+                style={{
+                  color: "#e6edf3",
+                  whiteSpace: "pre-wrap",
+                  display: "block",
+                  lineHeight: 1.7,
+                }}
+                data-testid="planner-final-message"
+              >
+                {runResult.final_message?.trim() || "（无文本回复）"}
+              </Text>
+            </Card>
+          )}
           <Collapse
             ghost
+            defaultActiveKey={[]}
             items={[
               {
                 key: "run",
@@ -429,6 +460,7 @@ export default function Agents() {
                       overflow: "auto",
                       color: "#e6edf3",
                     }}
+                    data-testid="planner-run-json"
                   >
                     {runResult
                       ? JSON.stringify(runResult, null, 2)

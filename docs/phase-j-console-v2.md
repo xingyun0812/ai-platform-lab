@@ -288,7 +288,7 @@ python3 tests/test_console_v2.py
 | `console-v2/src/App.tsx` | `AppLayout` Sider 导航 + `RequireAuth` 包裹 + `React.lazy` 懒加载 |
 | `console-v2/src/api/client.ts` | `axios.interceptors.request` 注入 JWT；`interceptors.response` 处理 401 |
 | `console-v2/src/pages/Dashboard.tsx` | `useQuery` → `/internal/metrics`；`recharts` 折线图 + 饼图 |
-| `console-v2/src/pages/Agents.tsx` | 委托 Dialog (`useMutation` + `agentApi.delegate`)；版本历史 Drawer |
+| `console-v2/src/pages/Agents.tsx` | 委托 Dialog；版本历史 Drawer；Task Planner（`final_message` 卡片 + JSON 默认折叠） |
 | `console-v2/src/pages/RAG.tsx` | Ant Design `Dragger` 上传；`ragApi.query` 查询测试面板 |
 | `console-v2/src/pages/Orchestrator.tsx` | `TextArea` JSON 编辑器 + 实时语法校验 + 执行结果展示 |
 | `console-v2/src/components/RequireAuth.tsx` | `localStorage.getItem("token")` + `<Navigate to="/login">` |

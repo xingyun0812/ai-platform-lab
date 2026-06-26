@@ -178,7 +178,7 @@
 - [x] `config/workflows/data_analysis.yaml` 或 agent spec
 - [x] `eval/data_analysis_vertical.sh --mock` exit 0
 - [x] `--live` 文档说明（`demo-walkthrough.md` Live 表）
-- [x] Console 展示 Plan 轨迹（Agents 页「Task Planner 演示」卡片 + 步骤表 + 黑板）
+- [x] Console 展示 Plan 轨迹（Agents 页「Task Planner 演示」：步骤表 + **执行结果** `final_message` + JSON 默认折叠 + 黑板）
 
 **依赖**：O1、O6、O7（O4 可选）
 

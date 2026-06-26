@@ -136,7 +136,7 @@ flowchart LR
 - [x] `eval/agent_planner_smoke.py` mock LLM 通过
 - [x] live：`auto_plan=true` 完成「查 KB → calc → 汇总」三步
 - [x] **O1 + vertical 闭环**：`eval/auto_plan_vertical.py --mock`（Plan 驱动 web_search → sql_query → calc）
-- [x] Console Plan 轨迹：Agents 页「Task Planner 演示」
+- [x] Console Plan 轨迹：Agents 页「Task Planner 演示」（`final_message` 卡片 + JSON 折叠）
 
 **关键文件**：
 - `packages/agent/planner.py`
@@ -213,8 +213,9 @@ flowchart LR
 
 **设计**：
 - 工具名：`web_search`
-- 模式：`WEB_SEARCH_MODE=mock|http`（默认 mock，CI 无 Key）
-- `http`：可配置 `WEB_SEARCH_URL`（内网搜索 API 或 DuckDuckGo 兼容层）
+- 模式：`WEB_SEARCH_MODE=mock|ddg|http`（默认 mock，CI 无 Key；本地试用推荐 `ddg`）
+- `ddg`：DuckDuckGo HTML 检索；`http`：可配置 `WEB_SEARCH_URL`（内网搜索 API）
+- Plan `tool_hint` 在执行时 pin 到候选工具集（见 `config/agent_tool_routing.yaml`）
 - 返回：top-k `{title, snippet, url}` 结构化 JSON
 
 **验收**：

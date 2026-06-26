@@ -9,10 +9,17 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 from packages.agent.registry import ToolRegistry, reset_tool_registry_for_tests
 from packages.agent.tools.web_search import (
+    build_weather_summary,
+    ddg_web_search,
+    extract_weather_location,
     handle_web_search,
     http_web_search,
+    is_weather_query,
     mock_web_search,
     normalize_search_results,
+    parse_ddg_html,
+    prepend_weather_result,
+    wmo_code_to_zh,
 )
 from packages.audit.action_levels import ActionClassifier
 
@@ -55,6 +62,57 @@ class NormalizeResultsTests(unittest.TestCase):
         self.assertEqual(len(normalize_search_results(raw, top_k=2)), 2)
 
 
+class ParseDdgHtmlTests(unittest.TestCase):
+    def test_parse_sample_html(self) -> None:
+        html = """
+        <a rel="nofollow" class="result__a" href="https://duckduckgo.com/l/?uddg=https%3A%2F%2Fweather.com%2Fcn">昌平天气</a>
+        <a class="result__snippet" href="#">今天昌平晴，15°C</a>
+        """
+        out = parse_ddg_html(html, top_k=3)
+        self.assertEqual(len(out), 1)
+        self.assertIn("昌平", out[0]["title"])
+        self.assertIn("15", out[0]["snippet"])
+
+
+class WeatherEnrichTests(unittest.TestCase):
+    def test_is_weather_query(self) -> None:
+        self.assertTrue(is_weather_query("今天昌平天气"))
+        self.assertFalse(is_weather_query("企业 SaaS 趋势"))
+
+    def test_extract_location(self) -> None:
+        self.assertEqual(extract_weather_location("昌平 天气 今天"), "昌平")
+        self.assertEqual(extract_weather_location("帮我看下今天北京昌平的天气"), "北京昌平")
+
+    def test_wmo_code_to_zh(self) -> None:
+        self.assertEqual(wmo_code_to_zh(0), "晴")
+        self.assertEqual(wmo_code_to_zh(3), "阴")
+
+    def test_build_summary(self) -> None:
+        summary = build_weather_summary(
+            {
+                "location": "昌平",
+                "region": "北京市，中国",
+                "temperature_c": 28.5,
+                "feels_like_c": 30.0,
+                "humidity_percent": 40,
+                "wind_speed_kmh": 12.0,
+                "condition": "多云",
+                "observed_at": "2026-06-26T15:00",
+            }
+        )
+        self.assertIn("28.5°C", summary)
+        self.assertIn("昌平", summary)
+
+    def test_prepend_weather_result(self) -> None:
+        out = prepend_weather_result(
+            [{"title": "站点", "snippet": "desc", "url": "https://x.com"}],
+            {"location": "昌平", "summary": "昌平当前 20°C，晴。"},
+        )
+        self.assertEqual(len(out), 2)
+        self.assertIn("实时天气", out[0]["title"])
+        self.assertIn("20°C", out[0]["snippet"])
+
+
 class HandleWebSearchTests(unittest.TestCase):
     @patch("apps.gateway.settings.get_settings")
     def test_mock_mode_default(self, mock_settings) -> None:
@@ -64,6 +122,7 @@ class HandleWebSearchTests(unittest.TestCase):
         s.web_search_top_k = 3
         s.web_search_max_top_k = 10
         s.web_search_timeout_seconds = 10.0
+        s.web_search_weather_enrich = True
         mock_settings.return_value = s
 
         out = _run(handle_web_search({"query": "AI platform"}))
@@ -120,6 +179,70 @@ class HandleWebSearchTests(unittest.TestCase):
         inner = data.get("data") or data
         self.assertEqual(inner.get("mode"), "mock_fallback")
         self.assertGreaterEqual(len(inner.get("results", [])), 1)
+
+    @patch("apps.gateway.settings.get_settings")
+    def test_ddg_mode(self, mock_settings) -> None:
+        s = MagicMock()
+        s.web_search_mode = "ddg"
+        s.web_search_url = ""
+        s.web_search_top_k = 2
+        s.web_search_max_top_k = 10
+        s.web_search_timeout_seconds = 5.0
+        s.web_search_weather_enrich = True
+        mock_settings.return_value = s
+
+        weather = {
+            "location": "昌平",
+            "region": "北京市，中国",
+            "temperature_c": 28.0,
+            "feels_like_c": 29.0,
+            "humidity_percent": 35,
+            "wind_speed_kmh": 5.0,
+            "condition": "多云",
+            "observed_at": "2026-06-26T15:00",
+            "summary": "昌平（北京市，中国）当前 28.0°C，多云。",
+        }
+
+        with (
+            patch(
+                "packages.agent.tools.web_search.ddg_web_search",
+                new_callable=AsyncMock,
+                return_value=[{"title": "Weather", "snippet": "15C", "url": "https://w.example"}],
+            ) as mock_ddg,
+            patch(
+                "packages.agent.tools.web_search.fetch_open_meteo_weather",
+                new_callable=AsyncMock,
+                return_value=weather,
+            ) as mock_wx,
+        ):
+            out = _run(handle_web_search({"query": "北京昌平天气"}))
+            mock_ddg.assert_awaited_once()
+            mock_wx.assert_awaited_once()
+        data = json.loads(out)
+        inner = data.get("data") or data
+        self.assertEqual(inner.get("mode"), "ddg")
+        self.assertEqual(len(inner.get("results", [])), 2)
+        self.assertIn("weather", inner)
+        self.assertIn("28.0°C", inner["results"][0]["snippet"])
+
+    @patch("apps.gateway.settings.get_settings")
+    def test_ddg_failure_returns_error_not_mock(self, mock_settings) -> None:
+        s = MagicMock()
+        s.web_search_mode = "ddg"
+        s.web_search_url = ""
+        s.web_search_top_k = 2
+        s.web_search_max_top_k = 10
+        s.web_search_timeout_seconds = 5.0
+        mock_settings.return_value = s
+
+        with patch(
+            "packages.agent.tools.web_search.ddg_web_search",
+            new_callable=AsyncMock,
+            side_effect=RuntimeError("blocked"),
+        ):
+            out = _run(handle_web_search({"query": "北京昌平天气"}))
+        data = json.loads(out)
+        self.assertIn("error", out if "error" in out else data)
 
 
 class HttpWebSearchTests(unittest.TestCase):

@@ -83,7 +83,8 @@ def build_default_registry() -> dict[str, ToolDefinition]:
         "web_search": ToolDefinition(
             name="web_search",
             description=(
-                "搜索公开互联网信息，返回 top-k 标题/摘要/链接（When NOT：查企业内部知识库请用 get_kb_snippet）"
+                "搜索公开互联网信息，返回 top-k 标题/摘要/链接；天气类 query 会附带 Open-Meteo 实时气温/湿度"
+                "（When NOT：查企业内部知识库请用 get_kb_snippet）"
             ),
             parameters_schema={
                 "type": "object",

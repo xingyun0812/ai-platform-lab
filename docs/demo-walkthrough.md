@@ -44,6 +44,7 @@ cd console-v2 && npm install && npm run build && cd ..
 | `LLM_API_KEY` | Chat / Agent 需要；**该网关无 embeddings，RAG 索引 live 段会失败** |
 | `MEMORY_STORE_ENABLED=true` | Memory 页有数据 |
 | `MULTI_AGENT_ENABLED=true` | Agents 页（默认通常开） |
+| `WEB_SEARCH_MODE=ddg` | Agent 真实联网搜索（天气/新闻 demo）；CI 用 `mock` |
 
 **推荐模型别名**：`chat-fast`（deepseek-v4-flash）、`chat-thinking`、`chat-minimax`
 
@@ -187,6 +188,12 @@ curl -s http://127.0.0.1:8000/v1/agent/run \
 ```
 
 Console **Agents** 页可看注册 Agent / 委托（`MULTI_AGENT_ENABLED`）。
+
+**Task Planner 演示**（同页下方卡片）：
+
+- `auto_plan 执行` 后，**执行结果**卡片展示 `final_message`（自然语言答复）
+- **执行结果 JSON** 默认折叠，调试时再展开
+- 联网搜索：`.env` 设 `WEB_SEARCH_MODE=ddg`，用 `admin` 租户，goal 示例见 [console-agent-planner.md](./console-agent-planner.md)
 
 > Phase L #59：见 [demo-agent-vertical.md](./demo-agent-vertical.md)（Orchestrator + HITL vertical curl 链，live 6/6 ✅）。
 

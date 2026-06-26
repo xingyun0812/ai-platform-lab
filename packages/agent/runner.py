@@ -39,7 +39,7 @@ from packages.agent.session import SessionStore
 from packages.agent.session_state import SessionState, count_user_messages
 from packages.agent.shadow import shadow_tool_record
 from packages.agent.tool_envelope import parse_tool_result, with_quality_hint
-from packages.agent.tool_router import routing_meta, select_tools_from_messages
+from packages.agent.tool_router import merge_pinned_tools, routing_meta, select_tools_from_messages
 from packages.agent.tool_strategy import ToolCallStrategyError, resolve_tool_call_strategy
 from packages.billing.budget import budget_platform_meta, get_budget_snapshot
 from packages.billing.recorder import record_upstream_usage
@@ -574,6 +574,7 @@ async def run_agent(
     approval_id: str | None = None,
     reasoning_mode: str | None = None,
     tool_call_strategy: str | None = None,
+    pinned_tools: tuple[str, ...] | None = None,
 ) -> dict[str, Any]:
     if approval_id:
         return await resume_approved_tool(
@@ -658,7 +659,13 @@ async def run_agent(
         routing_enabled=settings.agent_tool_routing_enabled,
         rag_enabled=settings.agent_tool_rag_enabled,
     )
-    tools_spec = reg.openai_tools_spec_subset(routing.tool_names, allowed_tools)
+    tool_names = merge_pinned_tools(
+        routing,
+        registry=reg,
+        allowed_tools=allowed_tools,
+        pinned_tools=pinned_tools,
+    )
+    tools_spec = reg.openai_tools_spec_subset(tool_names, allowed_tools)
     trace: list[ToolCallRecord] = []
     reasoning_trace: list[ReasoningTraceRecord] = []
     shadow_trace: list[ToolCallRecord] = []
