@@ -360,7 +360,7 @@ async def trigger_self_evolve(
             outcome=outcome,
             lessons="",  # lessons 稍后填充
         )
-        stored = store_experience(record)
+        stored = await store_experience(record)
         result["experience_id"] = stored.experience_id
 
         # Step 2: 反思生成 lessons
@@ -374,8 +374,12 @@ async def trigger_self_evolve(
             )
             result["lessons"] = lessons
 
-            # 更新经验记录的 lessons
+            # 更新经验记录的 lessons（内存对象，再 store 一次持久化）
             stored.lessons = lessons
+            try:
+                await store_experience(stored)
+            except Exception as exc:
+                logger.warning("re-store experience with lessons failed: %s", exc)
 
             # 记录指标
             try:
