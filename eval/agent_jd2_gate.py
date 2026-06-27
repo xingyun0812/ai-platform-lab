@@ -131,6 +131,12 @@ CHECKS: tuple[Jd2GateCheck, ...] = (
         (PYTHON, str(REPO_ROOT / "eval" / "agent_gate.py"), "run-offline", "--threshold", "5"),
         "Agent 轨迹回归 gate",
     ),
+    Jd2GateCheck(
+        "harness_capability_gate",
+        "R4",
+        (PYTHON, str(REPO_ROOT / "eval" / "harness_capability_gate.py"), "run"),
+        "Phase R Harness 联合门禁（R1～R3 smoke）",
+    ),
 )
 
 REQUIRED_PATHS: tuple[tuple[str, Path], ...] = (

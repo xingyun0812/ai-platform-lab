@@ -116,9 +116,9 @@
 **目标**：联合门禁 + 文档同步 + 打 tag。
 
 **验收**：
-- [ ] `eval/harness_capability_gate.py` — `run` / `check` 子命令
-- [ ] `eval/harness_baseline.jsonl` — ≥5 case
-- [ ] `demo-walkthrough.md` 增 Phase R 段
-- [ ] Tag `phase-r-agent-harness`
+- [x] `eval/harness_capability_gate.py` — `run` / `check` 子命令
+- [x] `eval/harness_baseline.jsonl` — ≥5 case（6 条）
+- [x] `demo-walkthrough.md` 增 Phase R 段
+- [x] Tag `phase-r-agent-harness`（gate 全绿后指向最新 merge）
 
 **依赖**：R1～R3 · **预估**：2～3d
