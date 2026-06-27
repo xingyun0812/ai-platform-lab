@@ -108,7 +108,7 @@ MockAgentPlan = sys.modules["packages.contracts.agent_schemas"].AgentPlan  # typ
 # ---------------------------------------------------------------------------
 
 
-def test_experience_roundtrip() -> None:
+async def test_experience_roundtrip() -> None:
     """场景 1：存储经验 → 检索到经验。"""
     _exp_mod.reset_experience_store_for_tests()
 
@@ -122,11 +122,10 @@ def test_experience_roundtrip() -> None:
         outcome="success",
         lessons="经验 1: 先确认数据库连接\n经验 2: 输出前做数据校验",
     )
-    _exp_mod.store_experience(record)
+    await _exp_mod.store_experience(record)
 
-    # 第二次相同 goal → 应检索到第一次的经验
     sig = _exp_mod.compute_task_signature(goal)
-    similar = _exp_mod.retrieve_similar_experiences(sig, top_k=3)
+    similar = await _exp_mod.retrieve_similar_experiences(sig, top_k=3)
     assert len(similar) >= 1, f"Expected ≥1 similar experience, got {len(similar)}"
     assert similar[0].goal == goal
     assert "经验 1" in similar[0].lessons
@@ -134,14 +133,13 @@ def test_experience_roundtrip() -> None:
     print(f"✅ test_experience_roundtrip passed — found {len(similar)} experience(s)")
 
 
-def test_second_run_injects_experience() -> None:
+async def test_second_run_injects_experience() -> None:
     """场景 2：第 2 次相同任务，assert 注入了历史经验到 plan 上下文。"""
     _exp_mod.reset_experience_store_for_tests()
 
     goal = "分析用户行为数据"
     plan = MockAgentPlan(goal)
 
-    # 沉淀第一次成功经验
     r = _exp_mod.build_experience_record(
         tenant_id="t2",
         goal=goal,
@@ -149,14 +147,12 @@ def test_second_run_injects_experience() -> None:
         outcome="success",
         lessons="经验 A: 先聚合再分析\n经验 B: 注意 null 值处理",
     )
-    _exp_mod.store_experience(r)
+    await _exp_mod.store_experience(r)
 
-    # 第二次：检索经验
     sig = _exp_mod.compute_task_signature(goal)
-    similar = _exp_mod.retrieve_similar_experiences(sig, top_k=2)
+    similar = await _exp_mod.retrieve_similar_experiences(sig, top_k=2)
     assert len(similar) >= 1
 
-    # 构造注入 context（与 planner.py 中一致）
     injected_context = "\n".join(f"- {e.lessons}" for e in similar if e.outcome == "success")
     assert "经验 A" in injected_context, f"lessons not injected: {injected_context}"
 
@@ -177,14 +173,19 @@ async def test_trigger_self_evolve_mock() -> None:
         tenant_id="t3",
         tool_calls=[],
     )
-    # 即使 LLM 失败，experience_id 也应该成功存储
     assert result["experience_id"] is not None, "experience should be stored"
 
-    stored = _exp_mod.get_experience_store().get(result["experience_id"])
+    stored = await _exp_mod.get_experience_store().get(result["experience_id"])
     assert stored is not None, "experience should be retrievable"
     assert stored.tenant_id == "t3"
 
     print(f"✅ test_trigger_self_evolve_mock passed — experience_id={result['experience_id']}")
+
+
+async def _run_all() -> None:
+    await test_experience_roundtrip()
+    await test_second_run_injects_experience()
+    await test_trigger_self_evolve_mock()
 
 
 def main() -> None:
@@ -192,9 +193,7 @@ def main() -> None:
     print("Phase R R1 Self-Evolving Agent — Smoke Tests")
     print("=" * 60)
 
-    test_experience_roundtrip()
-    test_second_run_injects_experience()
-    asyncio.run(test_trigger_self_evolve_mock())
+    asyncio.run(_run_all())
 
     print("\n✅ All smoke tests passed!")
 
