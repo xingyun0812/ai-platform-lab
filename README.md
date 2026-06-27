@@ -2,7 +2,7 @@
 
 最小 **AI 中台** 实验仓库（与 [《AI中台学习执行手册》](docs/AI中台学习执行手册.md) 配套）。当前完成 **Phase A～P**：模型网关、RAG（含增量与图文）、Agent（Planner/CoT/Multi-Agent）、观测评测、硬化、Prompt、MCP、Embedding、HITL、安全合规、SDK/PyPI、Console V2、生产 Helm 等。
 
-> 📊 **当前状态**：Phase A～P ✅ · tags：`phase-o-agent-jd2`、`phase-p-multimodal`、`phase-n-pypi-sdk` · Phase Q 规划中  
+> 📊 **当前状态**：Phase A～Q ✅ · Phase R ✅（tag `phase-r-agent-harness`）· tags：`phase-o-agent-jd2`、`phase-p-multimodal`、`phase-n-pypi-sdk`  
 > 📋 **完整状态报告**：[docs/PROJECT_STATUS.md](docs/PROJECT_STATUS.md) · **Live 手验**：[docs/demo-walkthrough.md](docs/demo-walkthrough.md)
 
 ## 15 分钟快速跑通

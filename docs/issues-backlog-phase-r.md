@@ -10,8 +10,8 @@
 | R0 规划文档 | [#133](https://github.com/xingyun0812/ai-platform-lab/issues/133) | ✅ |
 | R1 自进化 Agent | [#134](https://github.com/xingyun0812/ai-platform-lab/issues/134) | ✅ PR #138 |
 | R2 长程任务持久化 | [#135](https://github.com/xingyun0812/ai-platform-lab/issues/135) | ✅ PR #138 |
-| R3 模型能力探测 | [#136](https://github.com/xingyun0812/ai-platform-lab/issues/136) | 📋 |
-| R4 eval 门禁 + tag | [#137](https://github.com/xingyun0812/ai-platform-lab/issues/137) | 📋 |
+| R3 模型能力探测 | [#136](https://github.com/xingyun0812/ai-platform-lab/issues/136) | ✅ PR #141 |
+| R4 eval 门禁 + tag | [#137](https://github.com/xingyun0812/ai-platform-lab/issues/137) | ✅ |
 
 ---
 

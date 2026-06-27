@@ -1,0 +1,6 @@
+{"id": "hb01", "phase": "R1", "scenario": "self_evolve_reuse", "description": "同类任务第二次应能从经验库检索到 lessons", "required_checks": ["self_evolve_smoke"]}
+{"id": "hb02", "phase": "R2", "scenario": "long_horizon_checkpoint", "description": "长程 Plan 可 checkpoint 并在新 session resume", "required_checks": ["long_horizon_smoke"], "min_checkpoints": 3}
+{"id": "hb03", "phase": "R2", "scenario": "long_horizon_persistence", "description": "Postgres/内存 store 持久化单测覆盖", "required_checks": ["long_horizon_persistence_unit"]}
+{"id": "hb04", "phase": "R3", "scenario": "capability_benchmark_mock", "description": "4 维 benchmark mock 可跑且 overall≥0.5", "required_checks": ["capability_benchmark_mock"], "min_overall_score": 0.5}
+{"id": "hb05", "phase": "R3", "scenario": "capability_profile_router", "description": "能力画像 CRUD + Router 反哺单测", "required_checks": ["capability_profile_unit"]}
+{"id": "hb06", "phase": "R1", "scenario": "experience_store_unit", "description": "经验库 store/retrieve 单测矩阵", "required_checks": ["self_evolve_unit"]}

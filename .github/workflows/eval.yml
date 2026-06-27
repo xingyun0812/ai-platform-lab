@@ -130,3 +130,9 @@ jobs:
 
       - name: Phase P multimodal embedding offline gate
         run: python eval/multimodal_embedding_gate.py run
+
+      - name: Harness capability gate meta tests
+        run: python -m pytest tests/test_harness_capability_gate.py -q
+
+      - name: Phase R harness offline gate
+        run: python eval/harness_capability_gate.py run

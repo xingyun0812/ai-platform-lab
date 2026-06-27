@@ -50,6 +50,8 @@ jobs:
         run: python eval/agent_jd2_gate.py run
       - name: Multimodal embedding offline gate
         run: python eval/multimodal_embedding_gate.py run
+      - name: Harness capability offline gate
+        run: python eval/harness_capability_gate.py run
       - name: Audit API
         run: |
           curl -sf -H "X-Tenant-Id: admin" -H "Authorization: Bearer sk-tenant-admin-change-me" \

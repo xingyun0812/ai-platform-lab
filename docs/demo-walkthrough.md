@@ -16,6 +16,7 @@
 | Agent vertical（Orchestrator+HITL） | `eval/agent_vertical_smoke.py --with-llm` | ✅ 7/7 |
 | **O1+vertical mock** | `./eval/auto_plan_vertical.sh --mock` | ✅ CI |
 | O1+vertical / CoT / 多模态 live | `./eval/live_gate.sh --require-live` | 🤖 见上 |
+| **Phase R Harness 离线门禁** | `python eval/harness_capability_gate.py run` | ✅ CI |
 | Console Plan UI | Agents 页 Task Planner 卡片 | ✅ |
 
 ---
@@ -209,6 +210,22 @@ python eval/agent_jd2_gate.py run
 python eval/agent_planner_smoke.py
 python eval/agent_cot_smoke.py
 ```
+
+### Agent Harness 三分钟路线（Phase R）
+
+离线门禁（CI 同款，无需 Gateway）：
+
+```bash
+python eval/harness_capability_gate.py check   # baseline + 必需文件
+python eval/harness_capability_gate.py run     # R1 自进化 + R2 长程 + R3 能力探测
+
+# 分项
+python eval/self_evolve_smoke.py
+python eval/long_horizon_smoke.py
+python eval/harness_capability_benchmark.py run --model chat-fast --mock
+```
+
+详见 [phase-r-agent-harness.md](./phase-r-agent-harness.md) · [console-tenant-billing.md](./console-tenant-billing.md)（租户本月用量）
 
 有 Key 时可追加：
 

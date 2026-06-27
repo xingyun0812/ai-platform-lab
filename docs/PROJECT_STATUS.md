@@ -1,7 +1,7 @@
 # ai-platform-lab 项目状态总览
 
-> **最后更新**：2026-05-19  
-> **当前状态**：Phase A～Q 已交付 · tags：`phase-o-agent-jd2`、`phase-p-multimodal`、`phase-n-pypi-sdk`、`phase-q-advanced-planning`  
+> **最后更新**：2026-06-26  
+> **当前状态**：Phase A～R 已交付 · tags：`phase-o-agent-jd2`、`phase-p-multimodal`、`phase-n-pypi-sdk`、`phase-q-advanced-planning`、`phase-r-agent-harness`  
 > **主分支**：`main`
 
 ---
@@ -43,6 +43,7 @@ Phase N — Python SDK PyPI       ✅ tag: phase-n-pypi-sdk
 Phase O — Agent JD2 对齐        ✅ tag: phase-o-agent-jd2
 Phase P — 多模态 Embedding      ✅ tag: phase-p-multimodal
 Phase Q — 任务规划前沿对齐      ✅ 已交付（#116～#121）；closure：路由挂载 + live E2E
+Phase R — Agent Harness 前沿      ✅ tag: phase-r-agent-harness（R1 自进化 + R2 长程 + R3 能力探测 + R4 门禁）
 ```
 
 ## 4. 代码规模

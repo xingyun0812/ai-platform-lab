@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import importlib.util
 import sys
 import time
@@ -94,92 +95,73 @@ def _make_plan() -> AgentPlan:
     )
 
 
-def run_smoke() -> None:
+async def run_smoke() -> None:
     reset_long_run_store_for_tests()
     store = get_long_run_store()
     plan = _make_plan()
 
-    # -----------------------------------------------------------------------
-    # Session 1: 创建任务，完成 s1 → checkpoint → 暂停
-    # -----------------------------------------------------------------------
     print("[Session 1] 创建长程任务...")
-    task = create_long_run(plan, tenant_id="tenant_smoke", session_id="session_001")
+    task = await create_long_run(plan, tenant_id="tenant_smoke", session_id="session_001")
     task_id = task.task_id
 
     assert task.status == "pending", f"期望 pending, 得到 {task.status}"
     assert len(task.step_states) == 3
 
-    # 模拟 s1 完成
-    store.update_status(task_id, "running")
+    await store.update_status(task_id, "running")
     task.step_states[0].status = "completed"
     task.step_states[0].completed_at = time.time()
-    store.update_step_states(task_id, task.step_states)
+    await store.update_step_states(task_id, task.step_states)
 
-    cp1 = checkpoint_task(task_id)
+    cp1 = await checkpoint_task(task_id)
     assert cp1 is not None, "checkpoint_task 应返回 Checkpoint"
     assert cp1.task_id == task_id
     assert cp1.layer_index == 1, f"期望 layer_index=1, 得到 {cp1.layer_index}"
 
-    # 暂停
-    store.update_status(task_id, "paused")
-    t = get_long_run(task_id)
+    await store.update_status(task_id, "paused")
+    t = await get_long_run(task_id)
     assert t is not None and t.status == "paused"
 
     print(f"  [Session 1] s1 完成，checkpoint {cp1.checkpoint_id[:8]}... 已创建，任务暂停")
 
-    # -----------------------------------------------------------------------
-    # Session 2: resume → 完成 s2 → checkpoint → 暂停
-    # -----------------------------------------------------------------------
     print("[Session 2] 续跑任务...")
-    resumed = resume_task(task_id)
+    resumed = await resume_task(task_id)
     assert resumed is not None
     assert resumed.status == "running"
-
-    # 验证从 checkpoint 恢复 —— s1 应仍为 completed
     assert resumed.step_states[0].status == "completed", "resume 后 s1 应仍为 completed"
     assert resumed.step_states[1].status == "pending", "resume 后 s2 应为 pending"
 
-    # 模拟 s2 完成
     resumed.step_states[1].status = "completed"
     resumed.step_states[1].completed_at = time.time()
-    store.update_step_states(task_id, resumed.step_states)
+    await store.update_step_states(task_id, resumed.step_states)
 
-    cp2 = checkpoint_task(task_id)
+    cp2 = await checkpoint_task(task_id)
     assert cp2 is not None
     assert cp2.layer_index == 2, f"期望 layer_index=2, 得到 {cp2.layer_index}"
     assert cp2.checkpoint_id != cp1.checkpoint_id
 
-    store.update_status(task_id, "paused")
+    await store.update_status(task_id, "paused")
     print(f"  [Session 2] s2 完成，checkpoint {cp2.checkpoint_id[:8]}... 已创建，任务暂停")
 
-    # -----------------------------------------------------------------------
-    # Session 3: resume → 完成 s3 → 任务完成
-    # -----------------------------------------------------------------------
     print("[Session 3] 最终续跑...")
-    resumed3 = resume_task(task_id)
+    resumed3 = await resume_task(task_id)
     assert resumed3 is not None
     assert resumed3.status == "running"
-
-    # 从最新 checkpoint 恢复 —— s1 + s2 均为 completed
     assert resumed3.step_states[0].status == "completed"
     assert resumed3.step_states[1].status == "completed"
     assert resumed3.step_states[2].status == "pending"
 
-    # 模拟 s3 完成
     resumed3.step_states[2].status = "completed"
     resumed3.step_states[2].completed_at = time.time()
-    store.update_step_states(task_id, resumed3.step_states)
+    await store.update_step_states(task_id, resumed3.step_states)
 
-    # 最终 checkpoint（3 次 checkpoint 总计）
-    cp3 = checkpoint_task(task_id)
+    cp3 = await checkpoint_task(task_id)
     assert cp3 is not None
     assert cp3.layer_index == 3
 
-    store.update_status(task_id, "completed")
-    store.set_final_result(task_id, {"report": "final_report.pdf"})
+    await store.update_status(task_id, "completed")
+    await store.set_final_result(task_id, {"report": "final_report.pdf"})
 
-    # 验证任务最终状态
-    final = get_task_status(task_id)
+    final = await get_task_status(task_id)
     assert final is not None
     assert final["status"] == "completed"
     assert final["progress"]["completed"] == 3
@@ -188,18 +170,12 @@ def run_smoke() -> None:
 
     print(f"  [Session 3] 任务完成！进度: {final['progress']}")
 
-    # -----------------------------------------------------------------------
-    # 验证：checkpoint 数量 = 3（每次续跑后各一个）
-    # -----------------------------------------------------------------------
-    t_final = get_long_run(task_id)
+    t_final = await get_long_run(task_id)
     assert t_final is not None
     assert len(t_final.checkpoints) == 3, f"期望 3 个 checkpoint, 得到 {len(t_final.checkpoints)}"
     print(f"  总 checkpoint 数: {len(t_final.checkpoints)}")
 
-    # -----------------------------------------------------------------------
-    # 验证：无法取消已完成任务
-    # -----------------------------------------------------------------------
-    ok = cancel_task(task_id)
+    ok = await cancel_task(task_id)
     assert not ok, "已完成的任务不应可取消"
     print("  已完成任务取消测试通过（拒绝取消）")
 
@@ -207,4 +183,4 @@ def run_smoke() -> None:
 
 
 if __name__ == "__main__":
-    run_smoke()
+    asyncio.run(run_smoke())

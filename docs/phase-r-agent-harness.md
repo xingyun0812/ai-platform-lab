@@ -1,9 +1,9 @@
 # Phase R — Agent Harness 前沿（Harness Frontier）
 
-> **状态**：🔄 **Wave 1 已完成**（R1/R2 · PR #138）· R3/R4 待开发 · R0 ✅（#133）  
+> **状态**：✅ **已完成**（R1～R4 · tag `phase-r-agent-harness`）  
 > **前置**：Phase Q ✅（含 Q7 Graph Runtime · tag `phase-q-graph-runtime`） · Phase F #31 长记忆 ✅ · Phase J #48 反馈飞轮 ✅  
-> **Tag**（计划）：`phase-r-agent-harness`  
-> **门禁**（计划）：`python eval/harness_capability_gate.py run`
+> **Tag**：`phase-r-agent-harness`  
+> **门禁**：`python eval/harness_capability_gate.py run`
 
 ---
 
