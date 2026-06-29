@@ -11,7 +11,7 @@
 | 🔄 | 进行中（RFC 或实现中） |
 | ✅ | 已完成（Issue 关闭 + 边界测试绿） |
 
-**当前进度**：1 / 10（#2 Phase 1 ✅ · #7 [#146](https://github.com/xingyun0812/ai-platform-lab/issues/146) ✅）
+**当前进度**：2 / 10（#2 ✅ · #3 ✅ [#152](https://github.com/xingyun0812/ai-platform-lab/issues/152) · #7 [#146](https://github.com/xingyun0812/ai-platform-lab/issues/146) ✅）
 
 ---
 
@@ -21,7 +21,7 @@
 |---|------|--------|------|------|
 | [1](#1-gateway-单体-create_app) | Gateway 单体 `create_app()` | P0 | ⬜ | 5～7d |
 | [2](#2-packages--gateway-反向依赖) | packages ↔ gateway 反向依赖 | P0 | ✅ Phase 1 [#145](https://github.com/xingyun0812/ai-platform-lab/issues/145) | 5～8d |
-| [3](#3-rag-索引-gatewayworker-队列缝) | RAG 索引 gateway/worker 队列缝 | P1 | 🔄 PR-3 [#152](https://github.com/xingyun0812/ai-platform-lab/issues/152) | 3～5d |
+| [3](#3-rag-索引-gatewayworker-队列缝) | RAG 索引 gateway/worker 队列缝 | P1 | ✅ [#152](https://github.com/xingyun0812/ai-platform-lab/issues/152) | 3～5d |
 | [4](#4-agent-planner-轨-vs-orchestrator-轨) | Agent Planner vs Orchestrator 双轨 | P0 | ⬜ | 7～10d |
 | [5](#5-三套-checkpointresume-语义) | 三套 Checkpoint/Resume 语义 | P1 | ⬜ | 4～6d |
 | [6](#6-runnerpy--plannerpy-浅接口深实现) | runner + planner 浅接口深实现 | P1 | ⬜ | 5～7d |
@@ -149,7 +149,7 @@ Config/YAML · 架构倒置（library → app）
 
 ## 3. RAG 索引 gateway/worker 队列缝
 
-**状态**：🔄 PR-3 · **优先级**：P1 · **RFC**：[#152](https://github.com/xingyun0812/ai-platform-lab/issues/152)
+**状态**：✅ · **优先级**：P1 · **RFC**：[#152](https://github.com/xingyun0812/ai-platform-lab/issues/152)
 
 ### 问题
 
@@ -176,7 +176,7 @@ Config/YAML · 架构倒置（library → app）
 |------|------|
 | PR-1 | ✅ `run_index_task` + `task_store` → packages；worker 改 import |
 | PR-2 | ✅ 版本解析 + paths 下沉；platform_adapter 零 gateway.rag 依赖 |
-| PR-3 | 🔄 E2E lifecycle + CI grep |
+| PR-3 | ✅ E2E lifecycle + CI grep |
 
 - [x] `run_index_task` 下沉至 packages
 - [x] worker 不 import `apps.gateway.rag.*`（CI grep）
