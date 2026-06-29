@@ -6,7 +6,7 @@ from typing import Any
 
 import httpx
 
-from apps.gateway.rag.pipeline import resolve_retrieve_version
+from packages.platform import resolve_retrieve_version
 from packages.agent.tool_envelope import success_envelope
 from packages.rag.retrieval import retrieve_chunks
 

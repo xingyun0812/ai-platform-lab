@@ -114,7 +114,7 @@ class WeatherEnrichTests(unittest.TestCase):
 
 
 class HandleWebSearchTests(unittest.TestCase):
-    @patch("apps.gateway.settings.get_settings")
+    @patch("packages.platform.get_settings")
     def test_mock_mode_default(self, mock_settings) -> None:
         s = MagicMock()
         s.web_search_mode = "mock"
@@ -131,13 +131,13 @@ class HandleWebSearchTests(unittest.TestCase):
         self.assertEqual(inner.get("mode"), "mock")
         self.assertEqual(len(inner.get("results", [])), 3)
 
-    @patch("apps.gateway.settings.get_settings")
+    @patch("packages.platform.get_settings")
     def test_empty_query_error(self, mock_settings) -> None:
         mock_settings.return_value = MagicMock(web_search_mode="mock", web_search_top_k=3, web_search_max_top_k=10)
         out = _run(handle_web_search({"query": "  "}))
         self.assertIn("error", out)
 
-    @patch("apps.gateway.settings.get_settings")
+    @patch("packages.platform.get_settings")
     def test_http_mode(self, mock_settings) -> None:
         s = MagicMock()
         s.web_search_mode = "http"
@@ -159,7 +159,7 @@ class HandleWebSearchTests(unittest.TestCase):
         self.assertEqual(inner.get("mode"), "http")
         self.assertEqual(len(inner.get("results", [])), 1)
 
-    @patch("apps.gateway.settings.get_settings")
+    @patch("packages.platform.get_settings")
     def test_http_failure_fallback_mock(self, mock_settings) -> None:
         s = MagicMock()
         s.web_search_mode = "http"
@@ -180,7 +180,7 @@ class HandleWebSearchTests(unittest.TestCase):
         self.assertEqual(inner.get("mode"), "mock_fallback")
         self.assertGreaterEqual(len(inner.get("results", [])), 1)
 
-    @patch("apps.gateway.settings.get_settings")
+    @patch("packages.platform.get_settings")
     def test_ddg_mode(self, mock_settings) -> None:
         s = MagicMock()
         s.web_search_mode = "ddg"
@@ -225,7 +225,7 @@ class HandleWebSearchTests(unittest.TestCase):
         self.assertIn("weather", inner)
         self.assertIn("28.0°C", inner["results"][0]["snippet"])
 
-    @patch("apps.gateway.settings.get_settings")
+    @patch("packages.platform.get_settings")
     def test_ddg_failure_returns_error_not_mock(self, mock_settings) -> None:
         s = MagicMock()
         s.web_search_mode = "ddg"

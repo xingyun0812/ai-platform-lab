@@ -194,7 +194,7 @@ async def delegate_to_agent(
     tool_tuple = resolve_delegation_tools(spec.allowed_tools, allowed_tools)
 
     try:
-        from apps.gateway.settings import get_settings
+        from packages.platform import get_settings
         from packages.agent.registry import ToolRegistry
         from packages.agent.runner import AgentRunError, run_agent
         from packages.agent.session import SessionStore

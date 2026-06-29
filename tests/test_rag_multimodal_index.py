@@ -119,13 +119,15 @@ models:
             async def _go():
                 with (
                     patch("packages.rag.embeddings.get_settings") as mock_emb,
-                    patch("apps.gateway.rag.paths.get_settings") as mock_path,
+                    patch(
+                        "packages.rag.embeddings.resolve_source_path",
+                        return_value=rag_root / "x.png",
+                    ),
                 ):
-                    for mock_settings in (mock_emb, mock_path):
-                        settings = mock_settings.return_value
-                        settings.embedding_service_enabled = True
-                        settings.rag_multimodal_embedding_model = "stub-multimodal"
-                        settings.rag_data_root = rag_root
+                    settings = mock_emb.return_value
+                    settings.embedding_service_enabled = True
+                    settings.rag_multimodal_embedding_model = "stub-multimodal"
+                    settings.rag_data_root = rag_root
                     return await embed_image_chunk(chunk)
 
             vec = asyncio.run(_go())

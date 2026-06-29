@@ -7,7 +7,7 @@ from typing import Any
 from qdrant_client import QdrantClient
 from qdrant_client.http import models as qm
 
-from apps.gateway.settings import get_settings
+from packages.platform import get_settings
 from packages.rag.chunker import TextChunk
 from packages.rag.indexing import chunk_fingerprint
 

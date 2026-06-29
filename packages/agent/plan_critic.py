@@ -45,7 +45,7 @@ def build_critic_prompt(
 
     # Try prompt registry first (graceful degradation if unavailable)
     try:
-        from apps.gateway.settings import get_settings
+        from packages.platform import get_settings
 
         settings = get_settings()
         if settings.prompt_registry_enabled:
@@ -98,7 +98,7 @@ def _check_model_allowed(
     allowed_models: tuple[str, ...],
 ) -> tuple[bool, str]:
     """Thin wrapper around is_model_allowed; isolated for unit testing."""
-    from apps.gateway.model_router import is_model_allowed
+    from packages.platform import is_model_allowed
 
     return is_model_allowed(model, tenant_default=None, allowed_models=allowed_models)
 
@@ -111,7 +111,7 @@ async def _call_upstream(
 
     独立为函数以便单测 patch。
     """
-    from apps.gateway.model_router import forward_with_model_router
+    from packages.platform import forward_with_model_router
 
     payload: dict[str, Any] = {
         "model": model,
@@ -169,7 +169,7 @@ async def replan_after_failure(
         )
         return None
 
-    from apps.gateway.settings import get_settings
+    from packages.platform import get_settings
     from packages.agent.planner import PlannerError, parse_plan
 
     settings = get_settings()

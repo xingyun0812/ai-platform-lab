@@ -18,6 +18,8 @@ jobs:
         run: pip install -e ".[dev]"
       - name: Ruff
         run: ruff check .
+      - name: No packages→apps gateway facades
+        run: bash scripts/check_no_packages_import_apps.sh
       - name: Validate baseline JSONL
         run: |
           python eval/run.py validate-baseline

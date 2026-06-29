@@ -7,8 +7,7 @@ import time
 from dataclasses import dataclass
 from typing import Any
 
-from apps.gateway.model_router import forward_with_model_router, is_model_allowed
-from apps.gateway.settings import get_settings
+from packages.platform import forward_with_model_router, get_settings, is_model_allowed
 from packages.agent.context_budget import (
     ContextBudgetMeta,
     assemble_llm_messages,

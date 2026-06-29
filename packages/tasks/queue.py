@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 
-from apps.gateway.settings import get_settings
+from packages.platform import get_settings
 
 
 class IndexTaskQueue(ABC):

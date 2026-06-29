@@ -244,7 +244,7 @@ class FeedbackLoop:
     ) -> tuple[str, str, str]:
         """尝试调用 LLM；失败则返回模板。"""
         try:
-            from apps.gateway.settings import get_settings
+            from packages.platform import get_settings
             settings = get_settings()
             api_key = getattr(settings, "llm_api_key", None) or getattr(settings, "openai_api_key", None)
             if not api_key:

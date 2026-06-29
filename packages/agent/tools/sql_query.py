@@ -136,7 +136,7 @@ async def handle_sql_query(arguments: dict[str, Any]) -> str:
     if not isinstance(sql, str) or not sql.strip():
         return json.dumps({"error": "sql 不能为空"}, ensure_ascii=False)
 
-    from apps.gateway.settings import get_settings
+    from packages.platform import get_settings
 
     settings = get_settings()
     max_rows = max(1, min(int(getattr(settings, "sql_query_max_rows", 100) or 100), 500))

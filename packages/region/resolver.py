@@ -7,7 +7,8 @@ from typing import Any
 
 import yaml
 
-from apps.gateway.settings import REPO_ROOT, get_settings
+from apps.gateway.settings import REPO_ROOT
+from packages.platform import get_settings
 
 
 @dataclass(frozen=True)

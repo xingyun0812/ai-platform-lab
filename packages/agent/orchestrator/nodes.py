@@ -198,8 +198,7 @@ async def _execute_llm_call(config: dict[str, Any], ctx: Any) -> dict[str, Any]:
         model: str | None
         variables: dict       # 额外变量
     """
-    from apps.gateway.model_router import forward_with_model_router
-    from apps.gateway.settings import get_settings
+    from packages.platform import forward_with_model_router, get_settings
 
     settings = get_settings()
     prompt_template = str(config.get("prompt", ""))

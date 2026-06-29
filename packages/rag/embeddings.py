@@ -8,8 +8,7 @@ from typing import Any
 
 import httpx
 
-from apps.gateway.rag.paths import resolve_source_path
-from apps.gateway.settings import get_settings
+from packages.platform import get_settings, resolve_source_path
 from packages.rag.chunker import TextChunk
 from packages.rag.multimodal_index import guess_image_mime
 

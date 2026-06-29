@@ -282,7 +282,7 @@ class TestPlanExportRoute(unittest.TestCase):
         }
 
         with patch("apps.gateway.agent.plan_workflow_routes.load_tenants", return_value=tenants):
-            with patch("apps.gateway.settings.get_settings") as mock_settings:
+            with patch("packages.platform.get_settings") as mock_settings:
                 mock_settings.return_value.auth_jwt_enabled = False
                 with TestClient(app) as client:
                     resp = client.post(
@@ -306,7 +306,7 @@ class TestPlanExportRoute(unittest.TestCase):
         tenants = self._fake_tenants()
 
         with patch("apps.gateway.agent.plan_workflow_routes.load_tenants", return_value=tenants):
-            with patch("apps.gateway.settings.get_settings") as mock_settings:
+            with patch("packages.platform.get_settings") as mock_settings:
                 mock_settings.return_value.auth_jwt_enabled = False
                 with TestClient(app) as client:
                     resp = client.post(

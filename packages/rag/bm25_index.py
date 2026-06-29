@@ -6,7 +6,7 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
-from apps.gateway.settings import get_settings
+from packages.platform import get_settings
 from packages.rag.chunker import TextChunk
 
 _TOKEN_RE = re.compile(r"[\w\u4e00-\u9fff]+", re.UNICODE)

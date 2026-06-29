@@ -363,7 +363,7 @@ async def handle_web_search(arguments: dict[str, Any]) -> str:
     if not isinstance(query, str) or not query.strip():
         return json.dumps({"error": "query 不能为空"}, ensure_ascii=False)
 
-    from apps.gateway.settings import get_settings
+    from packages.platform import get_settings
 
     settings = get_settings()
     top_k = _clamp_top_k(

@@ -9,8 +9,7 @@ from collections import deque
 from collections.abc import Awaitable, Callable
 from typing import Any
 
-from apps.gateway.model_router import forward_with_model_router, is_model_allowed
-from apps.gateway.settings import get_settings
+from packages.platform import forward_with_model_router, get_settings, is_model_allowed
 from packages.agent.perf_metrics import get_agent_perf_metrics
 from packages.agent.registry import ToolRegistry
 from packages.contracts.agent_schemas import AgentPlan, PlanStep, ToolCallRecord

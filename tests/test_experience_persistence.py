@@ -323,7 +323,7 @@ class TestComputeTaskEmbedding(unittest.TestCase):
         mock_service = MagicMock()
         mock_service.embed_one = _mock_embed_one
         with patch("packages.embedding.service.get_embedding_service", return_value=mock_service):
-            with patch("apps.gateway.settings.get_settings") as mock_settings:
+            with patch("packages.agent.experience_store.get_settings") as mock_settings:
                 mock_settings.return_value.embedding_model = "test-model"
                 result = _run_async(compute_task_embedding("test goal"))
         # mock 返回固定 list

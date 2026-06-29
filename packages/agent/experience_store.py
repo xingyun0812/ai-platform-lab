@@ -475,7 +475,7 @@ async def compute_task_embedding(goal: str) -> list[float] | None:
         service = get_embedding_service()
         if service is None:
             return None
-        from apps.gateway.settings import get_settings
+        from packages.platform import get_settings
 
         settings = get_settings()
         model_id = "text-embedding-3-small"

@@ -71,7 +71,7 @@ def purge_source_index(
 
     file_deleted = False
     if delete_file:
-        from apps.gateway.rag.paths import resolve_source_path
+        from packages.platform import resolve_source_path
 
         try:
             path: Path = resolve_source_path(source_uri)

@@ -61,7 +61,7 @@ class MockSqlTests(unittest.TestCase):
         self.assertEqual(out["row_count"], 3)
         self.assertEqual(len(out["columns"]), 4)
 
-    @patch("apps.gateway.settings.get_settings")
+    @patch("packages.platform.get_settings")
     def test_handle_mock_mode(self, mock_settings) -> None:
         s = MagicMock()
         s.sql_query_mode = "mock"
@@ -75,7 +75,7 @@ class MockSqlTests(unittest.TestCase):
         self.assertTrue(body["ok"])
         self.assertEqual(body["data"]["mode"], "mock")
 
-    @patch("apps.gateway.settings.get_settings")
+    @patch("packages.platform.get_settings")
     def test_handle_delete_returns_forbidden_envelope(self, mock_settings) -> None:
         mock_settings.return_value = MagicMock(
             sql_query_mode="mock",
@@ -112,7 +112,7 @@ class AuditTests(unittest.TestCase):
 
 class AgentIntegrationTests(unittest.TestCase):
     @patch("packages.agent.runner.forward_with_model_router", new_callable=AsyncMock)
-    @patch("apps.gateway.settings.get_settings")
+    @patch("packages.agent.runner.get_settings")
     def test_run_agent_select_mock(self, mock_settings, mock_route) -> None:
         from apps.gateway.settings import Settings
 
@@ -179,7 +179,7 @@ class AgentIntegrationTests(unittest.TestCase):
         self.assertTrue(any(getattr(t, "tool_name", None) == "sql_query" for t in trace))
 
     @patch("packages.agent.runner.forward_with_model_router", new_callable=AsyncMock)
-    @patch("apps.gateway.settings.get_settings")
+    @patch("packages.agent.runner.get_settings")
     def test_run_agent_delete_raises_forbidden(self, mock_settings, mock_route) -> None:
         from apps.gateway.settings import Settings
 

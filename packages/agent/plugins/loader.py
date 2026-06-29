@@ -146,7 +146,7 @@ def get_loaded_plugins(
         return dict(_LOADED_PLUGINS)
 
     if plugins_dir is None:
-        from apps.gateway.settings import get_settings
+        from packages.platform import get_settings
 
         settings = get_settings()
         if not settings.agent_plugins_enabled:

@@ -192,7 +192,7 @@ def get_blackboard() -> BlackboardStore:
     global _blackboard
     if _blackboard is not None:
         return _blackboard
-    from apps.gateway.settings import get_settings
+    from packages.platform import get_settings
     from packages.state.redis_client import get_effective_redis_url
 
     settings = get_settings()

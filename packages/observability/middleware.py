@@ -7,7 +7,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import Response
 
-from apps.gateway.settings import get_settings
+from packages.platform import get_settings
 from packages.observability.context import bind_trace_id, reset_trace_id
 from packages.observability.metrics import get_metrics_store
 from packages.observability.otel import (

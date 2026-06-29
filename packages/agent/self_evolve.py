@@ -185,8 +185,7 @@ async def reflect_on_run(
     """
     tool_calls = tool_calls or []
     try:
-        from apps.gateway.model_router import forward_with_model_router
-        from apps.gateway.settings import get_settings
+        from packages.platform import forward_with_model_router, get_settings
 
         settings = get_settings()
         resolved_model = model or settings.agent_model
@@ -261,8 +260,7 @@ async def maybe_patch_strategy(
     proposed_change: dict[str, Any] = {}
 
     try:
-        from apps.gateway.model_router import forward_with_model_router
-        from apps.gateway.settings import get_settings
+        from packages.platform import forward_with_model_router, get_settings
 
         settings = get_settings()
         resolved_model = model or settings.agent_model

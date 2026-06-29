@@ -57,7 +57,7 @@ def get_session_store() -> SessionStore:
     global _session_store
     if _session_store is not None:
         return _session_store
-    from apps.gateway.settings import get_settings
+    from packages.platform import get_settings
 
     redis_url = (get_settings().redis_url or "").strip()
     if redis_url:

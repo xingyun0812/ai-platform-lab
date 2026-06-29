@@ -65,7 +65,7 @@ def get_secret_provider() -> SecretProvider | None:
     global _provider_singleton
     if _provider_singleton is not None:
         return _provider_singleton
-    from apps.gateway.settings import get_settings
+    from packages.platform import get_settings
 
     settings = get_settings()
     if settings.secrets_provider == "vault":
