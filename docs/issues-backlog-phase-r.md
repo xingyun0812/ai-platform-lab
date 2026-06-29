@@ -50,15 +50,15 @@
 - [x] 单测 ≥ 12（`tests/test_self_evolve.py` 23 + `tests/test_experience_persistence.py` 23）
 - [x] `eval/self_evolve_smoke.py` — 同类任务第 2 次复用经验
 
-**浅集成 gap（模块 ✅，主路径未闭合）** — 详见 [architecture-deepening-todo.md §7](./architecture-deepening-todo.md#7-phase-r-深存储--浅集成)：
+**浅集成（#146 已闭合，tag `arch-self-evolve-146-complete`）** — 详见 [architecture-deepening-todo.md §7](./architecture-deepening-todo.md#7-phase-r-深存储--浅集成)：
 
 | 子项 | 说明 | 状态 |
 |------|------|------|
-| 7a 写路径 | `trigger_self_evolve` 挂 `graph_runtime` 终态（`run_lifecycle` + `create_task`） | 🔄 [#146](https://github.com/xingyun0812/ai-platform-lab/issues/146) |
-| 7b REST | strategy patch HTTP；`apps/gateway/agent/strategy_patch_routes.py` | 🔄 feat/issue-146 |
-| 7c Planner | approve 注入 `generate_plan` | 🔄 PR #148 |
-| E2E | REST approve → plan（`test_self_evolve_e2e.py`） | 🔄 PR #148 |
-| 7d 持久化 | `StrategyPatchStore` 纯内存；experience 已有 Postgres | ⬜ |
+| 7a 写路径 | `run_lifecycle` + `graph_runtime` 终态 | ✅ |
+| 7b REST | `/internal/agent/strategy-patches/*` | ✅ #147 |
+| 7c Planner | approved → `generate_plan` context | ✅ #148 |
+| 7d 持久化 | Postgres `strategy_patches` | ✅ |
+| E2E | REST approve → plan | ✅ `test_self_evolve_e2e.py` |
 
 **依赖**：Phase Q ✅ · Phase F #31 长记忆 ✅ · **预估**：5～7d（模块）+ 3～5d（#7 浅集成闭合）
 
@@ -139,12 +139,9 @@
 
 | 项 | 说明 |
 |----|------|
-| **R1 写路径接线 (7a)** | `graph_runtime` 终态经 `finalize_agent_run_result` → `create_task(trigger_self_evolve)`；`SELF_EVOLVE_ENABLED=false` 可关 | 🔄 代码已合入，E2E 待验 |
-| **R1 Strategy patch REST (7b)** | `GET/POST /internal/agent/strategy-patches/*` 已实现；PR 待 merge | 🔄 |
-| **R1 approved → Planner (7c)** | approve 仅更新 `StrategyPatchStore` 内存 status；`generate_plan` 不读 approved patch |
-| **R1 Patch 持久化 (7d)** | `StrategyPatchStore` 进程内 dict；与 `experience_store` Postgres 不对称 |
 | R1 Redis 热缓存 | 经验库当前 Postgres + 内存；原规划「Redis 热缓存」未实现 |
+| R1 run→store E2E | 全链路 HTTP run 结束写经验 + 第 2 次 plan 复用（可选 follow-up） |
 | R2 Console | `console-v2` 无长程任务列表页 |
 | R3 Router fallback | 能力感知选主模型已做；降级链仍为静态 YAML |
 
-> **架构加深**：上述 R1 四条与 [architecture-deepening-todo.md #7](./architecture-deepening-todo.md#7-phase-r-深存储--浅集成) 对齐，优先级 P1 · RFC → [#146](https://github.com/xingyun0812/ai-platform-lab/issues/146)
+> **架构加深 #7**：已闭合 → [#146](https://github.com/xingyun0812/ai-platform-lab/issues/146) · tag `arch-self-evolve-146-complete`

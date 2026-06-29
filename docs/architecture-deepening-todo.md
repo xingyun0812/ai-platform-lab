@@ -25,7 +25,7 @@
 | [4](#4-agent-planner-轨-vs-orchestrator-轨) | Agent Planner vs Orchestrator 双轨 | P0 | ⬜ | 7～10d |
 | [5](#5-三套-checkpointresume-语义) | 三套 Checkpoint/Resume 语义 | P1 | ⬜ | 4～6d |
 | [6](#6-runnerpy--plannerpy-浅接口深实现) | runner + planner 浅接口深实现 | P1 | ⬜ | 5～7d |
-| [7](#7-phase-r-深存储--浅集成) | Phase R 深存储 / 浅集成 | P1 | 🔄 [RFC #146](https://github.com/xingyun0812/ai-platform-lab/issues/146) | 3～5d |
+| [7](#7-phase-r-深存储--浅集成) | Phase R 深存储 / 浅集成 | P1 | ✅ [#146](https://github.com/xingyun0812/ai-platform-lab/issues/146) | 3～5d |
 | [8](#8-initget-单例泛滥) | init/get 单例泛滥 | P2 | ⬜ | 4～6d |
 | [9](#9-internal-api-vs-主路径双轨) | /internal API vs 主路径双轨 | P2 | ⬜ | 5～8d |
 | [10](#10-observability-指标碎片化) | Observability 指标碎片化 | P3 | ⬜ | 2～4d |
@@ -282,7 +282,7 @@ Config/YAML · 架构倒置（library → app）
 
 ## 7. Phase R 深存储 / 浅集成
 
-**状态**：🔄 [RFC #146](https://github.com/xingyun0812/ai-platform-lab/issues/146) · **优先级**：P1 · **关联**：[issues-backlog-phase-r.md](./issues-backlog-phase-r.md) · R1 [#134](https://github.com/xingyun0812/ai-platform-lab/issues/134)
+**状态**：✅ · **优先级**：P1 · **关联**：[issues-backlog-phase-r.md](./issues-backlog-phase-r.md) · [#146](https://github.com/xingyun0812/ai-platform-lab/issues/146) · tag `arch-self-evolve-146-complete`
 
 ### 问题（总述）
 
