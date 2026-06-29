@@ -10,10 +10,10 @@ from fastapi.responses import JSONResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 
 from apps.gateway.agent.approval_routes import router as agent_approval_router
-from apps.gateway.agent.strategy_patch_routes import router as strategy_patch_router
 from apps.gateway.agent.plan_approval_routes import router as plan_approval_router
 from apps.gateway.agent.plan_workflow_routes import router as plan_workflow_router
 from apps.gateway.agent.routes import router as agent_router
+from apps.gateway.agent.strategy_patch_routes import router as strategy_patch_router
 from apps.gateway.agent_lifecycle_routes import router as agent_lifecycle_router
 from apps.gateway.audit_action_routes import router as audit_action_router
 from apps.gateway.audit_routes import router as audit_router
@@ -29,10 +29,10 @@ from apps.gateway.http_utils import json_error, resolve_tenant
 from apps.gateway.mcp_routes import router as mcp_router
 from apps.gateway.memory_routes import router as memory_router
 from apps.gateway.model_router import forward_with_model_router
-from apps.gateway.platform_adapter import wire_platform
 from apps.gateway.multi_agent_routes import router as multi_agent_router
 from apps.gateway.orchestrator_routes import router as orchestrator_router
 from apps.gateway.pii_routes import router as pii_router
+from apps.gateway.platform_adapter import wire_platform
 from apps.gateway.platform_routes import router as platform_router
 from apps.gateway.prompt_experiment_routes import router as prompt_experiment_router
 from apps.gateway.prompt_routes import router as prompt_router

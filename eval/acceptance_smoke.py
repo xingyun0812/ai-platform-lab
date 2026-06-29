@@ -30,10 +30,9 @@ DEMO_B_HEADERS = {
 
 
 def _ensure_platform_wired() -> None:
-    """acceptance_smoke 直接 import packages 时须先绑定 PlatformPort。"""
-    from apps.gateway.platform_adapter import wire_platform
+    from eval.platform_wire import ensure_platform_wired
 
-    wire_platform()
+    ensure_platform_wired()
 
 
 @dataclass
