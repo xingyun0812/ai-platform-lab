@@ -11,7 +11,7 @@
 | 🔄 | 进行中（RFC 或实现中） |
 | ✅ | 已完成（Issue 关闭 + 边界测试绿） |
 
-**当前进度**：0 / 10（#2 PR-1 脚手架已合 → [Issue #145](https://github.com/xingyun0812/ai-platform-lab/issues/145) · #7 7a 已合 → [Issue #146](https://github.com/xingyun0812/ai-platform-lab/issues/146)）
+**当前进度**：1 / 10（#2 Phase 1 ✅ · #7 [#146](https://github.com/xingyun0812/ai-platform-lab/issues/146) ✅）
 
 ---
 
@@ -20,7 +20,7 @@
 | # | 标题 | 优先级 | 状态 | 预估 |
 |---|------|--------|------|------|
 | [1](#1-gateway-单体-create_app) | Gateway 单体 `create_app()` | P0 | ⬜ | 5～7d |
-| [2](#2-packages--gateway-反向依赖) | packages ↔ gateway 反向依赖 | P0 | 🔄 [RFC #145](https://github.com/xingyun0812/ai-platform-lab/issues/145) | 5～8d |
+| [2](#2-packages--gateway-反向依赖) | packages ↔ gateway 反向依赖 | P0 | ✅ Phase 1 [#145](https://github.com/xingyun0812/ai-platform-lab/issues/145) | 5～8d |
 | [3](#3-rag-索引-gatewayworker-队列缝) | RAG 索引 gateway/worker 队列缝 | P1 | ⬜ | 3～5d |
 | [4](#4-agent-planner-轨-vs-orchestrator-轨) | Agent Planner vs Orchestrator 双轨 | P0 | ⬜ | 7～10d |
 | [5](#5-三套-checkpointresume-语义) | 三套 Checkpoint/Resume 语义 | P1 | ⬜ | 4～6d |
@@ -104,14 +104,14 @@ Config/YAML · 进程内全局单例 · 同进程直调
 
 ## 2. packages ↔ gateway 反向依赖
 
-**状态**：🔄 · **优先级**：P0 · **RFC**：[Issue #145 — C+A 混合 packages/platform](https://github.com/xingyun0812/ai-platform-lab/issues/145)
+**状态**：✅ Phase 1 · **优先级**：P0 · **RFC**：[Issue #145](https://github.com/xingyun0812/ai-platform-lab/issues/145) · tag `arch-platform-145-phase1` · Phase 2 → 新开 Issue
 
 ### 选定方案（C+A 混合）
 
 | 阶段 | 内容 |
 |------|------|
-| **Phase 1** | `packages/platform` 门面，保留 `get_settings` / `forward_with_model_router` 等旧函数名；`GatewayPlatformAdapter` + `configure()` |
-| **Phase 2** | `model_router` 下沉 `packages/router` + `packages/llm`；`TenantRecord` 迁 contracts；可选收敛 `get_platform()` |
+| **Phase 1** | ✅ `packages/platform` 门面 + PR-3 零 `apps.*` import；`TenantRecord`/`load_tenants`/`REPO_ROOT` 已迁 packages |
+| **Phase 2** | `model_router` 下沉 `packages/router` + `packages/llm`；Settings 拆 domain vs HTTP；收敛 `get_platform()` |
 
 ### 问题
 
