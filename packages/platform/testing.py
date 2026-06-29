@@ -31,6 +31,10 @@ class InMemoryPlatformSettings:
     redis_url: str = ""
     qdrant_url: str = "http://127.0.0.1:6333"
     embedding_model: str = "text-embedding-3-small"
+    chunk_size: int = 512
+    chunk_overlap: int = 64
+    rag_config_path: Path = field(default_factory=lambda: REPO_ROOT / "config" / "rag.yaml")
+    use_index_worker: bool = False
     index_queue_name: str = "index:tasks"
     agent_context_token_budget: int = 32000
     agent_context_keep_recent_turns: int = 8

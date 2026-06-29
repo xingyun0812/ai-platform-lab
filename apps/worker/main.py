@@ -8,8 +8,8 @@ import logging
 import signal
 
 from apps.gateway.platform_adapter import wire_platform
-from apps.gateway.rag.pipeline import run_index_task
-from apps.gateway.settings import get_settings
+from packages.platform import get_settings
+from packages.rag.index_pipeline import run_index_task
 from packages.tasks.queue import get_index_task_queue
 
 logger = logging.getLogger("ai_platform.worker")
