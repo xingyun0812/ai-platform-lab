@@ -7,16 +7,12 @@ import logging
 from packages.platform import get_settings
 from packages.rag.index_pipeline import run_index_task
 from packages.rag.routing import parse_kb_routing, pick_query_version
-from packages.rag.task_store import get_task_store
 from packages.rag.vector_store import VectorStore
 
 logger = logging.getLogger("ai_platform.rag.pipeline")
 
-task_store = get_task_store()
-
 __all__ = [
     "run_index_task",
-    "task_store",
     "resolve_retrieve_version",
     "resolve_query_version",
     "_kb_routing_rules",
