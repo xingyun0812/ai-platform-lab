@@ -5,7 +5,7 @@ from typing import Any
 
 import yaml
 
-from apps.gateway.settings import REPO_ROOT
+from packages.platform import REPO_ROOT
 
 
 @lru_cache(maxsize=1)

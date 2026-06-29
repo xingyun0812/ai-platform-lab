@@ -65,7 +65,7 @@ class ExecutionApproval:
 _HITL_ENABLED = os.environ.get("HITL_ENABLED", "true").lower() not in ("false", "0", "no")
 
 try:
-    from apps.gateway.settings import REPO_ROOT
+    from packages.platform import REPO_ROOT
     APPROVALS_PATH = REPO_ROOT / "data" / "agent_approvals.json"
 except Exception:
     from pathlib import Path

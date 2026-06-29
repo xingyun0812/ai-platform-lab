@@ -10,6 +10,7 @@ from packages.contracts.rag_schemas import (
     TaskStatus,
 )
 from packages.contracts.schemas import ChatCompletionRequest
+from packages.contracts.tenant import TenantRecord
 
 __all__ = [
     "AgentRunRequest",
@@ -25,4 +26,5 @@ __all__ = [
     "RetrieveRequest",
     "RetrieveResponse",
     "TaskStatus",
+    "TenantRecord",
 ]

@@ -9,7 +9,7 @@ from typing import Any
 
 import yaml
 
-from apps.gateway.settings import REPO_ROOT
+from packages.platform import REPO_ROOT
 from packages.tenant_admin.overrides import patch_tenant_limits
 
 REQUESTS_PATH = REPO_ROOT / "data" / "tool_requests.json"
@@ -131,7 +131,7 @@ def approve_tool_request(request_id: str, *, reviewer: str) -> ToolRequest | Non
     req = _update_request(request_id, status=ToolRequestStatus.approved, reviewer=reviewer)
     if req is None:
         return None
-    from apps.gateway.tenants import load_tenants
+    from packages.tenant import load_tenants
 
     tenants = load_tenants()
     base = list(tenants[req.tenant_id].allowed_tools) if req.tenant_id in tenants else []

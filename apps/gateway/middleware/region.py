@@ -1,9 +1,11 @@
+"""Gateway region 中间件 — 依赖 http_utils，归属 apps 层（Issue #145 PR-3）。"""
+
 from __future__ import annotations
 
 from fastapi import Request
 from fastapi.responses import JSONResponse
 
-from apps.gateway.http_utils import json_error
+from apps.gateway.http_utils import json_error, resolve_tenant
 from apps.gateway.tenants import TenantRecord, load_tenants
 from packages.region.context import set_request_region
 from packages.region.resolver import RegionViolation, resolve_region
@@ -15,8 +17,6 @@ def _resolve_tenant_for_region(request: Request) -> TenantRecord | None:
     if not x_tenant or not auth:
         return None
     try:
-        from apps.gateway.http_utils import resolve_tenant
-
         return resolve_tenant(x_tenant, auth, load_tenants())
     except Exception:
         return None

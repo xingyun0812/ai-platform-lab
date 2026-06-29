@@ -11,8 +11,8 @@ from apps.gateway.quota import get_quota_tracker
 from apps.gateway.request_guards import check_rate_limit, check_token_budget
 from apps.gateway.settings import get_settings
 from apps.gateway.tenants import TenantRecord, load_tenants
-from packages.agent.multi_agent.blackboard import get_blackboard
 from packages.agent.graph_runtime import GraphRuntimeError, execute_agent_graph
+from packages.agent.multi_agent.blackboard import get_blackboard
 from packages.agent.planner import (
     PlannerError,
     generate_plan,
@@ -213,7 +213,6 @@ async def agent_run(
             result = await execute_agent_graph(
                 body=body,
                 tenant=tenant,
-                settings=settings,
                 session_store=get_session_store(),
                 new_messages=new_messages,
                 step_system_messages=step_system_messages,

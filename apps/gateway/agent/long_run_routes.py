@@ -21,7 +21,6 @@ from apps.gateway.http_utils import json_error, resolve_tenant
 from apps.gateway.tenants import TenantRecord, load_tenants
 from packages.agent.long_horizon import (
     cancel_task,
-    checkpoint_task,
     create_long_run,
     get_long_run,
     get_long_run_store,

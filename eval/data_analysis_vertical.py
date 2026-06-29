@@ -212,6 +212,10 @@ def main() -> int:
     parser.add_argument("--base-url", default=os.environ.get("BASE_URL", "http://127.0.0.1:8000"))
     args = parser.parse_args()
 
+    from eval.platform_wire import ensure_platform_wired
+
+    ensure_platform_wired()
+
     env_path = REPO / ".env"
     if env_path.is_file():
         for line in env_path.read_text(encoding="utf-8").splitlines():

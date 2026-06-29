@@ -13,7 +13,12 @@ class PlatformSettings(Protocol):
     default_model: str
     agent_model: str
     plan_execution_mode: str
+    plan_require_approval: bool
+    plan_max_replan_attempts: int
     rag_data_root: Path
+    tenants_config_path: Path
+    default_rate_limit_rps: float
+    default_rate_limit_burst: int
 
 
 @runtime_checkable

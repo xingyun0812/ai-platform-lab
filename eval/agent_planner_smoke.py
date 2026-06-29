@@ -127,6 +127,10 @@ def test_structured_plan_path() -> None:
 
 
 def main() -> int:
+    from eval.platform_wire import ensure_platform_wired
+
+    ensure_platform_wired()
+
     from packages.agent.planner import (
         PlannerError,
         build_planner_user_prompt,

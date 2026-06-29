@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from apps.gateway.settings import REPO_ROOT
+from packages.platform import REPO_ROOT
 
 OVERRIDES_PATH = REPO_ROOT / "data" / "tenant_overrides.json"
 

@@ -22,7 +22,7 @@ def _ensure_dotenv():
             load_dotenv(dotenv_path=env_path)
 
 
-from apps.gateway.settings import REPO_ROOT
+from packages.platform import REPO_ROOT
 from packages.platform import get_settings
 
 

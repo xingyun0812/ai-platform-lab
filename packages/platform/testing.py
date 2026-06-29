@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from packages.platform.paths import REPO_ROOT
 from packages.platform.types import PlatformSettings
 
 
@@ -14,7 +15,12 @@ class InMemoryPlatformSettings:
     default_model: str = "test-model"
     agent_model: str = "test-agent-model"
     plan_execution_mode: str = "parallel"
+    plan_require_approval: bool = False
+    plan_max_replan_attempts: int = 2
     rag_data_root: Path = field(default_factory=lambda: Path("/tmp/rag-test"))
+    tenants_config_path: Path = field(default_factory=lambda: REPO_ROOT / "config" / "tenants.yaml")
+    default_rate_limit_rps: float = 10.0
+    default_rate_limit_burst: int = 20
     embedding_model: str = "text-embedding-3-small"
     database_url: str = ""
     redis_url: str = ""

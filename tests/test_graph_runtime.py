@@ -45,9 +45,6 @@ class TestPlanApprovalResume(unittest.IsolatedAsyncioTestCase):
                 "plan_steps_completed": 1,
             }
         )
-        settings = MagicMock()
-        settings.plan_execution_mode = "parallel"
-        settings.plan_max_replan_attempts = 2
         tenant = MagicMock()
         tenant.tenant_id = "admin"
         tenant.allowed_tools = ()
@@ -68,7 +65,6 @@ class TestPlanApprovalResume(unittest.IsolatedAsyncioTestCase):
                 result = await execute_agent_graph(
                     body=body,
                     tenant=tenant,
-                    settings=settings,
                     session_store=MagicMock(),
                     new_messages=[],
                     step_system_messages=None,
@@ -93,13 +89,11 @@ class TestPlanApprovalResume(unittest.IsolatedAsyncioTestCase):
             plan_approval_id=aid,
         )
         tenant = MagicMock(tenant_id="admin", allowed_tools=(), allowed_models=())
-        settings = MagicMock()
 
         with self.assertRaises(GraphRuntimeError) as ctx:
             await execute_agent_graph(
                 body=body,
                 tenant=tenant,
-                settings=settings,
                 session_store=MagicMock(),
                 new_messages=[],
                 step_system_messages=None,

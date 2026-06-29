@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
-# CI: packages/** must not import apps.gateway platform facades (Issue #145).
+# CI: packages/** must not import apps.* (Issue #145 PR-3).
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
-PATTERN='from apps\.gateway\.(settings import get_settings|model_router|rag\.paths|rag\.pipeline import resolve_retrieve_version)'
+PATTERN='(from apps\.|import apps\.)'
 
 if rg -n "$PATTERN" packages/; then
-  echo "ERROR: packages/ must use packages.platform instead of apps.gateway facades above."
+  echo "ERROR: packages/ must not import apps.* — use packages.platform / packages.contracts / packages.tenant."
   exit 1
 fi
 
-echo "OK: no forbidden packages -> apps.gateway platform imports"
+echo "OK: no packages -> apps imports"
