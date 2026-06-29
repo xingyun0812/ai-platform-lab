@@ -55,7 +55,7 @@
 | 子项 | 说明 | 状态 |
 |------|------|------|
 | 7a 写路径 | `trigger_self_evolve` 挂 `graph_runtime` 终态（`run_lifecycle` + `create_task`） | 🔄 [#146](https://github.com/xingyun0812/ai-platform-lab/issues/146) |
-| 7b REST | strategy patch 无 HTTP；仅 `approve_strategy_patch()` Python API | ⬜ |
+| 7b REST | strategy patch HTTP；`apps/gateway/agent/strategy_patch_routes.py` | 🔄 feat/issue-146 |
 | 7c Planner | approve 只改内存 status，不注入 `generate_plan` | ⬜ |
 | 7d 持久化 | `StrategyPatchStore` 纯内存；experience 已有 Postgres | ⬜ |
 
@@ -139,7 +139,7 @@
 | 项 | 说明 |
 |----|------|
 | **R1 写路径接线 (7a)** | `graph_runtime` 终态经 `finalize_agent_run_result` → `create_task(trigger_self_evolve)`；`SELF_EVOLVE_ENABLED=false` 可关 | 🔄 代码已合入，E2E 待验 |
-| **R1 Strategy patch REST (7b)** | 文档规划 `/internal/agent/strategy-patches/*`，未实现；当前仅 Python `approve_strategy_patch` |
+| **R1 Strategy patch REST (7b)** | `GET/POST /internal/agent/strategy-patches/*` 已实现；PR 待 merge | 🔄 |
 | **R1 approved → Planner (7c)** | approve 仅更新 `StrategyPatchStore` 内存 status；`generate_plan` 不读 approved patch |
 | **R1 Patch 持久化 (7d)** | `StrategyPatchStore` 进程内 dict；与 `experience_store` Postgres 不对称 |
 | R1 Redis 热缓存 | 经验库当前 Postgres + 内存；原规划「Redis 热缓存」未实现 |

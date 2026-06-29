@@ -347,9 +347,9 @@ Inbound-only coupling（深模块 + 浅 wiring）
 
 **7b — HITL REST**
 
-- [ ] `GET /internal/agent/strategy-patches` — 列出 pending/approved/rejected
-- [ ] `POST .../strategy-patches/{id}/approve` · `POST .../reject` — 委托 `approve_strategy_patch` / `reject_strategy_patch`
-- [ ] 路由单测或 gateway 集成测 ≥2
+- [x] `GET /internal/agent/strategy-patches` — 列出 pending/approved/rejected
+- [x] `POST .../strategy-patches/{id}/approve` · `POST .../reject` — 委托 `approve_strategy_patch` / `reject_strategy_patch`
+- [x] 路由单测或 gateway 集成测 ≥2（`tests/test_strategy_patch_routes.py` 5 用例）
 
 **7c — approved → Planner**
 
