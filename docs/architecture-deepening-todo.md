@@ -19,7 +19,7 @@
 
 | # | 标题 | 优先级 | 状态 | 预估 |
 |---|------|--------|------|------|
-| [1](#1-gateway-单体-create_app) | Gateway 单体 `create_app()` | P0 | ⬜ | 5～7d |
+| [1](#1-gateway-单体-create_app) | Gateway 单体 `create_app()` | P0 | 🔄 PR-1 [#156](https://github.com/xingyun0812/ai-platform-lab/issues/156) | 5～7d |
 | [2](#2-packages--gateway-反向依赖) | packages ↔ gateway 反向依赖 | P0 | ✅ Phase 1 [#145](https://github.com/xingyun0812/ai-platform-lab/issues/145) | 5～8d |
 | [3](#3-rag-索引-gatewayworker-队列缝) | RAG 索引 gateway/worker 队列缝 | P1 | ✅ [#152](https://github.com/xingyun0812/ai-platform-lab/issues/152) | 3～5d |
 | [4](#4-agent-planner-轨-vs-orchestrator-轨) | Agent Planner vs Orchestrator 双轨 | P0 | ⬜ | 7～10d |
@@ -66,7 +66,7 @@ flowchart TB
 
 ## 1. Gateway 单体 `create_app()`
 
-**状态**：⬜ · **优先级**：P0
+**状态**：🔄 PR-1 · **优先级**：P0 · **RFC**：[#156](https://github.com/xingyun0812/ai-platform-lab/issues/156)
 
 ### 问题
 
@@ -88,12 +88,18 @@ Config/YAML · 进程内全局单例 · 同进程直调
 
 ### 验收清单
 
-- [ ] `create_app()` 瘦身至 200 行以内（编排 only）
+| 切片 | 内容 |
+|------|------|
+| PR-1 | 🔄 composition + router_registry + chat/core/middleware 拆分；mount long_run/harness |
+| PR-2 | ⬜ FastAPI lifespan |
+| PR-3 | ⬜ 集成测完善 + 文档 |
+
+- [x] `create_app()` ≤200 行（编排 only，~31 行）
 - [ ] 显式 `lifespan` 或 `AppContext` 管理 init/shutdown
-- [ ] `/v1/chat/completions` 抽到独立 handler 模块
-- [ ] 漏挂 router（long_run/harness）已 mount 或文档删除
-- [ ] ≥1 个 HTTP 集成测：`create_app` + chat healthz（可 mock 上游）
-- [ ] GitHub Issue RFC 已创建并链接
+- [x] `/v1/chat/completions` 抽到 `apps/gateway/chat_routes.py`
+- [x] 漏挂 router（long_run/harness）已 mount
+- [x] ≥1 个 HTTP 集成测：`tests/test_gateway_create_app.py`
+- [x] GitHub Issue RFC 已创建并链接 → [#156](https://github.com/xingyun0812/ai-platform-lab/issues/156)
 
 ### 测试影响
 
