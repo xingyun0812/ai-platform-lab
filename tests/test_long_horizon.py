@@ -471,10 +471,13 @@ class TestExecutePlanParallelLongRun(unittest.TestCase):
 
     def _load_planner(self):
         """动态加载 planner 模块，绕过 packages.agent.__init__ 链。"""
-        # Stub all dependencies planner needs
+        from packages.platform import configure, reset_platform_for_tests
+        from packages.platform.testing import InMemoryPlatformPort
+
+        reset_platform_for_tests()
+        configure(InMemoryPlatformPort())
+
         for mod_name in [
-            "apps.gateway.model_router",
-            "apps.gateway.settings",
             "packages.agent.perf_metrics",
             "packages.agent.registry",
             "packages.observability.otel",

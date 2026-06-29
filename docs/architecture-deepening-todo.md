@@ -104,14 +104,14 @@ Config/YAML · 进程内全局单例 · 同进程直调
 
 ## 2. packages ↔ gateway 反向依赖
 
-**状态**：✅ Phase 1 · **优先级**：P0 · **RFC**：[Issue #145](https://github.com/xingyun0812/ai-platform-lab/issues/145) · tag `arch-platform-145-phase1` · Phase 2 → 新开 Issue
+**状态**：✅ Phase 2 · **优先级**：P0 · **RFC**：[#145](https://github.com/xingyun0812/ai-platform-lab/issues/145) · [#150](https://github.com/xingyun0812/ai-platform-lab/issues/150)
 
 ### 选定方案（C+A 混合）
 
 | 阶段 | 内容 |
 |------|------|
 | **Phase 1** | ✅ `packages/platform` 门面 + PR-3 零 `apps.*` import；`TenantRecord`/`load_tenants`/`REPO_ROOT` 已迁 packages |
-| **Phase 2** | `model_router` 下沉 `packages/router` + `packages/llm`；Settings 拆 domain vs HTTP；收敛 `get_platform()` |
+| **Phase 2** | ✅ `packages/router` + `packages/llm`；`PlatformSettings` 扩展；gateway re-export |
 
 ### 问题
 
@@ -135,9 +135,9 @@ Config/YAML · 架构倒置（library → app）
 ### 验收清单
 
 - [x] `packages/*` 零 import `apps.gateway`（CI grep 门禁）
-- [ ] `forward_with_model_router` 迁至 `packages/router` 或 `packages/llm`
-- [ ] Settings 拆：domain 可读配置 vs HTTP 专属配置
-- [ ] planner/runner 测试不再 `sys.modules` stub gateway
+- [x] `forward_with_model_router` 迁至 `packages/router` 或 `packages/llm`
+- [x] Settings 拆：domain 可读配置 vs HTTP 专属配置
+- [x] planner/runner 测试不再 `sys.modules` stub gateway
 - [x] GitHub Issue RFC 已创建并链接 → [#145](https://github.com/xingyun0812/ai-platform-lab/issues/145)
 
 ### 测试影响

@@ -1770,7 +1770,7 @@ async def run_checks(*, with_llm: bool) -> list[Check]:
     try:
         import yaml
 
-        from apps.gateway.model_router import resolve_model_name
+        from packages.router import resolve_model_name
 
         models_raw = yaml.safe_load((REPO_ROOT / "config" / "models.yaml").read_text(encoding="utf-8"))
         aliases = models_raw.get("aliases") if isinstance(models_raw, dict) else {}

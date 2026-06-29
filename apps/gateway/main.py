@@ -28,7 +28,6 @@ from apps.gateway.hitl_routes import router as hitl_router
 from apps.gateway.http_utils import json_error, resolve_tenant
 from apps.gateway.mcp_routes import router as mcp_router
 from apps.gateway.memory_routes import router as memory_router
-from apps.gateway.model_router import forward_with_model_router
 from apps.gateway.multi_agent_routes import router as multi_agent_router
 from apps.gateway.orchestrator_routes import router as orchestrator_router
 from apps.gateway.pii_routes import router as pii_router
@@ -57,6 +56,7 @@ from packages.observability.middleware import TraceIdMiddleware
 from packages.observability.otel import init_otel
 from packages.prompt import init_experiment_store as init_prompt_experiment_store
 from packages.prompt import init_registry as init_prompt_registry
+from packages.router.model_router import forward_with_model_router
 from packages.semantic_cache import (
     SemanticCacheConfig,
     get_semantic_cache,
