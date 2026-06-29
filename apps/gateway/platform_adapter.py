@@ -1,15 +1,15 @@
-"""Gateway → packages.platform 薄适配器（Issue #145 PR-1 / #150 Phase 2）。"""
+"""Gateway → packages.platform 薄适配器（Issue #145 PR-1 / #150 Phase 2 / #152 PR-2）。"""
 
 from __future__ import annotations
 
 from pathlib import Path
 from typing import Any
 
-from apps.gateway.rag.paths import resolve_source_path as _resolve_source_path
-from apps.gateway.rag.pipeline import resolve_retrieve_version as _resolve_retrieve_version
 from apps.gateway.settings import Settings
 from apps.gateway.settings import get_settings as _get_settings
 from packages.platform.types import PlatformPort, PlatformSettings
+from packages.rag.paths import resolve_source_path as _resolve_source_path
+from packages.rag.query_version import resolve_retrieve_version as _resolve_retrieve_version
 from packages.router.model_router import (
     ModelRouteResult,
 )
@@ -22,7 +22,7 @@ from packages.router.model_router import (
 
 
 class GatewayPlatformAdapter(PlatformPort):
-    """将 gateway Settings 与 packages.router / rag paths 委托给 packages.platform。"""
+    """将 gateway Settings 与 packages.router / rag 委托给 packages.platform。"""
 
     def get_settings(self) -> PlatformSettings:
         settings = _get_settings()
