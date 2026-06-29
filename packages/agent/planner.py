@@ -9,11 +9,11 @@ from collections import deque
 from collections.abc import Awaitable, Callable
 from typing import Any
 
-from packages.platform import forward_with_model_router, get_settings, is_model_allowed
 from packages.agent.perf_metrics import get_agent_perf_metrics
 from packages.agent.registry import ToolRegistry
 from packages.contracts.agent_schemas import AgentPlan, PlanStep, ToolCallRecord
 from packages.observability.context import get_trace_id
+from packages.platform import forward_with_model_router, get_settings, is_model_allowed
 
 logger = logging.getLogger("ai_platform.agent.planner")
 
@@ -269,6 +269,7 @@ async def generate_plan(
     allowed_models: tuple[str, ...],
     allowed_tools: tuple[str, ...],
     registry: ToolRegistry | None = None,
+    tenant_id: str | None = None,
 ) -> tuple[AgentPlan, str]:
     """调用 LLM 生成 Plan，返回 (plan, resolved_model)。
 
@@ -307,6 +308,18 @@ async def generate_plan(
                 )
     except Exception as exc:
         logger.warning("experience injection failed: %s", exc)
+
+    # === Phase R 7c: 注入已审批策略 patch（runtime context，不改源码） ===
+    if tenant_id:
+        try:
+            from packages.agent.self_evolve import format_approved_strategy_context
+
+            strategy_ctx = format_approved_strategy_context(tenant_id)
+            if strategy_ctx:
+                context = (context or "") + f"\n\n【已审批策略】\n{strategy_ctx}"
+                logger.debug("injecting approved strategy patch tenant=%s", tenant_id)
+        except Exception as exc:
+            logger.warning("approved strategy injection failed: %s", exc)
 
     # 将 past_lessons 追加到 context
     if past_lessons:

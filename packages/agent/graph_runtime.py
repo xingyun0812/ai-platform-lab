@@ -98,6 +98,7 @@ async def execute_agent_graph(
             model=body.model,
             allowed_models=tenant.allowed_models,
             allowed_tools=tenant.allowed_tools,
+            tenant_id=tenant.tenant_id,
         )
         require_approval = body.require_plan_approval or settings.plan_require_approval
         execute_plan = get_plan_executor(mode=settings.plan_execution_mode)

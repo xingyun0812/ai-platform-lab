@@ -121,6 +121,7 @@ async def agent_plan(
                 model=body.model,
                 allowed_models=tenant.allowed_models,
                 allowed_tools=tenant.allowed_tools,
+                tenant_id=tenant.tenant_id,
             )
     except PlannerError as e:
         return _planner_error_response(e)

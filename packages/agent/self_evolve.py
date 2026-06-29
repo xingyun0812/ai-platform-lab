@@ -112,6 +112,9 @@ class StrategyPatchStore:
         patches.sort(key=lambda p: p.created_at, reverse=True)
         return patches
 
+    def list_approved(self, tenant_id: str, *, limit: int = 1) -> list[StrategyPatch]:
+        return self.list_by_status("approved", tenant_id=tenant_id)[:limit]
+
     def count_today(self, tenant_id: str) -> int:
         """统计今天（UTC 日期）该 tenant 已生成的 patch 数量。"""
         today_start = _today_start_ts()
@@ -258,6 +261,9 @@ class PostgresStrategyPatchStore:
             )
             rows = cur.fetchall()
         return [StrategyPatch.from_row(r) for r in rows]
+
+    def list_approved(self, tenant_id: str, *, limit: int = 1) -> list[StrategyPatch]:
+        return self.list_by_status("approved", tenant_id=tenant_id)[:limit]
 
     def count_today(self, tenant_id: str) -> int:
         today_start = _today_start_ts()
@@ -623,10 +629,37 @@ async def trigger_self_evolve(
 
 
 def approve_strategy_patch(patch_id: str, decided_by: str = "human") -> bool:
-    """审批通过一个策略 patch（HITL）。仅入库，不直接改 planner.py。"""
+    """审批通过一个策略 patch（HITL）。approved 后由 generate_plan 注入 runtime context。"""
     return get_strategy_patch_store().approve(patch_id, decided_by=decided_by)
 
 
 def reject_strategy_patch(patch_id: str, decided_by: str = "human") -> bool:
     """拒绝一个策略 patch（HITL）。"""
     return get_strategy_patch_store().reject(patch_id, decided_by=decided_by)
+
+
+def list_approved_strategy_patches(tenant_id: str, *, limit: int = 1) -> list[StrategyPatch]:
+    """列出 tenant 下已审批策略 patch（按 created_at 倒序）。"""
+    return get_strategy_patch_store().list_approved(tenant_id, limit=limit)
+
+
+def format_approved_strategy_context(tenant_id: str, *, limit: int = 1) -> str:
+    """将 approved patch 格式化为 planner context 片段；失败返回空串（fail-open）。"""
+    try:
+        patches = list_approved_strategy_patches(tenant_id, limit=limit)
+        if not patches:
+            return ""
+        lines: list[str] = []
+        for patch in patches:
+            change = patch.proposed_change or {}
+            field = str(change.get("field") or "unknown")
+            new_val = str(change.get("new") or "")
+            reason = str(change.get("reason") or "").strip()
+            line = f"- [{field}] {new_val}"
+            if reason:
+                line += f"（{reason}）"
+            lines.append(line)
+        return "\n".join(lines)
+    except Exception as exc:
+        logger.warning("format_approved_strategy_context failed: %s", exc)
+        return ""
