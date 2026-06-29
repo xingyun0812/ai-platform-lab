@@ -29,6 +29,13 @@ DEMO_B_HEADERS = {
 }
 
 
+def _ensure_platform_wired() -> None:
+    """acceptance_smoke 直接 import packages 时须先绑定 PlatformPort。"""
+    from apps.gateway.platform_adapter import wire_platform
+
+    wire_platform()
+
+
 @dataclass
 class Check:
     week: str
@@ -1800,6 +1807,7 @@ def main() -> None:
     parser.add_argument("--agent-vertical", action="store_true", help="Phase L #59 Agent Vertical smoke")
     parser.add_argument("--platform-demo", action="store_true", help="Phase L #62 platform_demo.sh --no-llm + feedback mock")
     args = parser.parse_args()
+    _ensure_platform_wired()
     checks = asyncio.run(run_checks(with_llm=args.with_llm))
 
     if args.agent_vertical:

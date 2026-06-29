@@ -416,8 +416,8 @@ def create_app() -> FastAPI:
 
     @app.middleware("http")
     async def region_context(request: Request, call_next):
-        from packages.region.context import clear_request_region
         from apps.gateway.middleware.region import bind_region_context
+        from packages.region.context import clear_request_region
 
         region_err = await bind_region_context(request)
         if region_err is not None:
