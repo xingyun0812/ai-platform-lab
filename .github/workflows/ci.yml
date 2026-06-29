@@ -20,6 +20,8 @@ jobs:
         run: ruff check .
       - name: No packages→apps gateway facades
         run: bash scripts/check_no_packages_import_apps.sh
+      - name: Worker must not import apps.gateway.rag
+        run: bash scripts/check_worker_no_gateway_rag.sh
       - name: Validate baseline JSONL
         run: |
           python eval/run.py validate-baseline
