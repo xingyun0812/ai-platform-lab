@@ -13,7 +13,6 @@ from apps.gateway.rag.pipeline import (
     _list_kb_versions,
     resolve_query_version,
     run_index_task,
-    task_store,
 )
 from apps.gateway.settings import get_settings
 from apps.gateway.tenants import TenantRecord, load_tenants
@@ -35,6 +34,7 @@ from packages.rag.rerank_providers import provider_config_from_settings
 from packages.rag.retrieval import retrieve_chunks
 from packages.rag.routing import describe_routing
 from packages.rag.source_index import purge_source_index
+from packages.rag.task_store import get_task_store
 from packages.rag.vector_store import VectorStore
 from packages.tasks.queue import get_index_task_queue
 
@@ -104,7 +104,7 @@ async def create_index_job(
     except ValueError as e:
         return json_error(400, "BAD_REQUEST", str(e))
 
-    record = task_store.create(
+    record = get_task_store().create(
         kb_id=body.kb_id,
         version=body.version,
         source_uri=body.source_uri,
@@ -148,7 +148,7 @@ async def upload_and_index(
     content = await file.read()
     dest.write_bytes(content)
 
-    record = task_store.create(kb_id=kb_id, version=version, source_uri=source_uri)
+    record = get_task_store().create(kb_id=kb_id, version=version, source_uri=source_uri)
     _dispatch_index(record.task_id, background_tasks)
     return IndexUploadResponse(
         task_id=record.task_id,
@@ -171,7 +171,7 @@ async def get_index_task(
     if isinstance(tenant, JSONResponse):
         return tenant
 
-    record = task_store.get(task_id)
+    record = get_task_store().get(task_id)
     if not record:
         return json_error(404, "NOT_FOUND", f"任务不存在: {task_id}")
     return _task_view(record)

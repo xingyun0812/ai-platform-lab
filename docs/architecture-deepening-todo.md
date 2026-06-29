@@ -149,7 +149,7 @@ Config/YAML · 架构倒置（library → app）
 
 ## 3. RAG 索引 gateway/worker 队列缝
 
-**状态**：⬜ · **优先级**：P1
+**状态**：🔄 PR-1 · **优先级**：P1 · **RFC**：[#152](https://github.com/xingyun0812/ai-platform-lab/issues/152)
 
 ### 问题
 
@@ -172,11 +172,17 @@ Config/YAML · 架构倒置（library → app）
 
 ### 验收清单
 
+| 切片 | 内容 |
+|------|------|
+| PR-1 | 🔄 `run_index_task` + `task_store` → packages；worker 改 import |
+| PR-2 | ⬜ 版本解析下沉；platform_adapter 去 pipeline 依赖 |
+| PR-3 | ⬜ E2E lifecycle + CI grep |
+
 - [ ] `run_index_task` 下沉至 packages
-- [ ] worker 仅依赖 packages，不 import gateway
+- [ ] worker 仅依赖 packages，不 import gateway pipeline
 - [ ] 端到端测试：mock Redis + 跑 index 任务 lifecycle
 - [ ] `tests/` 覆盖 worker 入口（或 integration 含 worker 逻辑）
-- [ ] GitHub Issue RFC 已创建并链接
+- [x] GitHub Issue RFC 已创建并链接 → [#152](https://github.com/xingyun0812/ai-platform-lab/issues/152)
 
 ---
 

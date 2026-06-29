@@ -33,6 +33,11 @@ class PlatformSettings(Protocol):
     redis_url: str
     qdrant_url: str
     embedding_model: str
+    chunk_size: int
+    chunk_overlap: int
+    rag_config_path: Path
+    use_index_worker: bool
+    index_queue_name: str
 
 
 @runtime_checkable
