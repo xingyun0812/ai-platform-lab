@@ -353,9 +353,9 @@ Inbound-only coupling（深模块 + 浅 wiring）
 
 **7c — approved → Planner**
 
-- [ ] `generate_plan` 读取 tenant 下 **approved** patch（按时间或优先级）
-- [ ] patch 内容注入 plan_prompt 或 tool 选择策略（文档化注入规则）
-- [ ] 单测：approve 后第二次 `generate_plan` 可观测到 patch 字段
+- [x] `generate_plan` 读取 tenant 下 **approved** patch（`list_approved` / `format_approved_strategy_context`）
+- [x] patch 内容注入 plan context（`【已审批策略】` 块；runtime only，不改源码）
+- [x] 单测：approve 后 `generate_plan` 可观测 patch 字段（`tests/test_planner_strategy_patch.py`）
 
 **7d — 持久化对称**
 
