@@ -7,10 +7,10 @@ import asyncio
 import logging
 import signal
 
-from apps.gateway.platform_adapter import wire_platform
 from packages.platform import get_settings
 from packages.rag.index_pipeline import run_index_task
 from packages.tasks.queue import get_index_task_queue
+from packages.worker.wire import wire_worker_platform
 
 logger = logging.getLogger("ai_platform.worker")
 
@@ -51,7 +51,7 @@ def main() -> None:
 
     async def _loop() -> None:
         settings = get_settings()
-        wire_platform()
+        wire_worker_platform()
         queue = get_index_task_queue()
         if queue is None:
             raise SystemExit("索引任务队列未初始化")
