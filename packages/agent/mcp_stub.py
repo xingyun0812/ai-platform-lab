@@ -3,8 +3,8 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from packages.platform import REPO_ROOT
 from packages.agent.tools.base import ToolDefinition
+from packages.platform import REPO_ROOT
 
 
 def load_mcp_stub_tools() -> dict[str, ToolDefinition]:

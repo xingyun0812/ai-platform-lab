@@ -135,8 +135,8 @@ def get_tool_registry() -> dict[str, ToolDefinition]:
         merged = build_default_registry()
         # Phase O #90 — YAML Plugin Manifest
         try:
-            from packages.platform import get_settings
             from packages.agent.plugins.loader import get_loaded_plugins
+            from packages.platform import get_settings
 
             settings = get_settings()
             if settings.agent_plugins_enabled:
@@ -205,8 +205,8 @@ async def refresh_mcp_tools() -> int:
     返回新加载的工具数。
     用于 admin 通过 API 添加 MCP server 后刷新 registry。
     """
-    from packages.platform import get_settings
     from packages.mcp import get_mcp_registry, load_mcp_tools
+    from packages.platform import get_settings
 
     settings = get_settings()
     if not settings.mcp_enabled:

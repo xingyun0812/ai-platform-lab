@@ -4,8 +4,8 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any
 
-from packages.platform import get_settings
 from packages.billing.db import get_billing_store
+from packages.platform import get_settings
 
 
 @dataclass(frozen=True)

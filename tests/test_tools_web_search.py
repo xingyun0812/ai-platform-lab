@@ -10,7 +10,6 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from packages.agent.registry import ToolRegistry, reset_tool_registry_for_tests
 from packages.agent.tools.web_search import (
     build_weather_summary,
-    ddg_web_search,
     extract_weather_location,
     handle_web_search,
     http_web_search,

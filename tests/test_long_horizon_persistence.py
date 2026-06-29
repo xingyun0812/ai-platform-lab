@@ -26,7 +26,7 @@ import time
 import types
 import unittest
 from pathlib import Path
-from unittest.mock import MagicMock, call, patch
+from unittest.mock import MagicMock, patch
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT))
@@ -288,7 +288,6 @@ class TestPostgresLongRunTaskStore(unittest.TestCase):
         """__init__ should call _connect + _ensure_schema (CREATE TABLE)."""
         store, conn, cursor, mock_psycopg = self._make_store()
         # Schema creation should have been called
-        called_sqls = [str(c) for c in cursor.execute.call_args_list]
         schema_called = any("CREATE TABLE" in str(c) for c in cursor.execute.call_args_list)
         self.assertTrue(schema_called, "Expected CREATE TABLE to be executed")
 
@@ -700,10 +699,6 @@ class TestCrossProcessResume(unittest.TestCase):
 
     def _make_mock_postgres_store(self):
         """Create a mock Postgres store that persists to an in-memory dict (simulating DB)."""
-        # We simulate the DB with a shared dict
-        db_tasks = {}
-        db_checkpoints = {}
-
         # Build a real InMemoryLongRunTaskStore but expose it as if it's Postgres
         # by sharing state between two instances via a shared dict
         mem_store_a = InMemoryLongRunTaskStore()

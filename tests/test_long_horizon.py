@@ -90,6 +90,15 @@ _agent_schemas = _load_module(
     "packages.contracts.agent_schemas",
     str(REPO_ROOT / "packages" / "contracts" / "agent_schemas.py"),
 )
+_load_module(
+    "packages.contracts.tenant",
+    str(REPO_ROOT / "packages" / "contracts" / "tenant.py"),
+)
+_ensure_namespace("packages.tenant")
+_load_module(
+    "packages.tenant.loader",
+    str(REPO_ROOT / "packages" / "tenant" / "loader.py"),
+)
 
 # Now load long_horizon directly (bypasses packages.agent.__init__)
 _long_horizon = _load_module(

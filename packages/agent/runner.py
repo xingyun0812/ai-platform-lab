@@ -7,7 +7,6 @@ import time
 from dataclasses import dataclass
 from typing import Any
 
-from packages.platform import forward_with_model_router, get_settings, is_model_allowed
 from packages.agent.context_budget import (
     ContextBudgetMeta,
     assemble_llm_messages,
@@ -44,6 +43,7 @@ from packages.billing.budget import budget_platform_meta, get_budget_snapshot
 from packages.billing.recorder import record_upstream_usage
 from packages.contracts.agent_schemas import ReasoningTraceRecord, ToolCallRecord
 from packages.observability.context import get_trace_id
+from packages.platform import forward_with_model_router, get_settings, is_model_allowed
 
 logger = logging.getLogger("ai_platform.agent.runner")
 

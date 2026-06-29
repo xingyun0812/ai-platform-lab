@@ -20,10 +20,10 @@ TINY_PNG = (
 
 
 async def main() -> int:
-    from unittest.mock import patch
-
     from packages.embedding.models import EmbeddingRegistry
     from packages.embedding.service import EmbeddingService, reset_embedding_service_for_tests
+    from packages.platform import configure
+    from packages.platform.testing import InMemoryPlatformPort
     from packages.rag.embeddings import embed_rag_chunks
     from packages.rag.multimodal_index import chunk_image_file, load_image_caption
 
@@ -62,17 +62,13 @@ models:
         rag_root.mkdir()
         (rag_root / "chart.png").write_bytes(TINY_PNG)
 
-        with (
-            patch("packages.rag.embeddings.get_settings") as mock_emb_settings,
-            patch("apps.gateway.rag.paths.get_settings") as mock_path_settings,
-        ):
-            for mock_settings in (mock_emb_settings, mock_path_settings):
-                settings = mock_settings.return_value
-                settings.embedding_service_enabled = True
-                settings.rag_multimodal_embedding_model = "stub-multimodal"
-                settings.rag_data_root = rag_root
+        port = InMemoryPlatformPort()
+        port.settings.rag_data_root = rag_root
+        port.settings.embedding_service_enabled = True
+        port.settings.rag_multimodal_embedding_model = "stub-multimodal"
+        configure(port)
 
-            vectors = await embed_rag_chunks(chunks)
+        vectors = await embed_rag_chunks(chunks)
 
         assert len(vectors) == 1 and len(vectors[0]) == 16
         reset_embedding_service_for_tests()

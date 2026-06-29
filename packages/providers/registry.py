@@ -22,8 +22,7 @@ def _ensure_dotenv():
             load_dotenv(dotenv_path=env_path)
 
 
-from packages.platform import REPO_ROOT
-from packages.platform import get_settings
+from packages.platform import REPO_ROOT, get_settings
 
 
 @dataclass(frozen=True)

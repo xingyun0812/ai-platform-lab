@@ -5,8 +5,6 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from packages.contracts.tenant import TenantRecord
-from packages.platform import get_settings
 from packages.agent.graph_state import AgentGraphState
 from packages.agent.plan_approval import get_plan_approval
 from packages.agent.planner import (
@@ -14,8 +12,10 @@ from packages.agent.planner import (
     generate_plan,
     get_plan_executor,
 )
-from packages.agent.runner import run_agent
 from packages.agent.run_lifecycle import finalize_agent_run_result
+from packages.agent.runner import run_agent
+from packages.contracts.tenant import TenantRecord
+from packages.platform import get_settings
 
 logger = logging.getLogger("ai_platform.agent.graph_runtime")
 

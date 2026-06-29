@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import time
 
-from packages.platform import get_settings
 from packages.contracts.rag_schemas import RetrievedChunk
+from packages.platform import get_settings
 from packages.rag.embeddings import embed_texts
 from packages.rag.hybrid import HybridRetrieveTimings, retrieve_bm25, rrf_fusion
 from packages.rag.vector_store import VectorStore

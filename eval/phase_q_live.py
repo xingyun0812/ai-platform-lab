@@ -183,7 +183,11 @@ async def run_phase_q_live(
                 headers=hdrs,
             )
             body3 = r3.json() if r3.content else {}
-            ok_approve = r3.status_code == 200 and body3.get("status") == "approved"
+            ok_approve = (
+                ok_get
+                and r3.status_code == 200
+                and body3.get("status") == "approved"
+            )
             if not ok_approve:
                 out.append(
                     PhaseQLiveCheck(

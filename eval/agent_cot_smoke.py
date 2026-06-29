@@ -12,6 +12,10 @@ sys.path.insert(0, str(REPO_ROOT))
 
 
 def main() -> int:
+    from eval.platform_wire import ensure_platform_wired
+
+    ensure_platform_wired()
+
     from packages.agent.reasoning import parse_thinking_content, resolve_reasoning_mode
 
     thinking, visible = parse_thinking_content("<thinking>plan</thinking>结果")

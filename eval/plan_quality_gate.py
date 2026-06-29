@@ -223,7 +223,6 @@ def _build_mock_plan_for_case(case: dict) -> _AgentPlan:
     """构建满足用例约束的 mock Plan（用于 mock_generate=True 模式）。"""
     goal = case.get("goal", "mock goal")
     min_s = int(case.get("min_steps", 1))
-    max_s = int(case.get("max_steps", min_s + 1))
     # Use min_steps as step count
     n = max(min_s, 1)
 
@@ -305,7 +304,6 @@ def _real_generate_plan(case: dict) -> Any:
     import asyncio
 
     planner = _load_planner_module()
-    contracts = _load_contracts_module()
 
     async def _inner():
         plan, _ = await planner.generate_plan(

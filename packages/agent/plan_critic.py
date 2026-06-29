@@ -169,8 +169,8 @@ async def replan_after_failure(
         )
         return None
 
-    from packages.platform import get_settings
     from packages.agent.planner import PlannerError, parse_plan
+    from packages.platform import get_settings
 
     settings = get_settings()
     resolved_model_name = model or settings.agent_model or settings.default_model

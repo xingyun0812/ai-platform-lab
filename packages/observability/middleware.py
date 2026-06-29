@@ -7,7 +7,6 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import Response
 
-from packages.platform import get_settings
 from packages.observability.context import bind_trace_id, reset_trace_id
 from packages.observability.metrics import get_metrics_store
 from packages.observability.otel import (
@@ -15,6 +14,7 @@ from packages.observability.otel import (
     detach_trace_context,
     extract_trace_context_from_headers,
 )
+from packages.platform import get_settings
 
 logger = logging.getLogger("ai_platform.observability")
 

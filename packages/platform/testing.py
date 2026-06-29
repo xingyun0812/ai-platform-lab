@@ -33,8 +33,15 @@ class InMemoryPlatformSettings:
     agent_tool_routing_enabled: bool = False
     agent_tool_rag_enabled: bool = False
     agent_reflect_max_retries: int = 1
+    agent_max_steps: int = 8
+    agent_plugins_enabled: bool = True
+    agent_plugins_config_dir: Path = field(
+        default_factory=lambda: REPO_ROOT / "config" / "plugins"
+    )
+    embedding_service_enabled: bool = True
+    rag_multimodal_embedding_model: str = "stub-multimodal"
+    mcp_enabled: bool = False
     context_memory_injection_enabled: bool = False
-    plan_max_replan_attempts: int = 2
     plan_structured_output_enabled: bool = False
     circuit_breaker_threshold: int = 3
 
@@ -44,7 +51,14 @@ class InMemoryPlatformSettings:
             return False
         if name.endswith("_path") or name.endswith("_root") or name.endswith("_url"):
             return ""
-        if name.endswith("_seconds") or name.endswith("_ms") or name.endswith("_budget"):
+        if (
+            name.endswith("_seconds")
+            or name.endswith("_ms")
+            or name.endswith("_budget")
+            or name.endswith("_steps")
+            or name.endswith("_attempts")
+            or name.endswith("_turns")
+        ):
             return 0
         return None
 

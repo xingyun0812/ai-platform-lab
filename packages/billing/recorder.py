@@ -3,9 +3,9 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from packages.platform import get_settings
 from packages.billing.db import get_billing_store
 from packages.billing.usage import TokenUsage, parse_token_usage
+from packages.platform import get_settings
 
 logger = logging.getLogger("ai_platform.billing.recorder")
 

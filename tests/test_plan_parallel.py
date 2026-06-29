@@ -7,13 +7,11 @@ import asyncio
 import sys
 import unittest
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, call, patch
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT))
 
 from packages.agent.perf_metrics import (  # noqa: E402
-    AgentPerfMetrics,
     reset_agent_perf_metrics_for_tests,
 )
 from packages.agent.planner import (  # noqa: E402

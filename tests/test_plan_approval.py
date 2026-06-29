@@ -12,10 +12,8 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT))
 
 from packages.agent.plan_approval import (  # noqa: E402
-    PlanApprovalStore,
     approve_plan,
     get_plan_approval,
-    get_plan_approval_store,
     is_plan_approved,
     new_plan_approval_id,
     reject_plan,
@@ -28,7 +26,6 @@ from packages.agent.planner import (
     format_plan_summary,
 )  # noqa: E402
 from packages.contracts.agent_schemas import AgentPlan, PlanStep  # noqa: E402
-
 
 # ---------------------------------------------------------------------------
 # Helpers

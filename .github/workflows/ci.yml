@@ -33,7 +33,7 @@ jobs:
         with:
           python-version: "3.11"
       - name: Install
-        run: pip install -e .
+        run: pip install -e ".[dev]"
       - name: Start stack
         run: docker compose up -d --build
       - name: Wait for gateway

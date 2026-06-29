@@ -18,14 +18,12 @@ sys.path.insert(0, str(REPO_ROOT))
 from eval.plan_quality_gate import (  # noqa: E402
     _AgentPlan,
     _PlanStep,
-    _build_mock_plan_for_case,
     _topological_sort,
     check_plan_quality,
     load_baseline,
     run_gate,
     static_check_baseline,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers

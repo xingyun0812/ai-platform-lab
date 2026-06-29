@@ -19,7 +19,6 @@ def test_structured_plan_path() -> None:
     from packages.agent.planner import (
         build_response_format_schema,
         generate_plan,
-        is_structured_mode,
     )
 
     # 1. Verify helpers
