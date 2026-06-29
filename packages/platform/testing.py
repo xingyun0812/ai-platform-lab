@@ -21,9 +21,16 @@ class InMemoryPlatformSettings:
     tenants_config_path: Path = field(default_factory=lambda: REPO_ROOT / "config" / "tenants.yaml")
     default_rate_limit_rps: float = 10.0
     default_rate_limit_burst: int = 20
-    embedding_model: str = "text-embedding-3-small"
+    models_config_path: Path = field(default_factory=lambda: REPO_ROOT / "config" / "models.yaml")
+    circuit_breaker_threshold: int = 3
+    llm_api_key: str = "test-key"
+    llm_base_url: str = "https://api.openai.com/v1"
+    upstream_max_retries: int = 0
+    upstream_timeout_seconds: float = 60.0
     database_url: str = ""
     redis_url: str = ""
+    qdrant_url: str = "http://127.0.0.1:6333"
+    embedding_model: str = "text-embedding-3-small"
     index_queue_name: str = "index:tasks"
     agent_context_token_budget: int = 32000
     agent_context_keep_recent_turns: int = 8

@@ -8,7 +8,11 @@ from typing import Any, Protocol, runtime_checkable
 
 @runtime_checkable
 class PlatformSettings(Protocol):
-    """packages 层可读的配置切片（不含 HTTP/CORS/JWT 等 gateway 专属项）。"""
+    """packages 层可读的配置切片。
+
+    Gateway 专属（不在此 Protocol）：CORS、JWT、HTTP 监听端口、静态文件路径等。
+    见 ``apps.gateway.settings.Settings`` 完整字段。
+    """
 
     default_model: str
     agent_model: str
@@ -19,6 +23,16 @@ class PlatformSettings(Protocol):
     tenants_config_path: Path
     default_rate_limit_rps: float
     default_rate_limit_burst: int
+    models_config_path: Path
+    circuit_breaker_threshold: int
+    llm_api_key: str
+    llm_base_url: str
+    upstream_max_retries: int
+    upstream_timeout_seconds: float
+    database_url: str
+    redis_url: str
+    qdrant_url: str
+    embedding_model: str
 
 
 @runtime_checkable

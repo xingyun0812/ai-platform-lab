@@ -4,7 +4,6 @@ import logging
 import time
 from typing import Any
 
-from apps.gateway.model_router import forward_with_model_router, resolve_model_name
 from apps.gateway.quota import DailyQuotaTracker
 from apps.gateway.rag.pipeline import resolve_query_version
 from apps.gateway.settings import get_settings
@@ -16,6 +15,7 @@ from packages.rag.prompt import build_context_block, load_prompt_template, rende
 from packages.rag.rerank import rerank_chunks, rerank_provider_name
 from packages.rag.rerank_providers import provider_config_from_settings
 from packages.rag.retrieval import retrieve_chunks
+from packages.router.model_router import forward_with_model_router, resolve_model_name
 
 logger = logging.getLogger("ai_platform.rag.query")
 

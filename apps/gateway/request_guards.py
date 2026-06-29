@@ -5,10 +5,10 @@ from typing import Any
 from fastapi.responses import JSONResponse
 
 from apps.gateway.http_utils import json_error
-from apps.gateway.model_router import is_model_allowed
 from apps.gateway.rate_limit import RateLimitPolicy, get_rate_limiter
 from apps.gateway.tenants import TenantRecord
 from packages.billing.budget import is_budget_exceeded
+from packages.platform import is_model_allowed
 
 
 def check_token_budget(tenant: TenantRecord) -> JSONResponse | None:

@@ -24,26 +24,10 @@ PROJECT_ROOT = Path(__file__).parent.parent
 
 
 def _setup_mock_packages() -> None:
-    """注入必要的 mock 模块，使 experience_store / self_evolve 可独立加载。"""
-    # packages hierarchy
-    for mod_name in ["packages", "packages.contracts", "packages.contracts.agent_schemas"]:
-        if mod_name not in sys.modules:
-            sys.modules[mod_name] = types.ModuleType(mod_name)
+    """确保 contracts 已加载，使 experience_store / self_evolve 可独立 importlib 加载。"""
+    import importlib
 
-    class _MockAgentPlan:
-        def __init__(self, goal: str = "test goal") -> None:
-            self.goal = goal
-            self.steps: list = []
-
-        def model_dump(self) -> dict:
-            return {"goal": self.goal, "steps": []}
-
-    sys.modules["packages.contracts.agent_schemas"].AgentPlan = _MockAgentPlan  # type: ignore[attr-defined]
-
-    # apps hierarchy
-    for mod_name in ["apps", "apps.gateway"]:
-        if mod_name not in sys.modules:
-            sys.modules[mod_name] = types.ModuleType(mod_name)
+    importlib.import_module("packages.contracts.agent_schemas")
 
 
 def _load_module(name: str, path: Path) -> types.ModuleType:
@@ -56,38 +40,40 @@ def _load_module(name: str, path: Path) -> types.ModuleType:
 
 
 def _setup_model_router_mock(fail: bool = False) -> None:
-    """注入 mock model_router 和 settings。"""
+    """绑定 InMemoryPlatformPort，替代 sys.modules stub gateway。"""
+    from packages.platform import configure, reset_platform_for_tests
+    from packages.platform.testing import InMemoryPlatformPort
+    from packages.router.model_router import ModelRouteResult
 
-    class MockRoute:
-        def __init__(self, ok: bool) -> None:
-            self.status = 200 if ok else 500
-            self.body = (
-                {
-                    "choices": [
-                        {
-                            "message": {
-                                "content": "经验 1: 先验证输入\n经验 2: 记录结果\n经验 3: 检查边界条件"
-                            }
+    reset_platform_for_tests()
+    port = InMemoryPlatformPort()
+    if fail:
+        port.forward_result = ModelRouteResult(
+            status=500,
+            body=None,
+            error="mock error",
+            model_used=None,
+            models_tried=(),
+            fallback_used=False,
+        )
+    else:
+        port.forward_result = ModelRouteResult(
+            status=200,
+            body={
+                "choices": [
+                    {
+                        "message": {
+                            "content": "经验 1: 先验证输入\n经验 2: 记录结果\n经验 3: 检查边界条件"
                         }
-                    ]
-                }
-                if ok
-                else None
-            )
-            self.error = None if ok else "mock error"
-
-    async def mock_forward(*args, **kwargs) -> MockRoute:
-        return MockRoute(not fail)
-
-    fake_router = types.ModuleType("apps.gateway.model_router")
-    fake_router.forward_with_model_router = mock_forward  # type: ignore[attr-defined]
-
-    fake_settings = types.ModuleType("apps.gateway.settings")
-
-    class _Settings:
-        agent_model = "gpt-4o"
-
-    fake_settings.get_settings = lambda: _Settings()  # type: ignore[attr-defined]
+                    }
+                ]
+            },
+            error=None,
+            model_used="gpt-4o",
+            models_tried=("gpt-4o",),
+            fallback_used=False,
+        )
+    configure(port)
 
     fake_perf = types.ModuleType("packages.agent.perf_metrics")
 
@@ -99,9 +85,6 @@ def _setup_model_router_mock(fail: bool = False) -> None:
             pass
 
     fake_perf.get_agent_perf_metrics = lambda: _Metrics()  # type: ignore[attr-defined]
-
-    sys.modules["apps.gateway.model_router"] = fake_router
-    sys.modules["apps.gateway.settings"] = fake_settings
     sys.modules["packages.agent.perf_metrics"] = fake_perf
 
 
@@ -113,8 +96,8 @@ def _run_async(coro) -> object:
 # Setup
 # ---------------------------------------------------------------------------
 
-_setup_mock_packages()
 _setup_model_router_mock(fail=False)
+_setup_mock_packages()
 
 _exp_mod = _load_module(
     "packages.agent.experience_store",
@@ -127,8 +110,12 @@ _se_mod = _load_module(
 
 
 def _make_plan(goal: str = "test goal") -> object:
-    """创建 mock AgentPlan。"""
-    return sys.modules["packages.contracts.agent_schemas"].AgentPlan(goal)  # type: ignore[attr-defined]
+    """创建 AgentPlan。"""
+    AgentPlan = sys.modules["packages.contracts.agent_schemas"].AgentPlan  # type: ignore[attr-defined]
+    return AgentPlan(
+        goal=goal,
+        steps=[{"id": "s1", "description": "test step"}],
+    )
 
 
 def _make_record(
@@ -284,8 +271,8 @@ class TestReflectOnRun(unittest.TestCase):
             PROJECT_ROOT / "packages" / "agent" / "self_evolve.py",
         )
         se = sys.modules["packages.agent.self_evolve"]
-        plan = _make_plan("")
-        # goal 为空 plan
+        plan = types.SimpleNamespace(goal="", steps=[])
+        plan.model_dump = lambda: {"goal": "", "steps": []}  # type: ignore[attr-defined]
         lessons = _run_async(se.reflect_on_run(plan, "partial", None, tenant_id="t3"))
         self.assertIsInstance(lessons, str)
 

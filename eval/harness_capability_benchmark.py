@@ -17,10 +17,8 @@ import asyncio
 import json
 import logging
 import re
-import sys
 import time
 from dataclasses import dataclass
-from pathlib import Path
 from typing import Any
 
 logger = logging.getLogger("ai_platform.eval.capability_benchmark")
@@ -58,9 +56,7 @@ class CapabilityScores:
 
 async def _call_model(model: str, messages: list[dict[str, str]]) -> str:
     """真实调用 forward_with_model_router；仅在非 mock 模式下触发。"""
-    REPO_ROOT = Path(__file__).resolve().parents[1]
-    sys.path.insert(0, str(REPO_ROOT))
-    from apps.gateway.model_router import forward_with_model_router
+    from packages.router.model_router import forward_with_model_router
 
     payload = {
         "model": model,

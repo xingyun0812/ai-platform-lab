@@ -1,4 +1,4 @@
-"""Gateway 薄 re-export — 实现位于 packages.llm（Issue #150）。"""
+"""packages.llm — 上游 LLM HTTP 调用。"""
 
 from packages.llm.chat import forward_chat_completions
 

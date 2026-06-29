@@ -26,44 +26,23 @@ if str(PROJECT_ROOT) not in sys.path:
 
 
 def _setup_mocks() -> None:
-    for mod_name in ["packages", "packages.contracts", "packages.contracts.agent_schemas"]:
-        if mod_name not in sys.modules:
-            sys.modules[mod_name] = types.ModuleType(mod_name)
+    from eval.platform_wire import ensure_platform_wired
+    from packages.platform import configure, reset_platform_for_tests
+    from packages.platform.testing import InMemoryPlatformPort
+    from packages.router.model_router import ModelRouteResult
 
-    class MockAgentPlan:
-        def __init__(self, goal: str = "test") -> None:
-            self.goal = goal
-            self.steps: list = []
-
-        def model_dump(self) -> dict:
-            return {"goal": self.goal, "steps": []}
-
-    sys.modules["packages.contracts.agent_schemas"].AgentPlan = MockAgentPlan  # type: ignore[attr-defined]
-
-    for mod_name in ["apps", "apps.gateway"]:
-        if mod_name not in sys.modules:
-            sys.modules[mod_name] = types.ModuleType(mod_name)
-
-    fake_router = types.ModuleType("apps.gateway.model_router")
-
-    class MockRoute:
-        status = 500
-        body = None
-        error = "mock no LLM"
-
-    async def mock_forward(*args, **kwargs) -> MockRoute:
-        return MockRoute()
-
-    fake_router.forward_with_model_router = mock_forward  # type: ignore[attr-defined]
-    sys.modules["apps.gateway.model_router"] = fake_router
-
-    fake_settings = types.ModuleType("apps.gateway.settings")
-
-    class MockSettings:
-        agent_model = "gpt-4o"
-
-    fake_settings.get_settings = lambda: MockSettings()  # type: ignore[attr-defined]
-    sys.modules["apps.gateway.settings"] = fake_settings
+    ensure_platform_wired()
+    reset_platform_for_tests()
+    port = InMemoryPlatformPort()
+    port.forward_result = ModelRouteResult(
+        status=500,
+        body=None,
+        error="mock no LLM",
+        model_used=None,
+        models_tried=(),
+        fallback_used=False,
+    )
+    configure(port)
 
     fake_perf = types.ModuleType("packages.agent.perf_metrics")
 
@@ -100,7 +79,13 @@ _se_mod = _load_module(
     PROJECT_ROOT / "packages" / "agent" / "self_evolve.py",
 )
 
-MockAgentPlan = sys.modules["packages.contracts.agent_schemas"].AgentPlan  # type: ignore[attr-defined]
+MockAgentPlan = __import__(
+    "packages.contracts.agent_schemas", fromlist=["AgentPlan"]
+).AgentPlan
+
+
+def _make_plan(goal: str) -> MockAgentPlan:
+    return MockAgentPlan(goal=goal, steps=[{"id": "s1", "description": "smoke step"}])
 
 
 # ---------------------------------------------------------------------------
@@ -113,7 +98,7 @@ async def test_experience_roundtrip() -> None:
     _exp_mod.reset_experience_store_for_tests()
 
     goal = "查询销售数据并生成报告"
-    plan = MockAgentPlan(goal)
+    plan = _make_plan(goal)
     record = _exp_mod.build_experience_record(
         tenant_id="t1",
         goal=goal,
@@ -138,7 +123,7 @@ async def test_second_run_injects_experience() -> None:
     _exp_mod.reset_experience_store_for_tests()
 
     goal = "分析用户行为数据"
-    plan = MockAgentPlan(goal)
+    plan = _make_plan(goal)
 
     r = _exp_mod.build_experience_record(
         tenant_id="t2",
@@ -166,7 +151,7 @@ async def test_trigger_self_evolve_mock() -> None:
     _exp_mod.reset_experience_store_for_tests()
     _se_mod.reset_strategy_patch_store_for_tests()
 
-    plan = MockAgentPlan("统计月度收入")
+    plan = _make_plan("统计月度收入")
     result = await _se_mod.trigger_self_evolve(
         plan,
         "success",

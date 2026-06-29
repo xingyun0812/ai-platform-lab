@@ -482,6 +482,14 @@ def test_run_all_benchmarks_mock():
     print(f"PASS test_run_all_benchmarks_mock (overall={scores.overall():.3f})")
 
 
+def _ensure_platform_for_router() -> None:
+    from packages.platform import configure, reset_platform_for_tests
+    from packages.platform.testing import InMemoryPlatformPort
+
+    reset_platform_for_tests()
+    configure(InMemoryPlatformPort())
+
+
 # ===========================================================================
 # 8. TestSelectModelWithCapability
 # ===========================================================================
@@ -489,11 +497,12 @@ def test_run_all_benchmarks_mock():
 
 def test_select_model_no_profiles_returns_default():
     """无 profile 时应降级到默认模型（不抛异常）。"""
+    _ensure_platform_for_router()
     reset_capability_profile_store_for_tests()
     # 动态加载 model_router 的 select_model_with_capability
     router_mod = _load_module(
-        "apps/gateway/model_router.py",
-        "apps.gateway.model_router",
+        "packages/router/model_router.py",
+        "packages.router.model_router",
     )
     result = router_mod.select_model_with_capability(
         prompt_type="test",
@@ -505,6 +514,7 @@ def test_select_model_no_profiles_returns_default():
 
 def test_select_model_picks_best_dimension():
     """有 profile 时应选出该维度得分最高的模型。"""
+    _ensure_platform_for_router()
     reset_capability_profile_store_for_tests()
 
     # 手动放两个 profile 进全局 store
@@ -532,8 +542,8 @@ def test_select_model_picks_best_dimension():
 
     # 让 router 的 select_model_with_capability 使用同一个全局 store
     router_mod = _load_module(
-        "apps/gateway/model_router.py",
-        "apps.gateway.model_router",
+        "packages/router/model_router.py",
+        "packages.router.model_router",
     )
     # 替换 get_capability_profile_store 引用
 
@@ -556,9 +566,10 @@ def test_select_model_picks_best_dimension():
 
 def test_select_model_unknown_dimension_returns_default():
     """未知 dimension 不应抛异常，而是返回默认模型。"""
+    _ensure_platform_for_router()
     router_mod = _load_module(
-        "apps/gateway/model_router.py",
-        "apps.gateway.model_router",
+        "packages/router/model_router.py",
+        "packages.router.model_router",
     )
     result = router_mod.select_model_with_capability(
         prompt_type="test",
