@@ -343,7 +343,7 @@ Inbound-only coupling（深模块 + 浅 wiring）
 - [x] `graph_runtime` 在 plan/react/resume 终态调用 `finalize_agent_run_result`
 - [x] `asyncio.create_task(trigger_self_evolve(...))`，主路径不因 self_evolve 失败而报错
 - [x] production 路径有调用点（`graph_runtime.py`）；`runner` / `planner` 直调路径留待 #145 后
-- [ ] 1 条 gateway 级 E2E：HTTP run → experience 可查
+- [x] 1 条 gateway 级 E2E：REST approve → plan 注入（`tests/test_self_evolve_e2e.py`）
 
 **7b — HITL REST**
 
@@ -366,7 +366,8 @@ Inbound-only coupling（深模块 + 浅 wiring）
 **端到端**
 
 - [ ] 同类任务第 2 次 plan 可观测到经验注入（非仅 smoke）
-- [ ] 1 条 E2E：run → store → retrieve → plan；可选第 2 条含 patch propose → REST approve → plan 注入
+- [ ] 1 条 E2E：run → store → retrieve → plan
+- [x] patch propose → REST approve → plan 注入（`tests/test_self_evolve_e2e.py`）
 - [ ] 策略 patch 仍走 HITL（不破坏 R1 约束：不自动改源码）
 - [ ] 更新 `issues-backlog-phase-r.md` 遗留项
 - [x] GitHub Issue RFC 已创建并链接 → [#146](https://github.com/xingyun0812/ai-platform-lab/issues/146)

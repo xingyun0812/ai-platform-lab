@@ -56,7 +56,8 @@
 |------|------|------|
 | 7a 写路径 | `trigger_self_evolve` 挂 `graph_runtime` 终态（`run_lifecycle` + `create_task`） | 🔄 [#146](https://github.com/xingyun0812/ai-platform-lab/issues/146) |
 | 7b REST | strategy patch HTTP；`apps/gateway/agent/strategy_patch_routes.py` | 🔄 feat/issue-146 |
-| 7c Planner | approve 注入 `generate_plan` context（`tenant_id` + `【已审批策略】`） | 🔄 feat/issue-146 |
+| 7c Planner | approve 注入 `generate_plan` | 🔄 PR #148 |
+| E2E | REST approve → plan（`test_self_evolve_e2e.py`） | 🔄 PR #148 |
 | 7d 持久化 | `StrategyPatchStore` 纯内存；experience 已有 Postgres | ⬜ |
 
 **依赖**：Phase Q ✅ · Phase F #31 长记忆 ✅ · **预估**：5～7d（模块）+ 3～5d（#7 浅集成闭合）
