@@ -6,11 +6,13 @@ from pathlib import Path
 from typing import Any
 
 from packages.platform._runtime import _require_port, configure, reset_platform_for_tests
+from packages.platform.paths import REPO_ROOT
 from packages.platform.types import PlatformPort, PlatformSettings
 
 __all__ = [
     "PlatformPort",
     "PlatformSettings",
+    "REPO_ROOT",
     "configure",
     "forward_with_model_router",
     "get_settings",

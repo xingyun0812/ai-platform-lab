@@ -11,7 +11,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from apps.gateway.settings import REPO_ROOT
+from packages.platform import REPO_ROOT
 
 logger = logging.getLogger("ai_platform.rag.canary_guard")
 

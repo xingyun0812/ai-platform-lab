@@ -213,7 +213,6 @@ async def agent_run(
             result = await execute_agent_graph(
                 body=body,
                 tenant=tenant,
-                settings=settings,
                 session_store=get_session_store(),
                 new_messages=new_messages,
                 step_system_messages=step_system_messages,

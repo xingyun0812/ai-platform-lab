@@ -134,7 +134,7 @@ Config/YAML · 架构倒置（library → app）
 
 ### 验收清单
 
-- [ ] `packages/*` 零 import `apps.gateway`（CI grep 门禁）
+- [x] `packages/*` 零 import `apps.gateway`（CI grep 门禁）
 - [ ] `forward_with_model_router` 迁至 `packages/router` 或 `packages/llm`
 - [ ] Settings 拆：domain 可读配置 vs HTTP 专属配置
 - [ ] planner/runner 测试不再 `sys.modules` stub gateway

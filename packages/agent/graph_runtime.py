@@ -5,8 +5,8 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from apps.gateway.settings import Settings
-from apps.gateway.tenants import TenantRecord
+from packages.contracts.tenant import TenantRecord
+from packages.platform import get_settings
 from packages.agent.graph_state import AgentGraphState
 from packages.agent.plan_approval import get_plan_approval
 from packages.agent.planner import (
@@ -39,13 +39,13 @@ async def execute_agent_graph(
     *,
     body: Any,
     tenant: TenantRecord,
-    settings: Settings,
     session_store: Any,
     new_messages: list[dict[str, Any]],
     step_system_messages: list[dict[str, Any]] | None,
     shadow_mode: bool,
 ) -> dict[str, Any]:
     """统一 Agent 图执行：plan_approval resume / tool approval resume / auto_plan / react。"""
+    settings = get_settings()
     session_id = body.session_id.strip()
 
     if body.plan_approval_id:
@@ -53,7 +53,6 @@ async def execute_agent_graph(
             plan_approval_id=body.plan_approval_id,
             tenant=tenant,
             session_id=session_id,
-            settings=settings,
             session_store=session_store,
             model=body.model,
             step_system_messages=step_system_messages,
@@ -164,11 +163,11 @@ async def _resume_approved_plan(
     plan_approval_id: str,
     tenant: TenantRecord,
     session_id: str,
-    settings: Settings,
     session_store: Any,
     model: str | None,
     step_system_messages: list[dict[str, Any]] | None,
 ) -> dict[str, Any]:
+    settings = get_settings()
     entry = get_plan_approval(plan_approval_id)
     if entry is None:
         raise GraphRuntimeError(

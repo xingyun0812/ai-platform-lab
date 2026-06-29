@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from apps.gateway.settings import REPO_ROOT
+from packages.platform import REPO_ROOT
 from packages.agent.tools.base import ToolDefinition
 
 
