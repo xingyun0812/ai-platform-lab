@@ -28,6 +28,7 @@ from apps.gateway.http_utils import json_error, resolve_tenant
 from apps.gateway.mcp_routes import router as mcp_router
 from apps.gateway.memory_routes import router as memory_router
 from apps.gateway.model_router import forward_with_model_router
+from apps.gateway.platform_adapter import wire_platform
 from apps.gateway.multi_agent_routes import router as multi_agent_router
 from apps.gateway.orchestrator_routes import router as orchestrator_router
 from apps.gateway.pii_routes import router as pii_router
@@ -87,6 +88,7 @@ def get_tenants() -> dict[str, TenantRecord]:
 
 def create_app() -> FastAPI:
     settings = get_settings()
+    wire_platform()
     init_otel(
         service_name=settings.app_name,
         enabled=settings.otel_enabled,

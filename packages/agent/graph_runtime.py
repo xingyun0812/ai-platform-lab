@@ -15,6 +15,7 @@ from packages.agent.planner import (
     get_plan_executor,
 )
 from packages.agent.runner import run_agent
+from packages.agent.run_lifecycle import finalize_agent_run_result
 
 logger = logging.getLogger("ai_platform.agent.graph_runtime")
 
@@ -59,7 +60,7 @@ async def execute_agent_graph(
         )
 
     if body.approval_id:
-        return await run_agent(
+        result = await run_agent(
             tenant_id=tenant.tenant_id,
             session_id=session_id,
             new_messages=new_messages,
@@ -72,6 +73,19 @@ async def execute_agent_graph(
             shadow_mode=shadow_mode,
             approval_id=body.approval_id,
             reasoning_mode=body.reasoning_mode,
+        )
+        result["_graph_state"] = AgentGraphState(
+            tenant_id=tenant.tenant_id,
+            session_id=session_id,
+            mode="react",
+            status="paused" if result.get("status") == "pending_approval" else "completed",
+            interrupt_reason="tool_approval" if result.get("approval_id") else None,
+            interrupt_id=result.get("approval_id"),
+        ).to_dict()
+        return finalize_agent_run_result(
+            result,
+            tenant_id=tenant.tenant_id,
+            model=body.model,
         )
 
     if body.auto_plan:
@@ -108,7 +122,12 @@ async def execute_agent_graph(
             interrupt_reason="plan_approval" if result.get("plan_approval_id") else None,
             interrupt_id=result.get("plan_approval_id"),
         ).to_dict()
-        return result
+        return finalize_agent_run_result(
+            result,
+            tenant_id=tenant.tenant_id,
+            model=body.model,
+            plan=plan,
+        )
 
     result = await run_agent(
         tenant_id=tenant.tenant_id,
@@ -132,7 +151,11 @@ async def execute_agent_graph(
         interrupt_reason="tool_approval" if result.get("approval_id") else None,
         interrupt_id=result.get("approval_id"),
     ).to_dict()
-    return result
+    return finalize_agent_run_result(
+        result,
+        tenant_id=tenant.tenant_id,
+        model=body.model,
+    )
 
 
 async def _resume_approved_plan(
@@ -194,4 +217,9 @@ async def _resume_approved_plan(
         interrupt_id=plan_approval_id,
     ).to_dict()
     result["resumed_from_plan_approval_id"] = plan_approval_id
-    return result
+    return finalize_agent_run_result(
+        result,
+        tenant_id=tenant.tenant_id,
+        model=model,
+        plan=entry.plan,
+    )

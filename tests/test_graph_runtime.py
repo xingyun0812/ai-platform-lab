@@ -61,15 +61,23 @@ class TestPlanApprovalResume(unittest.IsolatedAsyncioTestCase):
         )
 
         with patch("packages.agent.graph_runtime.get_plan_executor", return_value=mock_execute):
-            result = await execute_agent_graph(
-                body=body,
-                tenant=tenant,
-                settings=settings,
-                session_store=MagicMock(),
-                new_messages=[],
-                step_system_messages=None,
-                shadow_mode=False,
-            )
+            with patch(
+                "packages.agent.graph_runtime.finalize_agent_run_result",
+                side_effect=lambda r, **kw: r,
+            ) as finalize:
+                result = await execute_agent_graph(
+                    body=body,
+                    tenant=tenant,
+                    settings=settings,
+                    session_store=MagicMock(),
+                    new_messages=[],
+                    step_system_messages=None,
+                    shadow_mode=False,
+                )
+
+        finalize.assert_called_once()
+        self.assertEqual(finalize.call_args.kwargs["tenant_id"], "admin")
+        self.assertEqual(finalize.call_args.kwargs["plan"], SAMPLE_PLAN)
 
         self.assertEqual(result["status"], "completed")
         self.assertEqual(result["resumed_from_plan_approval_id"], aid)
