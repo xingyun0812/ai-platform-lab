@@ -8,7 +8,9 @@
 
 from __future__ import annotations
 
+import json
 import logging
+import os
 import threading
 import time
 import uuid
@@ -51,6 +53,23 @@ class StrategyPatch:
             "decided_by": self.decided_by,
         }
 
+    @classmethod
+    def from_row(cls, row: dict[str, Any]) -> StrategyPatch:
+        proposed = row.get("proposed_change_json")
+        if isinstance(proposed, str):
+            proposed = json.loads(proposed)
+        decided_at = row.get("decided_at")
+        return cls(
+            patch_id=row["patch_id"],
+            tenant_id=row["tenant_id"],
+            lessons=row["lessons"],
+            proposed_change=proposed if isinstance(proposed, dict) else {},
+            status=row["status"],
+            created_at=float(row["created_at"]),
+            decided_at=float(decided_at) if decided_at is not None else None,
+            decided_by=row.get("decided_by"),
+        )
+
 
 # ---------------------------------------------------------------------------
 # StrategyPatchStore
@@ -77,6 +96,21 @@ class StrategyPatchStore:
     def list_all(self) -> list[StrategyPatch]:
         with self._lock:
             return list(self._patches.values())
+
+    def list_by_status(
+        self,
+        status: str | None = None,
+        *,
+        tenant_id: str | None = None,
+    ) -> list[StrategyPatch]:
+        with self._lock:
+            patches = list(self._patches.values())
+        if tenant_id is not None:
+            patches = [p for p in patches if p.tenant_id == tenant_id]
+        if status is not None:
+            patches = [p for p in patches if p.status == status]
+        patches.sort(key=lambda p: p.created_at, reverse=True)
+        return patches
 
     def count_today(self, tenant_id: str) -> int:
         """统计今天（UTC 日期）该 tenant 已生成的 patch 数量。"""
@@ -109,6 +143,156 @@ class StrategyPatchStore:
             return True
 
 
+class PostgresStrategyPatchStore:
+    """Postgres 持久化策略 patch 库（与 experience_store 同构降级）。"""
+
+    def __init__(
+        self,
+        database_url: str,
+        max_patches_per_day: int = _DEFAULT_MAX_PATCHES_PER_DAY,
+    ) -> None:
+        self.max_patches_per_day = max_patches_per_day
+        self._url = database_url
+        self._conn = self._connect()
+        self._ensure_schema()
+
+    def _connect(self) -> Any:
+        import psycopg  # type: ignore[import-untyped]
+        from psycopg.rows import dict_row
+
+        return psycopg.connect(self._url, row_factory=dict_row)
+
+    def _ensure_schema(self) -> None:
+        with self._conn.cursor() as cur:
+            cur.execute(
+                """
+                CREATE TABLE IF NOT EXISTS strategy_patches (
+                    patch_id TEXT PRIMARY KEY,
+                    tenant_id TEXT NOT NULL,
+                    lessons TEXT NOT NULL,
+                    proposed_change_json JSONB NOT NULL,
+                    status TEXT NOT NULL,
+                    created_at DOUBLE PRECISION NOT NULL,
+                    decided_at DOUBLE PRECISION,
+                    decided_by TEXT
+                )
+                """
+            )
+            cur.execute(
+                "CREATE INDEX IF NOT EXISTS idx_strategy_patches_tenant "
+                "ON strategy_patches(tenant_id)"
+            )
+            cur.execute(
+                "CREATE INDEX IF NOT EXISTS idx_strategy_patches_status "
+                "ON strategy_patches(status)"
+            )
+        self._conn.commit()
+
+    def add(self, patch: StrategyPatch) -> StrategyPatch:
+        with self._conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO strategy_patches
+                    (patch_id, tenant_id, lessons, proposed_change_json,
+                     status, created_at, decided_at, decided_by)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                ON CONFLICT (patch_id) DO UPDATE SET
+                    tenant_id = EXCLUDED.tenant_id,
+                    lessons = EXCLUDED.lessons,
+                    proposed_change_json = EXCLUDED.proposed_change_json,
+                    status = EXCLUDED.status,
+                    created_at = EXCLUDED.created_at,
+                    decided_at = EXCLUDED.decided_at,
+                    decided_by = EXCLUDED.decided_by
+                """,
+                (
+                    patch.patch_id,
+                    patch.tenant_id,
+                    patch.lessons,
+                    json.dumps(patch.proposed_change),
+                    patch.status,
+                    patch.created_at,
+                    patch.decided_at,
+                    patch.decided_by,
+                ),
+            )
+        self._conn.commit()
+        return patch
+
+    def get(self, patch_id: str) -> StrategyPatch | None:
+        with self._conn.cursor() as cur:
+            cur.execute(
+                "SELECT * FROM strategy_patches WHERE patch_id = %s",
+                (patch_id,),
+            )
+            row = cur.fetchone()
+        if row is None:
+            return None
+        return StrategyPatch.from_row(row)
+
+    def list_all(self) -> list[StrategyPatch]:
+        with self._conn.cursor() as cur:
+            cur.execute("SELECT * FROM strategy_patches ORDER BY created_at DESC")
+            rows = cur.fetchall()
+        return [StrategyPatch.from_row(r) for r in rows]
+
+    def list_by_status(
+        self,
+        status: str | None = None,
+        *,
+        tenant_id: str | None = None,
+    ) -> list[StrategyPatch]:
+        clauses: list[str] = []
+        params: list[Any] = []
+        if tenant_id is not None:
+            clauses.append("tenant_id = %s")
+            params.append(tenant_id)
+        if status is not None:
+            clauses.append("status = %s")
+            params.append(status)
+        where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
+        with self._conn.cursor() as cur:
+            cur.execute(
+                f"SELECT * FROM strategy_patches {where} ORDER BY created_at DESC",
+                tuple(params),
+            )
+            rows = cur.fetchall()
+        return [StrategyPatch.from_row(r) for r in rows]
+
+    def count_today(self, tenant_id: str) -> int:
+        today_start = _today_start_ts()
+        with self._conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT COUNT(*) AS cnt FROM strategy_patches
+                WHERE tenant_id = %s AND created_at >= %s
+                """,
+                (tenant_id, today_start),
+            )
+            row = cur.fetchone()
+        return int(row["cnt"]) if row else 0
+
+    def approve(self, patch_id: str, decided_by: str = "system") -> bool:
+        patch = self.get(patch_id)
+        if patch is None:
+            return False
+        patch.status = "approved"
+        patch.decided_at = time.time()
+        patch.decided_by = decided_by
+        self.add(patch)
+        return True
+
+    def reject(self, patch_id: str, decided_by: str = "system") -> bool:
+        patch = self.get(patch_id)
+        if patch is None:
+            return False
+        patch.status = "rejected"
+        patch.decided_at = time.time()
+        patch.decided_by = decided_by
+        self.add(patch)
+        return True
+
+
 def _today_start_ts() -> float:
     """返回今日 00:00:00 UTC 的 Unix 时间戳。"""
     import datetime
@@ -122,16 +306,28 @@ def _today_start_ts() -> float:
 # 全局单例
 # ---------------------------------------------------------------------------
 
-_patch_store: StrategyPatchStore | None = None
+_patch_store: StrategyPatchStore | PostgresStrategyPatchStore | None = None
 _patch_store_lock = threading.Lock()
 
 
-def get_strategy_patch_store() -> StrategyPatchStore:
+def get_strategy_patch_store() -> StrategyPatchStore | PostgresStrategyPatchStore:
     global _patch_store
     if _patch_store is None:
         with _patch_store_lock:
             if _patch_store is None:
-                _patch_store = StrategyPatchStore()
+                database_url = os.environ.get("DATABASE_URL", "")
+                if database_url:
+                    try:
+                        _patch_store = PostgresStrategyPatchStore(database_url)
+                        logger.info("strategy patch store backend=postgres")
+                    except Exception as exc:
+                        logger.warning(
+                            "postgres 不可达，回退内存 strategy patch store: %s", exc
+                        )
+                        _patch_store = StrategyPatchStore()
+                else:
+                    _patch_store = StrategyPatchStore()
+                    logger.info("strategy patch store backend=memory")
     return _patch_store
 
 
