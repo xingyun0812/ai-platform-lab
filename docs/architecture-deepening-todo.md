@@ -11,7 +11,7 @@
 | 🔄 | 进行中（RFC 或实现中） |
 | ✅ | 已完成（Issue 关闭 + 边界测试绿） |
 
-**当前进度**：2 / 10（#2 ✅ · #3 ✅ [#152](https://github.com/xingyun0812/ai-platform-lab/issues/152) · #7 [#146](https://github.com/xingyun0812/ai-platform-lab/issues/146) ✅）
+**当前进度**：3 / 10（#1 ✅ [#156](https://github.com/xingyun0812/ai-platform-lab/issues/156) · #2 ✅ · #3 ✅ [#152](https://github.com/xingyun0812/ai-platform-lab/issues/152) · #7 [#146](https://github.com/xingyun0812/ai-platform-lab/issues/146) ✅）
 
 ---
 
@@ -19,7 +19,7 @@
 
 | # | 标题 | 优先级 | 状态 | 预估 |
 |---|------|--------|------|------|
-| [1](#1-gateway-单体-create_app) | Gateway 单体 `create_app()` | P0 | 🔄 PR-1 [#156](https://github.com/xingyun0812/ai-platform-lab/issues/156) | 5～7d |
+| [1](#1-gateway-单体-create_app) | Gateway 单体 `create_app()` | P0 | ✅ [#156](https://github.com/xingyun0812/ai-platform-lab/issues/156) | 5～7d |
 | [2](#2-packages--gateway-反向依赖) | packages ↔ gateway 反向依赖 | P0 | ✅ Phase 1 [#145](https://github.com/xingyun0812/ai-platform-lab/issues/145) | 5～8d |
 | [3](#3-rag-索引-gatewayworker-队列缝) | RAG 索引 gateway/worker 队列缝 | P1 | ✅ [#152](https://github.com/xingyun0812/ai-platform-lab/issues/152) | 3～5d |
 | [4](#4-agent-planner-轨-vs-orchestrator-轨) | Agent Planner vs Orchestrator 双轨 | P0 | ⬜ | 7～10d |
@@ -66,7 +66,7 @@ flowchart TB
 
 ## 1. Gateway 单体 `create_app()`
 
-**状态**：🔄 PR-2 · **优先级**：P0 · **RFC**：[#156](https://github.com/xingyun0812/ai-platform-lab/issues/156)
+**状态**：✅ · **优先级**：P0 · **RFC**：[#156](https://github.com/xingyun0812/ai-platform-lab/issues/156) · tag `arch-platform-156-phase1`
 
 ### 问题
 
@@ -91,8 +91,8 @@ Config/YAML · 进程内全局单例 · 同进程直调
 | 切片 | 内容 |
 |------|------|
 | PR-1 | ✅ composition + router_registry + chat/core/middleware 拆分；mount long_run/harness |
-| PR-2 | 🔄 FastAPI lifespan |
-| PR-3 | ⬜ 集成测完善 + 文档 |
+| PR-2 | ✅ FastAPI lifespan |
+| PR-3 | ✅ 文档收尾 + 集成测 |
 
 - [x] `create_app()` ≤200 行（编排 only，~31 行）
 - [x] 显式 `lifespan` — `apps/gateway/lifespan.py` + `gateway_lifespan`
