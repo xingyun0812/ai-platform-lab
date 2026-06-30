@@ -21,6 +21,15 @@ def create_app() -> FastAPI:
         lifespan=gateway_lifespan,
     )
     app.add_middleware(TraceIdMiddleware)
+    if settings.oauth2_enabled:
+        from packages.auth.middleware import OAuth2Middleware
+
+        app.add_middleware(
+            OAuth2Middleware,
+            oauth2_enabled=True,
+            jwt_fallback=settings.oauth2_jwt_fallback,
+            jwt_secret=settings.auth_jwt_secret or None,
+        )
     register_gateway_middleware(app, settings)
     mount_gateway_routers(app)
     register_core_routes(app, settings)

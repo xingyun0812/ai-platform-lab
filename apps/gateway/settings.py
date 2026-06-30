@@ -671,6 +671,11 @@ class Settings(BaseSettings):
         validation_alias="PII_BLOCK_ON_SAFETY_FAILURE",
         description="内容安全检查失败时是否阻断",
     )
+    pii_main_path_enabled: bool = Field(
+        default=False,
+        validation_alias="PII_MAIN_PATH_ENABLED",
+        description="启用后 chat/RAG 主路径入口走 PII process（默认 off）",
+    )
 
     # Phase I #44 — OAuth2 / mTLS
     oauth2_enabled: bool = Field(

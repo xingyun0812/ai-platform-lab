@@ -3,15 +3,16 @@
 from __future__ import annotations
 
 import logging
-import time
 from typing import Annotated
 
 from fastapi import APIRouter, FastAPI, Header, HTTPException, Request, Response
 from fastapi.responses import JSONResponse
 
 from apps.gateway.http_utils import json_error, resolve_tenant
+from apps.gateway.llm_semantic_cache import lookup_llm_completion, store_llm_completion
 from apps.gateway.quota import get_quota_tracker
 from apps.gateway.request_guards import check_model_allowed, check_rate_limit, check_token_budget
+from apps.gateway.request_pipeline import sanitize_main_path_text
 from apps.gateway.settings import get_settings
 from apps.gateway.tenants import TenantRecord, load_tenants
 from packages.billing.budget import budget_platform_meta, get_budget_snapshot
@@ -20,7 +21,6 @@ from packages.contracts.schemas import ChatCompletionRequest
 from packages.observability.context import get_trace_id
 from packages.observability.otel import component_span
 from packages.router.model_router import forward_with_model_router
-from packages.semantic_cache import get_semantic_cache
 
 logger = logging.getLogger("ai_platform.gateway.chat")
 
@@ -83,38 +83,24 @@ async def chat_completions(
         )
 
     payload = body.upstream_payload(resolved_model)
+    messages_payload = [m.model_dump() for m in body.messages]
+    if settings.pii_main_path_enabled and body.messages:
+        last = body.messages[-1]
+        if last.role == "user" and isinstance(last.content, str):
+            sanitized, block_reason = await sanitize_main_path_text(last.content, settings)
+            if block_reason:
+                return json_error(422, "PII_SAFETY_BLOCKED", block_reason)
+            messages_payload[-1] = {**messages_payload[-1], "content": sanitized}
+            payload["messages"] = messages_payload
 
-    cache = get_semantic_cache()
-    cache_lookup = None
-    if cache is not None:
-        cache_lookup = await cache.lookup(
-            tenant_id=tenant.tenant_id,
-            model=resolved_model,
-            messages=[m.model_dump() for m in body.messages],
-            temperature=body.temperature,
-            stream=bool(body.stream),
-        )
-        if isinstance(cache_lookup, str):
-            logger.debug("semantic cache skipped: %s", cache_lookup)
-            cache_lookup = None
-        elif cache_lookup is not None:
-            cached_body = dict(cache_lookup.entry.response)
-            meta = cached_body.setdefault("_platform", {})
-            if isinstance(meta, dict):
-                meta["cache_hit"] = True
-                meta["cache_mode"] = cache_lookup.mode
-                meta["cache_similarity"] = round(cache_lookup.similarity, 4)
-                meta["cache_age_seconds"] = round(time.time() - cache_lookup.entry.created_at, 2)
-                meta["model"] = cache_lookup.entry.model
-                meta["tenant_id"] = tenant.tenant_id
-            logger.info(
-                "semantic cache hit tenant=%s model=%s mode=%s sim=%.4f",
-                tenant.tenant_id,
-                resolved_model,
-                cache_lookup.mode,
-                cache_lookup.similarity,
-            )
-            return JSONResponse(status_code=200, content=cached_body)
+    cached_body = await lookup_llm_completion(
+        tenant_id=tenant.tenant_id,
+        model=resolved_model,
+        messages=messages_payload,
+        temperature=body.temperature,
+    )
+    if cached_body is not None:
+        return JSONResponse(status_code=200, content=cached_body)
 
     with component_span(
         "gateway.chat_completions",
@@ -184,19 +170,14 @@ async def chat_completions(
                 **budget_platform_meta(snap, usage.total_tokens),
             }
 
-    if cache is not None and cache_lookup is None:
-        try:
-            await cache.store(
-                tenant_id=tenant.tenant_id,
-                model=resolved_model,
-                messages=[m.model_dump() for m in body.messages],
-                response=content,
-                usage_tokens=(usage.total_tokens if usage else 0),
-                temperature=body.temperature,
-                stream=bool(body.stream),
-            )
-        except Exception:
-            logger.exception("semantic cache store failed")
+    await store_llm_completion(
+        tenant_id=tenant.tenant_id,
+        model=resolved_model,
+        messages=messages_payload,
+        response=content,
+        usage_tokens=(usage.total_tokens if usage else 0),
+        temperature=body.temperature,
+    )
 
     return JSONResponse(status_code=200, content=content)
 
