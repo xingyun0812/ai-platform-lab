@@ -13,7 +13,7 @@ import time
 import types
 import unittest
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT))
@@ -815,15 +815,34 @@ class TestLongRunRoutes(unittest.TestCase):
 
         app = self._make_app()
         tenants = self._make_tenants()
+        async def _mock_resume(*_args, **_kwargs):
+            await get_long_run_store().update_status(task.task_id, "completed")
+            return {
+                "status": "completed",
+                "task_id": task.task_id,
+                "long_run_status": "completed",
+                "progress": {"completed": 1, "total": 1, "percent": 100},
+                "plan_steps_completed": 1,
+                "final_message": "done",
+            }
+
+        mock_resume = AsyncMock(side_effect=_mock_resume)
+        route_mod = sys.modules.get("apps.gateway.agent.long_run_routes")
+        session_mod = types.ModuleType("packages.agent.session")
+        session_mod.get_session_store = MagicMock(return_value=MagicMock())  # type: ignore[attr-defined]
         with self._with_tenants(tenants):
-            client = TestClient(app)
-            resp = client.post(
-                f"/v1/agent/long-run/{task.task_id}/resume",
-                headers=self._headers(),
-            )
+            with patch.object(route_mod, "execute_long_run_resume", mock_resume):
+                with patch.dict(sys.modules, {"packages.agent.session": session_mod}):
+                    client = TestClient(app)
+                    resp = client.post(
+                        f"/v1/agent/long-run/{task.task_id}/resume",
+                        headers=self._headers(),
+                    )
         self.assertEqual(resp.status_code, 200, resp.text)
         data = resp.json()
-        self.assertEqual(data["status"], "running")
+        self.assertEqual(data["status"], "completed")
+        self.assertEqual(data["plan_status"], "completed")
+        mock_resume.assert_awaited_once()
 
     def test_cancel_task(self) -> None:
         from fastapi.testclient import TestClient

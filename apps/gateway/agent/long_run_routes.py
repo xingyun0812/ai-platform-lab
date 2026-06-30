@@ -27,7 +27,6 @@ from packages.agent.long_horizon import (
     get_long_run_store,
     get_task_status,
 )
-from packages.agent.session import get_session_store
 from packages.contracts.agent_schemas import AgentPlan
 
 logger = logging.getLogger("ai_platform.gateway.agent.long_run")
@@ -165,6 +164,8 @@ async def resume_long_run_task(
         return json_error(409, "TASK_NOT_RESUMABLE", f"任务状态 {task.status} 不可续跑")
 
     model = body.model
+    from packages.agent.session import get_session_store
+
     result = await execute_long_run_resume(
         task_id,
         tenant_id=tenant.tenant_id,
