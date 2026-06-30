@@ -43,6 +43,9 @@ __all__ = [
     "resume_task",
     "cancel_task",
     "get_task_status",
+    "record_layer_step_outcomes",
+    "execute_long_run_resume",
+    "finalize_long_run_task_status",
     "new_task_id",
     "new_checkpoint_id",
 ]
@@ -849,3 +852,103 @@ async def get_task_status(task_id: str) -> dict[str, Any] | None:
     result = task.to_dict()
     result["progress"] = task.progress()
     return result
+
+
+@dataclass
+class LayerStepOutcome:
+    """Plan 层执行结果 — 写入 long_run step_states。"""
+
+    step_id: str
+    status: str
+    error: str | None = None
+    sub_session_id: str | None = None
+    tool_calls_summary: list[dict[str, Any]] | None = None
+
+
+async def record_layer_step_outcomes(
+    task_id: str,
+    *,
+    outcomes: list[LayerStepOutcome],
+) -> None:
+    """将一层 Plan step 的执行结果同步到 long_run step_states。"""
+    if not outcomes:
+        return
+    store = get_long_run_store()
+    task = await store.get(task_id)
+    if task is None:
+        return
+    by_id = {s.step_id: s for s in task.step_states}
+    now = time.time()
+    for outcome in outcomes:
+        step_state = by_id.get(outcome.step_id)
+        if step_state is None:
+            continue
+        step_state.status = outcome.status
+        if outcome.status in ("running", "completed", "failed") and step_state.started_at is None:
+            step_state.started_at = now
+        if outcome.status in ("completed", "failed", "skipped") and step_state.completed_at is None:
+            step_state.completed_at = now
+        if outcome.sub_session_id:
+            step_state.sub_session_id = outcome.sub_session_id
+        if outcome.error:
+            step_state.error = outcome.error
+        if outcome.tool_calls_summary is not None:
+            step_state.tool_calls_summary = list(outcome.tool_calls_summary)
+    await store.update_step_states(task_id, list(task.step_states))
+
+
+async def finalize_long_run_task_status(task_id: str, *, status: str) -> None:
+    if status not in VALID_TASK_STATUSES:
+        status = "failed"
+    await get_long_run_store().update_status(task_id, status)
+
+
+async def execute_long_run_resume(
+    task_id: str,
+    *,
+    tenant_id: str,
+    allowed_tools: tuple[str, ...],
+    allowed_models: tuple[str, ...],
+    model: str | None,
+    session_store: Any,
+) -> dict[str, Any]:
+    """从 checkpoint 恢复并续跑 Plan（经 ExecutionEngine + long_run_task_id）。"""
+    updated = await resume_task(task_id)
+    if updated is None:
+        return {"status": "failed", "error": "resume_task failed", "task_id": task_id}
+
+    from packages.agent.execution_engine import execute_plan
+    from packages.platform import get_settings
+
+    settings = get_settings()
+    session_id = updated.session_id or task_id
+    result = await execute_plan(
+        plan=updated.plan,
+        tenant_id=tenant_id,
+        session_id=session_id,
+        allowed_tools=allowed_tools,
+        allowed_models=allowed_models,
+        model=model,
+        session_store=session_store,
+        max_replan_attempts=settings.plan_max_replan_attempts,
+        long_run_task_id=task_id,
+        plan_execution_mode="parallel",
+    )
+
+    run_status = str(result.get("status") or "failed")
+    if run_status == "completed":
+        await finalize_long_run_task_status(task_id, status="completed")
+    elif run_status in {"failed", "cancelled"}:
+        await finalize_long_run_task_status(task_id, status="failed")
+    elif run_status in {"pending_approval", "pending_plan_approval"}:
+        await finalize_long_run_task_status(task_id, status="paused")
+    else:
+        await finalize_long_run_task_status(task_id, status="running")
+
+    task = await get_long_run(task_id)
+    return {
+        **result,
+        "task_id": task_id,
+        "long_run_status": task.status if task else None,
+        "progress": task.progress() if task else {},
+    }

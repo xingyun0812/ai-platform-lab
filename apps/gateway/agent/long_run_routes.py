@@ -22,10 +22,10 @@ from apps.gateway.tenants import TenantRecord, load_tenants
 from packages.agent.long_horizon import (
     cancel_task,
     create_long_run,
+    execute_long_run_resume,
     get_long_run,
     get_long_run_store,
     get_task_status,
-    resume_task,
 )
 from packages.contracts.agent_schemas import AgentPlan
 
@@ -56,6 +56,10 @@ class CreateLongRunRequest(BaseModel):
     plan: AgentPlan = Field(..., description="AgentPlan 对象")
     session_id: str = Field(default="", description="关联的 session id")
     metadata: dict[str, Any] = Field(default_factory=dict, description="任意元数据")
+
+
+class ResumeLongRunRequest(BaseModel):
+    model: str | None = Field(default=None, description="续跑使用的模型（可选）")
 
 
 # ---------------------------------------------------------------------------
@@ -141,6 +145,7 @@ async def get_long_run_task(
 @router.post("/{task_id}/resume", summary="续跑长程任务")
 async def resume_long_run_task(
     task_id: str,
+    body: ResumeLongRunRequest = ResumeLongRunRequest(),
     x_tenant_id: Annotated[str | None, Header(alias="X-Tenant-Id")] = None,
     authorization: Annotated[str | None, Header()] = None,
 ) -> Any:
@@ -158,16 +163,31 @@ async def resume_long_run_task(
     if task.status in {"completed", "cancelled"}:
         return json_error(409, "TASK_NOT_RESUMABLE", f"任务状态 {task.status} 不可续跑")
 
-    updated = await resume_task(task_id)
-    if updated is None:
+    model = body.model
+    from packages.agent.session import get_session_store
+
+    result = await execute_long_run_resume(
+        task_id,
+        tenant_id=tenant.tenant_id,
+        allowed_tools=tenant.allowed_tools,
+        allowed_models=tenant.allowed_models,
+        model=model,
+        session_store=get_session_store(),
+    )
+
+    if result.get("status") == "failed" and result.get("error") == "resume_task failed":
         return json_error(500, "RESUME_FAILED", "续跑失败")
 
+    updated = await get_long_run(task_id)
     return JSONResponse(
         content={
             "task_id": task_id,
-            "status": updated.status,
-            "progress": updated.progress(),
-            "checkpoint_count": len(updated.checkpoints),
+            "status": updated.status if updated else result.get("long_run_status"),
+            "progress": updated.progress() if updated else result.get("progress", {}),
+            "checkpoint_count": len(updated.checkpoints) if updated else 0,
+            "plan_status": result.get("status"),
+            "plan_steps_completed": result.get("plan_steps_completed"),
+            "final_message": result.get("final_message"),
         }
     )
 

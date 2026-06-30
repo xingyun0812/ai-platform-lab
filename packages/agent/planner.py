@@ -727,7 +727,9 @@ async def execute_plan_parallel(
         # Process layer results
         layer_has_pending = False
         layer_completed = True
+        layer_outcomes: list[Any] = []
         for step, raw in zip(pending_steps, raw_results):
+            sub_session_id = f"{session_id}__step_{step.id}"
             if isinstance(raw, BaseException):
                 logger.warning(
                     "parallel step %s failed with exception: %s", step.id, raw, exc_info=False
@@ -735,6 +737,17 @@ async def execute_plan_parallel(
                 last_status = "failed"
                 layer_completed = False
                 completed_count += 1
+                if long_run_task_id:
+                    from packages.agent.long_horizon import LayerStepOutcome
+
+                    layer_outcomes.append(
+                        LayerStepOutcome(
+                            step_id=step.id,
+                            status="failed",
+                            error=str(raw),
+                            sub_session_id=sub_session_id,
+                        )
+                    )
                 continue
 
             result: dict[str, Any] = raw
@@ -743,6 +756,29 @@ async def execute_plan_parallel(
             final_message = str(result.get("final_message") or final_message)
             step_status = str(result.get("status") or "completed")
             last_approval_id = result.get("approval_id") or last_approval_id
+
+            tc_summary: list[dict[str, Any]] = []
+            for tc in result.get("tool_calls") or []:
+                if isinstance(tc, ToolCallRecord):
+                    tc_summary.append({"tool": tc.tool_name, "status": tc.status})
+                elif isinstance(tc, dict):
+                    tc_summary.append({"tool": tc.get("tool_name") or tc.get("tool"), "status": tc.get("status")})
+
+            stored_status = step_status
+            if step_status == "pending_approval":
+                stored_status = "running"
+            if long_run_task_id:
+                from packages.agent.long_horizon import LayerStepOutcome
+
+                layer_outcomes.append(
+                    LayerStepOutcome(
+                        step_id=step.id,
+                        status=stored_status,
+                        error=final_message if step_status == "failed" else None,
+                        sub_session_id=sub_session_id,
+                        tool_calls_summary=tc_summary,
+                    )
+                )
 
             for tc in result.get("tool_calls") or []:
                 if isinstance(tc, ToolCallRecord):
@@ -758,6 +794,11 @@ async def execute_plan_parallel(
                 last_status = "failed"
                 layer_completed = False
             completed_count += 1
+
+        if long_run_task_id and layer_outcomes:
+            from packages.agent.long_horizon import record_layer_step_outcomes
+
+            await record_layer_step_outcomes(long_run_task_id, outcomes=layer_outcomes)
 
         # Record metrics for this layer
         get_agent_perf_metrics().record_parallel_steps(tenant_id=tenant_id, steps=len(layer))
@@ -847,6 +888,11 @@ async def execute_plan_parallel(
                 "plan_steps_completed": completed_count,
                 "plan_revisions": plan_revisions,
             }
+
+    if long_run_task_id and last_status == "completed":
+        from packages.agent.long_horizon import finalize_long_run_task_status
+
+        await finalize_long_run_task_status(long_run_task_id, status="completed")
 
     return {
         "tenant_id": tenant_id,

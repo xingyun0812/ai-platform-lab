@@ -23,7 +23,7 @@
 | [2](#2-packages--gateway-反向依赖) | packages ↔ gateway 反向依赖 | P0 | ✅ Phase 1 [#145](https://github.com/xingyun0812/ai-platform-lab/issues/145) | 5～8d |
 | [3](#3-rag-索引-gatewayworker-队列缝) | RAG 索引 gateway/worker 队列缝 | P1 | ✅ [#152](https://github.com/xingyun0812/ai-platform-lab/issues/152) | 3～5d |
 | [4](#4-agent-planner-轨-vs-orchestrator-轨) | Agent Planner vs Orchestrator 双轨 | P0 | ✅ [#162](https://github.com/xingyun0812/ai-platform-lab/issues/162) | 7～10d |
-| [5](#5-三套-checkpointresume-语义) | 三套 Checkpoint/Resume 语义 | P1 | ⬜ | 4～6d |
+| [5](#5-三套-checkpointresume-语义) | 三套 Checkpoint/Resume 语义 | P1 | 🔄 [#169](https://github.com/xingyun0812/ai-platform-lab/issues/169) | 4～6d |
 | [6](#6-runnerpy--plannerpy-浅接口深实现) | runner + planner 浅接口深实现 | P1 | ⬜ | 5～7d |
 | [7](#7-phase-r-深存储--浅集成) | Phase R 深存储 / 浅集成 | P1 | ✅ [#146](https://github.com/xingyun0812/ai-platform-lab/issues/146) | 3～5d |
 | [8](#8-initget-单例泛滥) | init/get 单例泛滥 | P2 | ⬜ | 4～6d |
@@ -243,7 +243,7 @@ Plan 审批 / long_run 仍 fallback planner 轨（#5/#6 follow-up）。
 
 ## 5. 三套 Checkpoint/Resume 语义
 
-**状态**：⬜ · **优先级**：P1 · **依赖**：#4 建议先推进
+**状态**：🔄 · **优先级**：P1 · **RFC**：[#169](https://github.com/xingyun0812/ai-platform-lab/issues/169) · **ADR**：[0002-checkpoint-resume-layers.md](./adr/0002-checkpoint-resume-layers.md)
 
 ### 问题
 
@@ -266,11 +266,15 @@ Plan 审批 / long_run 仍 fallback planner 轨（#5/#6 follow-up）。
 
 ### 验收清单
 
-- [ ] 文档化三种 checkpoint 的层级关系（或合并为两种）
-- [ ] `execute_plan_parallel` 层末自动 `update_step_states`
-- [ ] `POST .../resume` 接线到 `execute_plan_parallel(long_run_task_id=...)`
-- [ ] 端到端：create → checkpoint → resume 完成 plan（无手动 test 填 state）
-- [ ] GitHub Issue RFC 已创建并链接
+| 切片 | 内容 |
+|------|------|
+| PR-1 | 层末 `update_step_states` + resume 接线 + ADR-0002 + E2E |
+
+- [x] 文档化三种 checkpoint 的层级关系（ADR-0002）
+- [x] `execute_plan_parallel` 层末自动 `update_step_states`
+- [x] `POST .../resume` 接线到 `execute_plan(long_run_task_id=...)`
+- [x] 端到端：create → checkpoint → resume 完成 plan（`test_long_run_resume_e2e.py`）
+- [ ] GitHub Issue RFC 已创建并链接 → [#169](https://github.com/xingyun0812/ai-platform-lab/issues/169)（PR-1 merge 后勾选）
 
 ---
 
