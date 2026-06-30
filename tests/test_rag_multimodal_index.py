@@ -136,5 +136,86 @@ models:
             reset_embedding_service_for_tests()
 
 
+class EmbedTextViaServiceTests(unittest.TestCase):
+    def test_embed_texts_via_stub_service(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            yaml_path = Path(tmp) / "models.yaml"
+            yaml_path.write_text(
+                """
+models:
+  - model_id: stub-embedding
+    provider: stub
+    dimensions: 8
+    modalities: [text]
+""".strip(),
+                encoding="utf-8",
+            )
+            from unittest.mock import patch
+
+            from packages.embedding.models import EmbeddingRegistry
+            from packages.embedding.service import (
+                EmbeddingService,
+                reset_embedding_service_for_tests,
+            )
+            from packages.rag.embeddings import embed_texts
+
+            reset_embedding_service_for_tests()
+            reg = EmbeddingRegistry(yaml_path=yaml_path)
+            reg.load()
+            svc = EmbeddingService(registry=reg)
+            import packages.embedding.service as svc_mod
+
+            svc_mod._global_service = svc
+
+            async def _go():
+                with patch("packages.rag.embeddings.get_settings") as mock_emb:
+                    settings = mock_emb.return_value
+                    settings.embedding_service_enabled = True
+                    settings.embedding_default_model = "stub-embedding"
+                    return await embed_texts(["hello", "world"])
+
+            vectors = asyncio.run(_go())
+            self.assertEqual(len(vectors), 2)
+            self.assertEqual(len(vectors[0]), 8)
+            reset_embedding_service_for_tests()
+
+    def test_embed_texts_direct_when_service_disabled(self) -> None:
+        from unittest.mock import AsyncMock, MagicMock, patch
+
+        from packages.rag.embeddings import embed_texts
+
+        mock_response = MagicMock()
+        mock_response.is_success = True
+        mock_response.json.return_value = {
+            "data": [
+                {"index": 0, "embedding": [0.1, 0.2]},
+            ]
+        }
+
+        async def _go():
+            with (
+                patch("packages.rag.embeddings.get_settings") as mock_emb,
+                patch("packages.rag.embeddings.httpx.AsyncClient") as mock_client_cls,
+            ):
+                settings = mock_emb.return_value
+                settings.embedding_service_enabled = False
+                settings.llm_api_key = "sk-test"
+                settings.llm_base_url = "https://api.example.com/v1"
+                settings.embedding_model = "text-embedding-3-small"
+                settings.upstream_timeout_seconds = 30.0
+
+                client = AsyncMock()
+                client.post = AsyncMock(return_value=mock_response)
+                client.__aenter__ = AsyncMock(return_value=client)
+                client.__aexit__ = AsyncMock(return_value=None)
+                mock_client_cls.return_value = client
+
+                return await embed_texts(["query"])
+
+        vectors = asyncio.run(_go())
+        self.assertEqual(len(vectors), 1)
+        self.assertEqual(vectors[0], [0.1, 0.2])
+
+
 if __name__ == "__main__":
     unittest.main()
