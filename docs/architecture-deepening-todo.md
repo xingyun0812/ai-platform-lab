@@ -11,7 +11,7 @@
 | 🔄 | 进行中（RFC 或实现中） |
 | ✅ | 已完成（Issue 关闭 + 边界测试绿） |
 
-**当前进度**：3 / 10（#1 ✅ [#156](https://github.com/xingyun0812/ai-platform-lab/issues/156) · #2 ✅ · #3 ✅ [#152](https://github.com/xingyun0812/ai-platform-lab/issues/152) · #7 [#146](https://github.com/xingyun0812/ai-platform-lab/issues/146) ✅）
+**当前进度**：4 / 10（#1 ✅ [#156](https://github.com/xingyun0812/ai-platform-lab/issues/156) · #2 ✅ · #3 ✅ [#152](https://github.com/xingyun0812/ai-platform-lab/issues/152) · **#4 ✅ [#162](https://github.com/xingyun0812/ai-platform-lab/issues/162)** · #7 [#146](https://github.com/xingyun0812/ai-platform-lab/issues/146) ✅）
 
 ---
 
@@ -22,7 +22,7 @@
 | [1](#1-gateway-单体-create_app) | Gateway 单体 `create_app()` | P0 | ✅ [#156](https://github.com/xingyun0812/ai-platform-lab/issues/156) | 5～7d |
 | [2](#2-packages--gateway-反向依赖) | packages ↔ gateway 反向依赖 | P0 | ✅ Phase 1 [#145](https://github.com/xingyun0812/ai-platform-lab/issues/145) | 5～8d |
 | [3](#3-rag-索引-gatewayworker-队列缝) | RAG 索引 gateway/worker 队列缝 | P1 | ✅ [#152](https://github.com/xingyun0812/ai-platform-lab/issues/152) | 3～5d |
-| [4](#4-agent-planner-轨-vs-orchestrator-轨) | Agent Planner vs Orchestrator 双轨 | P0 | ⬜ | 7～10d |
+| [4](#4-agent-planner-轨-vs-orchestrator-轨) | Agent Planner vs Orchestrator 双轨 | P0 | ✅ [#162](https://github.com/xingyun0812/ai-platform-lab/issues/162) | 7～10d |
 | [5](#5-三套-checkpointresume-语义) | 三套 Checkpoint/Resume 语义 | P1 | ⬜ | 4～6d |
 | [6](#6-runnerpy--plannerpy-浅接口深实现) | runner + planner 浅接口深实现 | P1 | ⬜ | 5～7d |
 | [7](#7-phase-r-深存储--浅集成) | Phase R 深存储 / 浅集成 | P1 | ✅ [#146](https://github.com/xingyun0812/ai-platform-lab/issues/146) | 3～5d |
@@ -194,7 +194,7 @@ Config/YAML · 架构倒置（library → app）
 
 ## 4. Agent Planner 轨 vs Orchestrator 轨
 
-**状态**：⬜ · **优先级**：P0
+**状态**：✅ · **优先级**：P0 · **RFC**：[#162](https://github.com/xingyun0812/ai-platform-lab/issues/162) · tag `arch-platform-162-phase4`
 
 ### 问题
 
@@ -204,7 +204,7 @@ Config/YAML · 架构倒置（library → app）
 
 ### 涉及模块
 
-`packages/agent/planner.py` · `plan_workflow.py` · `graph_runtime.py`  
+`packages/agent/planner.py` · `plan_workflow.py` · `graph_runtime.py` · `execution_engine.py`  
 `packages/agent/orchestrator/engine.py` · `checkpoint_engine.py` · `nodes.py`
 
 ### 依赖类别
@@ -213,15 +213,31 @@ Config/YAML · 架构倒置（library → app）
 
 ### 目标 deep module
 
-**统一 ExecutionEngine**：Plan DAG 是一种 Workflow；或 Orchestrator 委托 Plan executor。
+**ExecutionEngine**（`execution_engine.py`）：Plan DAG 是一种 Workflow；`graph_runtime` 只调 `execute_plan()`。
 
 ### 验收清单
 
-- [ ] 单一执行入口（graph_runtime 只调一个 engine）
-- [ ] `plan_to_workflow` 生成的节点可执行（补 agent executor 或改节点类型）
-- [ ] 删除或合并 `checkpoint_engine` 与 `engine` 的重复遍历环
-- [ ] 至少 1 条 plan→workflow→execute 集成测试
-- [ ] GitHub Issue RFC 已创建并链接
+| 切片 | 内容 | PR |
+|------|------|-----|
+| PR-1 | `plan_to_orchestrator_workflow` + `plan_step` executor + 集成测 | #164 |
+| PR-2 | `ExecutionEngine` facade + `PLAN_EXECUTION_BACKEND` | #165 |
+| PR-3 | `traverse_workflow` 共享环；checkpoint 薄包装 | #166 |
+| PR-4 | graph_runtime E2E + 文档 + tag | #167 |
+
+- [x] 单一执行入口（`graph_runtime` → `execution_engine.execute_plan`）
+- [x] `plan_to_orchestrator_workflow` 节点可执行（`plan_step` executor）
+- [x] `checkpoint_engine` 与 `engine` 遍历环合并为 `traverse_workflow`
+- [x] plan→workflow→execute 集成测 + graph_runtime E2E（`test_plan_workflow_execute.py` / `test_agent_graph_execution_e2e.py`）
+- [x] GitHub Issue RFC 已创建并链接 → [#162](https://github.com/xingyun0812/ai-platform-lab/issues/162)
+
+### 双轨收敛说明
+
+| 配置 | 默认 | 说明 |
+|------|------|------|
+| `PLAN_EXECUTION_BACKEND` | `planner` | 向后兼容；设 `orchestrator` 走 workflow 桥 |
+| `PLAN_EXECUTION_MODE` | `parallel` | planner 轨层内并行；orchestrator 轨当前拓扑串行 |
+
+Plan 审批 / long_run 仍 fallback planner 轨（#5/#6 follow-up）。
 
 ---
 

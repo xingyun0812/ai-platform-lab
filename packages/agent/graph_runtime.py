@@ -1,4 +1,7 @@
-"""统一图执行入口 — 最小 LangGraph 等价物 facade。"""
+"""统一图执行入口 — 最小 LangGraph 等价物 facade。
+
+Plan 执行统一经 ``execution_engine.execute_plan``（``PLAN_EXECUTION_BACKEND`` 分派）。
+"""
 
 from __future__ import annotations
 
