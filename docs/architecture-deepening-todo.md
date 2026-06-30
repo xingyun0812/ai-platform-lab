@@ -283,7 +283,7 @@ Plan 审批 / long_run 仍 fallback planner 轨（#5/#6 follow-up）。
 
 ## 6. runner.py + planner.py 浅接口深实现
 
-**状态**：🔄 PR-6a [#172](https://github.com/xingyun0812/ai-platform-lab/issues/172) · **优先级**：P1 · **依赖**：#4 ✅
+**状态**：🔄 PR-6a ✅ · **优先级**：P1 · **Issue**：[#172](https://github.com/xingyun0812/ai-platform-lab/issues/172)
 
 ### 问题
 
@@ -309,7 +309,7 @@ Plan 审批 / long_run 仍 fallback planner 轨（#5/#6 follow-up）。
 
 | 切片 | 内容 |
 |------|------|
-| PR-6a | ReActLoop 抽取（`react_loop.py`） | 🔄 #172 |
+| PR-6a | ReActLoop 抽取（`react_loop.py`） | ✅ [#173](https://github.com/xingyun0812/ai-platform-lab/pull/173) |
 | PR-6b | HITL/replan 单点 | ⬜ |
 | PR-6c | PlanExecutor 共享 context | ⬜ |
 
