@@ -400,13 +400,13 @@ Inbound-only coupling（深模块 + 浅 wiring）
 
 **7d — 持久化对称**
 
-- [ ] `StrategyPatchStore` Postgres 实现（或 `strategy_patches` 表 + repository）
-- [ ] 与 `experience_store` 一致：有 `DATABASE_URL` 走 PG，否则内存降级
-- [ ] 重启后 pending patch 仍可 list/approve
+- [x] `StrategyPatchStore` Postgres 实现（`PostgresStrategyPatchStore` + `strategy_patches` 表）
+- [x] 与 `experience_store` 一致：有 `DATABASE_URL` 走 PG，否则内存降级
+- [x] 重启后 pending patch 仍可 list/approve（`tests/test_strategy_patch_persistence.py`）
 
 **端到端**
 
-- [ ] 同类任务第 2 次 plan 可观测到经验注入（非仅 smoke）
+- [x] 同类任务第 2 次 plan 可观测到经验注入（`tests/test_experience_plan_e2e.py`）
 - [ ] 1 条 E2E：run → store → retrieve → plan
 - [x] patch propose → REST approve → plan 注入（`tests/test_self_evolve_e2e.py`）
 - [ ] 策略 patch 仍走 HITL（不破坏 R1 约束：不自动改源码）
