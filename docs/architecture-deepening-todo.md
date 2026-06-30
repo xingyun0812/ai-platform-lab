@@ -11,7 +11,7 @@
 | 🔄 | 进行中（RFC 或实现中） |
 | ✅ | 已完成（Issue 关闭 + 边界测试绿） |
 
-**当前进度**：8 / 10（#1 ✅ … **#8 ✅ [#178](https://github.com/xingyun0812/ai-platform-lab/issues/178)** · **#9 🟡 [#180](https://github.com/xingyun0812/ai-platform-lab/issues/180) PR-9a**）
+**当前进度**：9 / 10（#1 ✅ … **#9 ✅ [#182](https://github.com/xingyun0812/ai-platform-lab/issues/182)** · **#10 🟡 [#186](https://github.com/xingyun0812/ai-platform-lab/issues/186)**）
 
 ---
 
@@ -407,7 +407,7 @@ Inbound-only coupling（深模块 + 浅 wiring）
 **端到端**
 
 - [x] 同类任务第 2 次 plan 可观测到经验注入（`tests/test_experience_plan_e2e.py`）
-- [ ] 1 条 E2E：run → store → retrieve → plan
+- [x] 1 条 E2E：run → store → retrieve → plan（`tests/test_experience_run_store_plan_e2e.py`）
 - [x] patch propose → REST approve → plan 注入（`tests/test_self_evolve_e2e.py`）
 - [ ] 策略 patch 仍走 HITL（不破坏 R1 约束：不自动改源码）
 - [ ] 更新 `issues-backlog-phase-r.md` 遗留项
@@ -450,7 +450,7 @@ Inbound-only coupling（深模块 + 浅 wiring）
 
 ## 9. /internal API vs 主路径双轨
 
-**状态**：🟡 PR-9b/9c [#182](https://github.com/xingyun0812/ai-platform-lab/issues/182) 进行中 · **优先级**：P2 · **依赖**：#2 #8
+**状态**：✅ · **Issue**: [#182](https://github.com/xingyun0812/ai-platform-lab/issues/182) · PR [#184](https://github.com/xingyun0812/ai-platform-lab/pull/184)
 
 ### 问题
 
@@ -477,13 +477,13 @@ Feature flag 与 runtime wiring 脱节
 - [x] PII process 接入 chat/RAG 入口（`pii_main_path_enabled` 默认 off）→ PR-9c
 - [x] OAuth2Middleware 接线（`oauth2_enabled` 时挂载）→ PR-9c
 - [x] ≥2 条主路径集成测（chat + rag query）→ `tests/test_main_path_wiring.py`
-- [ ] GitHub Issue RFC 已创建并链接 → [#182](https://github.com/xingyun0812/ai-platform-lab/issues/182)
+- [x] GitHub Issue RFC 已创建并链接 → [#182](https://github.com/xingyun0812/ai-platform-lab/issues/182)
 
 ---
 
 ## 10. Observability 指标碎片化
 
-**状态**：⬜ · **优先级**：P3
+**状态**：🟡 PR 待 merge · **Issue**: [#186](https://github.com/xingyun0812/ai-platform-lab/issues/186)
 
 ### 问题
 
@@ -504,10 +504,10 @@ Feature flag 与 runtime wiring 脱节
 
 ### 验收清单
 
-- [ ] `/metrics` 不再在 main.py 堆 try/append
-- [ ] 新增模块指标只需 register，不改 main
-- [ ] 1 个测试断言 `/metrics` 含关键 metric 名
-- [ ] GitHub Issue RFC 已创建并链接
+- [x] `/metrics` 不再在 main.py 堆 try/append（`TelemetryRegistry` + `core_routes`）
+- [x] 新增模块指标只需 register，不改 main
+- [x] 1 个测试断言 `/metrics` 含关键 metric 名（`tests/test_telemetry_registry.py`）
+- [ ] GitHub Issue RFC 已创建并链接 → [#186](https://github.com/xingyun0812/ai-platform-lab/issues/186)
 
 ---
 
