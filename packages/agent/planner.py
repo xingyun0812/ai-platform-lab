@@ -10,9 +10,15 @@ from collections.abc import Awaitable, Callable
 from typing import Any
 
 from packages.agent.perf_metrics import get_agent_perf_metrics
+from packages.agent.plan_execution_policy import (
+    gate_plan_approval_or_none,
+    merge_tool_calls_from_run_result,
+    plan_execution_result,
+    should_gate_plan_approval,
+    try_replan_and_reexecute,
+)
 from packages.agent.registry import ToolRegistry
 from packages.contracts.agent_schemas import AgentPlan, PlanStep, ToolCallRecord
-from packages.observability.context import get_trace_id
 from packages.platform import forward_with_model_router, get_settings, is_model_allowed
 
 logger = logging.getLogger("ai_platform.agent.planner")
@@ -403,30 +409,20 @@ async def execute_plan_with_agent(
     若 require_plan_approval=True，不执行任何 step，直接返回
     status='pending_plan_approval' 并将 plan 存入 plan_approval store。
     """
-    # Q4 Plan-level HITL — 审批前暂停（仅第一次调用时生效，replan 调用不重新暂停）
-    if require_plan_approval and _replan_attempt == 0:
-        import uuid
-
-        from packages.agent.plan_approval import store_plan_approval
-
-        plan_approval_id = str(uuid.uuid4())
-        store_plan_approval(plan_approval_id, plan, tenant_id, session_id=session_id)
-        return {
-            "tenant_id": tenant_id,
-            "session_id": session_id,
-            "final_message": "",
-            "tool_calls": [],
-            "steps": 0,
-            "model": model or get_settings().agent_model or get_settings().default_model,
-            "trace_id": get_trace_id(),
-            "status": "pending_plan_approval",
-            "plan_approval_id": plan_approval_id,
-            "approval_id": None,
-            "plan": plan,
-            "plan_steps_completed": 0,
-            "plan_summary": format_plan_summary(plan),
-            "plan_revisions": [],
-        }
+    # Q4 Plan-level HITL — 审批前暂停（policy 单点）
+    if should_gate_plan_approval(
+        require_plan_approval=require_plan_approval,
+        replan_attempt=_replan_attempt,
+    ):
+        gated = gate_plan_approval_or_none(
+            plan=plan,
+            tenant_id=tenant_id,
+            session_id=session_id,
+            model=model,
+            format_plan_summary=format_plan_summary,
+        )
+        assert gated is not None
+        return gated
 
     from packages.agent.runner import run_agent
 
@@ -474,109 +470,87 @@ async def execute_plan_with_agent(
         final_message = str(result.get("final_message") or final_message)
         last_status = str(result.get("status") or last_status)
         last_approval_id = result.get("approval_id") or last_approval_id
-        for tc in result.get("tool_calls") or []:
-            if isinstance(tc, ToolCallRecord):
-                all_tool_calls.append(tc)
-            elif isinstance(tc, dict):
-                all_tool_calls.append(ToolCallRecord.model_validate(tc))
+        merge_tool_calls_from_run_result(result, all_tool_calls)
 
         if last_status == "pending_approval":
             get_agent_perf_metrics().record_plan_steps(tenant_id=tenant_id, steps=idx - 1)
-            return {
-                "tenant_id": tenant_id,
-                "session_id": session_id,
-                "final_message": final_message,
-                "tool_calls": all_tool_calls,
-                "steps": agent_steps,
-                "model": resolved_model,
-                "trace_id": get_trace_id(),
-                "status": last_status,
-                "approval_id": last_approval_id,
-                "plan": plan,
-                "plan_steps_completed": idx - 1,
-                "plan_revisions": plan_revisions,
-            }
+            return plan_execution_result(
+                tenant_id=tenant_id,
+                session_id=session_id,
+                final_message=final_message,
+                tool_calls=all_tool_calls,
+                steps=agent_steps,
+                resolved_model=resolved_model,
+                status=last_status,
+                approval_id=last_approval_id,
+                plan=plan,
+                plan_steps_completed=idx - 1,
+                plan_revisions=plan_revisions,
+            )
 
         if last_status == "failed":
-            # Q3: Attempt replan via critic LLM
-            if _replan_attempt < max_replan_attempts:
-                from packages.agent.plan_critic import replan_after_failure
+            failure_reason = final_message or f"step {step.id} returned status=failed"
 
-                failure_reason = final_message or f"step {step.id} returned status=failed"
-                logger.info(
-                    "execute_plan_with_agent: step %s failed, triggering replan attempt %d/%d",
-                    step.id,
-                    _replan_attempt + 1,
-                    max_replan_attempts,
-                )
-                new_plan = await replan_after_failure(
-                    plan=plan,
-                    failed_step=step,
-                    failure_reason=failure_reason,
-                    model=model,
+            async def _reexecute(new_plan: AgentPlan) -> dict[str, Any]:
+                return await execute_plan_with_agent(
+                    plan=new_plan,
+                    tenant_id=tenant_id,
+                    session_id=session_id,
+                    allowed_tools=allowed_tools,
                     allowed_models=allowed_models,
+                    model=model,
+                    session_store=session_store,
+                    step_system_messages=step_system_messages,
+                    run_agent_fn=run_agent_fn,
                     max_replan_attempts=max_replan_attempts,
-                    attempt=_replan_attempt,
+                    _replan_attempt=_replan_attempt + 1,
+                    _plan_revisions=plan_revisions,
                 )
-                if new_plan is not None:
-                    plan_revisions.append(
-                        {
-                            "attempt": _replan_attempt + 1,
-                            "failed_step_id": step.id,
-                            "new_plan_steps_count": len(new_plan.steps),
-                        }
-                    )
-                    return await execute_plan_with_agent(
-                        plan=new_plan,
-                        tenant_id=tenant_id,
-                        session_id=session_id,
-                        allowed_tools=allowed_tools,
-                        allowed_models=allowed_models,
-                        model=model,
-                        session_store=session_store,
-                        step_system_messages=step_system_messages,
-                        run_agent_fn=run_agent_fn,
-                        max_replan_attempts=max_replan_attempts,
-                        _replan_attempt=_replan_attempt + 1,
-                        _plan_revisions=plan_revisions,
-                    )
-                else:
-                    logger.warning(
-                        "execute_plan_with_agent: critic returned None for step %s, aborting plan",
-                        step.id,
-                    )
-            # Max attempts reached or critic failed — terminate
+
+            replanned = await try_replan_and_reexecute(
+                plan=plan,
+                failed_step=step,
+                failure_reason=failure_reason,
+                model=model,
+                allowed_models=allowed_models,
+                max_replan_attempts=max_replan_attempts,
+                replan_attempt=_replan_attempt,
+                plan_revisions=plan_revisions,
+                reexecute=_reexecute,
+                log_context="execute_plan_with_agent",
+            )
+            if replanned is not None:
+                return replanned
+
             get_agent_perf_metrics().record_plan_steps(tenant_id=tenant_id, steps=idx)
-            return {
-                "tenant_id": tenant_id,
-                "session_id": session_id,
-                "final_message": final_message,
-                "tool_calls": all_tool_calls,
-                "steps": agent_steps,
-                "model": resolved_model,
-                "trace_id": get_trace_id(),
-                "status": "failed",
-                "approval_id": last_approval_id,
-                "plan": plan,
-                "plan_steps_completed": idx,
-                "plan_revisions": plan_revisions,
-            }
+            return plan_execution_result(
+                tenant_id=tenant_id,
+                session_id=session_id,
+                final_message=final_message,
+                tool_calls=all_tool_calls,
+                steps=agent_steps,
+                resolved_model=resolved_model,
+                status="failed",
+                approval_id=last_approval_id,
+                plan=plan,
+                plan_steps_completed=idx,
+                plan_revisions=plan_revisions,
+            )
 
     get_agent_perf_metrics().record_plan_steps(tenant_id=tenant_id, steps=total)
-    return {
-        "tenant_id": tenant_id,
-        "session_id": session_id,
-        "final_message": final_message,
-        "tool_calls": all_tool_calls,
-        "steps": agent_steps,
-        "model": resolved_model,
-        "trace_id": get_trace_id(),
-        "status": last_status,
-        "approval_id": last_approval_id,
-        "plan": plan,
-        "plan_steps_completed": total,
-        "plan_revisions": plan_revisions,
-    }
+    return plan_execution_result(
+        tenant_id=tenant_id,
+        session_id=session_id,
+        final_message=final_message,
+        tool_calls=all_tool_calls,
+        steps=agent_steps,
+        resolved_model=resolved_model,
+        status=last_status,
+        approval_id=last_approval_id,
+        plan=plan,
+        plan_steps_completed=total,
+        plan_revisions=plan_revisions,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -648,30 +622,20 @@ async def execute_plan_parallel(
     - Prometheus: agent_plan_parallel_steps_total
     - 若 require_plan_approval=True（且首次调用），暂停等待 plan 级人工审批
     """
-    # Q4 Plan-level HITL — 审批前暂停
-    if require_plan_approval and _replan_attempt == 0:
-        import uuid
-
-        from packages.agent.plan_approval import store_plan_approval
-
-        plan_approval_id = str(uuid.uuid4())
-        store_plan_approval(plan_approval_id, plan, tenant_id, session_id=session_id)
-        return {
-            "tenant_id": tenant_id,
-            "session_id": session_id,
-            "final_message": "",
-            "tool_calls": [],
-            "steps": 0,
-            "model": model or get_settings().agent_model or get_settings().default_model,
-            "trace_id": get_trace_id(),
-            "status": "pending_plan_approval",
-            "plan_approval_id": plan_approval_id,
-            "approval_id": None,
-            "plan": plan,
-            "plan_steps_completed": 0,
-            "plan_summary": format_plan_summary(plan),
-            "plan_revisions": [],
-        }
+    # Q4 Plan-level HITL — 审批前暂停（policy 单点）
+    if should_gate_plan_approval(
+        require_plan_approval=require_plan_approval,
+        replan_attempt=_replan_attempt,
+    ):
+        gated = gate_plan_approval_or_none(
+            plan=plan,
+            tenant_id=tenant_id,
+            session_id=session_id,
+            model=model,
+            format_plan_summary=format_plan_summary,
+        )
+        assert gated is not None
+        return gated
 
     from packages.agent.runner import run_agent
 
@@ -780,11 +744,7 @@ async def execute_plan_parallel(
                     )
                 )
 
-            for tc in result.get("tool_calls") or []:
-                if isinstance(tc, ToolCallRecord):
-                    all_tool_calls.append(tc)
-                elif isinstance(tc, dict):
-                    all_tool_calls.append(ToolCallRecord.model_validate(tc))
+            merge_tool_calls_from_run_result(result, all_tool_calls)
 
             if step_status == "pending_approval":
                 layer_has_pending = True
@@ -813,51 +773,25 @@ async def execute_plan_parallel(
                 logger.warning("auto-checkpoint failed: %s", exc)
 
         if layer_has_pending:
-            return {
-                "tenant_id": tenant_id,
-                "session_id": session_id,
-                "final_message": final_message,
-                "tool_calls": all_tool_calls,
-                "steps": agent_steps,
-                "model": resolved_model,
-                "trace_id": get_trace_id(),
-                "status": last_status,
-                "approval_id": last_approval_id,
-                "plan": plan,
-                "plan_steps_completed": completed_count,
-                "plan_revisions": plan_revisions,
-            }
-
-        # Q3: If any step in this layer failed, attempt replan
-        if last_status == "failed" and _replan_attempt < max_replan_attempts:
-            # Find the first failed step in the layer for replan
-            failed_step = layer[0]  # Use first step of failed layer as representative
-            from packages.agent.plan_critic import replan_after_failure
-
-            failure_reason = final_message or f"layer {layer_idx} had failed steps"
-            logger.info(
-                "execute_plan_parallel: layer %d has failed step(s), triggering replan attempt %d/%d",
-                layer_idx,
-                _replan_attempt + 1,
-                max_replan_attempts,
-            )
-            new_plan = await replan_after_failure(
+            return plan_execution_result(
+                tenant_id=tenant_id,
+                session_id=session_id,
+                final_message=final_message,
+                tool_calls=all_tool_calls,
+                steps=agent_steps,
+                resolved_model=resolved_model,
+                status=last_status,
+                approval_id=last_approval_id,
                 plan=plan,
-                failed_step=failed_step,
-                failure_reason=failure_reason,
-                model=model,
-                allowed_models=allowed_models,
-                max_replan_attempts=max_replan_attempts,
-                attempt=_replan_attempt,
+                plan_steps_completed=completed_count,
+                plan_revisions=plan_revisions,
             )
-            if new_plan is not None:
-                plan_revisions.append(
-                    {
-                        "attempt": _replan_attempt + 1,
-                        "failed_step_id": failed_step.id,
-                        "new_plan_steps_count": len(new_plan.steps),
-                    }
-                )
+
+        if last_status == "failed":
+            failed_step = layer[0]
+            failure_reason = final_message or f"layer {layer_idx} had failed steps"
+
+            async def _reexecute(new_plan: AgentPlan) -> dict[str, Any]:
                 return await execute_plan_parallel(
                     plan=new_plan,
                     tenant_id=tenant_id,
@@ -871,43 +805,56 @@ async def execute_plan_parallel(
                     max_replan_attempts=max_replan_attempts,
                     _replan_attempt=_replan_attempt + 1,
                     _plan_revisions=plan_revisions,
+                    long_run_task_id=long_run_task_id,
                 )
 
-        if last_status == "failed":
-            return {
-                "tenant_id": tenant_id,
-                "session_id": session_id,
-                "final_message": final_message,
-                "tool_calls": all_tool_calls,
-                "steps": agent_steps,
-                "model": resolved_model,
-                "trace_id": get_trace_id(),
-                "status": "failed",
-                "approval_id": last_approval_id,
-                "plan": plan,
-                "plan_steps_completed": completed_count,
-                "plan_revisions": plan_revisions,
-            }
+            replanned = await try_replan_and_reexecute(
+                plan=plan,
+                failed_step=failed_step,
+                failure_reason=failure_reason,
+                model=model,
+                allowed_models=allowed_models,
+                max_replan_attempts=max_replan_attempts,
+                replan_attempt=_replan_attempt,
+                plan_revisions=plan_revisions,
+                reexecute=_reexecute,
+                log_context=f"execute_plan_parallel layer {layer_idx}",
+            )
+            if replanned is not None:
+                return replanned
+
+            return plan_execution_result(
+                tenant_id=tenant_id,
+                session_id=session_id,
+                final_message=final_message,
+                tool_calls=all_tool_calls,
+                steps=agent_steps,
+                resolved_model=resolved_model,
+                status="failed",
+                approval_id=last_approval_id,
+                plan=plan,
+                plan_steps_completed=completed_count,
+                plan_revisions=plan_revisions,
+            )
 
     if long_run_task_id and last_status == "completed":
         from packages.agent.long_horizon import finalize_long_run_task_status
 
         await finalize_long_run_task_status(long_run_task_id, status="completed")
 
-    return {
-        "tenant_id": tenant_id,
-        "session_id": session_id,
-        "final_message": final_message,
-        "tool_calls": all_tool_calls,
-        "steps": agent_steps,
-        "model": resolved_model,
-        "trace_id": get_trace_id(),
-        "status": last_status,
-        "approval_id": last_approval_id,
-        "plan": plan,
-        "plan_steps_completed": total_steps,
-        "plan_revisions": plan_revisions,
-    }
+    return plan_execution_result(
+        tenant_id=tenant_id,
+        session_id=session_id,
+        final_message=final_message,
+        tool_calls=all_tool_calls,
+        steps=agent_steps,
+        resolved_model=resolved_model,
+        status=last_status,
+        approval_id=last_approval_id,
+        plan=plan,
+        plan_steps_completed=total_steps,
+        plan_revisions=plan_revisions,
+    )
 
 
 def is_parallel_plan_execution(mode: str | None = None) -> bool:

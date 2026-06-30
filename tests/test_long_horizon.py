@@ -494,6 +494,11 @@ class TestExecutePlanParallelLongRun(unittest.TestCase):
         if "packages.agent.runner" not in sys.modules:
             sys.modules["packages.agent.runner"] = MagicMock()
 
+        _load_module(
+            "packages.agent.plan_execution_policy",
+            str(REPO_ROOT / "packages" / "agent" / "plan_execution_policy.py"),
+        )
+
         return _load_module(
             "packages.agent.planner",
             str(REPO_ROOT / "packages" / "agent" / "planner.py"),
