@@ -93,8 +93,18 @@ git commit -m "refactor: 抽取 PII 检测的公共 pattern 加载逻辑"
    ```
 
 2. 在 GitHub 创建 PR，目标分支 `main`
-3. PR 描述使用 [PR 模板](.github/PULL_REQUEST_TEMPLATE.md)
+3. PR 描述使用 [PR 模板](.github/PULL_REQUEST_TEMPLATE.md)，**必填「三线验收对齐」**（Issue ↔ 文档 ↔ 测试/CI）
 4. 等待 CI 通过 + 至少 1 个 Reviewer approve
+
+#### 1.4.1 merge 前三线验收对齐（`closes #N` 强制）
+
+| 线 | 要求 |
+|----|------|
+| **Issue 正文** | 验收 checkbox 与 PR 表一致；关闭 Issue 前须为 `[x]` |
+| **文档** | `architecture-deepening-todo.md` / backlog / `roadmap.md`（如适用）已同步 |
+| **证据** | PR 贴测试命令输出；CI Checks 全绿 |
+
+禁止：仅改代码与 `architecture-deepening-todo.md`，却 leave Issue body 全 `[ ]` 就 merge（#156 教训）。
 
 ### 1.5 合并打 Tag
 
@@ -109,7 +119,8 @@ git commit -m "refactor: 抽取 PII 检测的公共 pattern 加载逻辑"
 |------|------|
 | 开 Issue | 正文来自 backlog；挂 **Milestone**；打 `phase-task` + `phase-<letter>` |
 | 开分支 | `feat/issue-<N>-<short-name>`，从最新 `main` 拉出 |
-| 开 PR | 标题含 Issue 主题；body 写 `closes #N`；一个 PR 对应一个 Issue |
+| 开 PR | 标题含 Issue 主题；body 写 `closes #N`；填三线验收对齐表 |
+| 合并前 | Issue 正文 `[x]` + 文档同步 + CI/测试证据（§1.4.1） |
 | 合并后 | Issue 关闭；backlog 更新 PR 号；必要时更新 `roadmap.md` / Phase 规划 doc |
 | Phase 收尾 | 全部 Issue ✅ 后：`git tag -a phase-x-name -m "..." && git push origin phase-x-name` |
 
