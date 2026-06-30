@@ -66,7 +66,7 @@ flowchart TB
 
 ## 1. Gateway 单体 `create_app()`
 
-**状态**：🔄 PR-1 · **优先级**：P0 · **RFC**：[#156](https://github.com/xingyun0812/ai-platform-lab/issues/156)
+**状态**：🔄 PR-2 · **优先级**：P0 · **RFC**：[#156](https://github.com/xingyun0812/ai-platform-lab/issues/156)
 
 ### 问题
 
@@ -90,12 +90,12 @@ Config/YAML · 进程内全局单例 · 同进程直调
 
 | 切片 | 内容 |
 |------|------|
-| PR-1 | 🔄 composition + router_registry + chat/core/middleware 拆分；mount long_run/harness |
-| PR-2 | ⬜ FastAPI lifespan |
+| PR-1 | ✅ composition + router_registry + chat/core/middleware 拆分；mount long_run/harness |
+| PR-2 | 🔄 FastAPI lifespan |
 | PR-3 | ⬜ 集成测完善 + 文档 |
 
 - [x] `create_app()` ≤200 行（编排 only，~31 行）
-- [ ] 显式 `lifespan` 或 `AppContext` 管理 init/shutdown
+- [x] 显式 `lifespan` — `apps/gateway/lifespan.py` + `gateway_lifespan`
 - [x] `/v1/chat/completions` 抽到 `apps/gateway/chat_routes.py`
 - [x] 漏挂 router（long_run/harness）已 mount
 - [x] ≥1 个 HTTP 集成测：`tests/test_gateway_create_app.py`

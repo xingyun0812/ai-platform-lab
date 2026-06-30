@@ -5,15 +5,18 @@ from __future__ import annotations
 
 import unittest
 
-from fastapi.testclient import TestClient
-
-from apps.gateway.main import create_app
+from tests.gateway_client import LifespanTestClient
 
 
 class TestGatewayCreateApp(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        cls.client = TestClient(create_app())
+        cls._client_cm = LifespanTestClient()
+        cls.client = cls._client_cm.__enter__()
+
+    @classmethod
+    def tearDownClass(cls) -> None:
+        cls._client_cm.__exit__(None, None, None)
 
     def test_healthz(self) -> None:
         resp = self.client.get("/healthz")
