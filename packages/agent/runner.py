@@ -1,10 +1,7 @@
 from __future__ import annotations
 
-import asyncio
 import json
 import logging
-import time
-from dataclasses import dataclass
 from typing import Any
 
 from packages.agent.context_budget import (
@@ -12,10 +9,8 @@ from packages.agent.context_budget import (
     assemble_llm_messages,
     context_budget_platform_meta,
     context_strategy_platform_meta,
-    drop_oldest_until_budget,
     estimate_messages_tokens,
     maybe_compact_session,
-    truncate_tool_content,
 )
 from packages.agent.context_compress import (
     inject_memory_into_messages,
@@ -24,76 +19,48 @@ from packages.agent.context_compress import (
     retrieve_and_inject_memory,
 )
 from packages.agent.hitl import ApprovalStatus, get_approval
-from packages.agent.perf_metrics import get_agent_perf_metrics
-from packages.agent.quality_gate import QUALITY_HINT, assess_tool_output
-from packages.agent.reasoning import (
-    apply_cot_to_assistant_message,
-    merge_cot_system_prompt,
-    resolve_reasoning_mode,
+from packages.agent.quality_gate import assess_tool_output
+from packages.agent.react_loop import (
+    AgentRunError,
+    ReActLoopResult,
+    _audit_tool_action,
+    _execute_tool,
+    _process_tool_calls_round,
+    execute_tool,
+    run_react_loop,
 )
+from packages.agent.reasoning import merge_cot_system_prompt, resolve_reasoning_mode
 from packages.agent.registry import ToolRegistry
-from packages.agent.risk import tool_requires_hitl
 from packages.agent.session import SessionStore
 from packages.agent.session_state import SessionState, count_user_messages
-from packages.agent.shadow import shadow_tool_record
-from packages.agent.tool_envelope import parse_tool_result, with_quality_hint
 from packages.agent.tool_router import merge_pinned_tools, routing_meta, select_tools_from_messages
 from packages.agent.tool_strategy import ToolCallStrategyError, resolve_tool_call_strategy
 from packages.billing.budget import budget_platform_meta, get_budget_snapshot
-from packages.billing.recorder import record_upstream_usage
 from packages.contracts.agent_schemas import ReasoningTraceRecord, ToolCallRecord
 from packages.observability.context import get_trace_id
-from packages.platform import forward_with_model_router, get_settings, is_model_allowed
+
+# Re-export：tests patch `packages.agent.runner.forward_with_model_router`
+from packages.platform import (
+    forward_with_model_router,  # noqa: F401
+    get_settings,
+    is_model_allowed,
+)
 
 logger = logging.getLogger("ai_platform.agent.runner")
 
-
-async def _audit_tool_action(
-    *,
-    tenant_id: str,
-    session_id: str,
-    tool_name: str,
-    arguments: dict[str, Any],
-    status: str,
-    result_summary: str = "",
-    approval_id: str | None = None,
-    decided_by: str | None = None,
-) -> None:
-    """记录工具动作审计（失败时静默，不阻塞 Agent 主流程）。"""
-    try:
-        import uuid
-
-        from packages.audit.action_levels import get_classifier
-        from packages.audit.action_logger import ActionAuditEntry, get_action_logger
-
-        audit_logger = get_action_logger()
-        if audit_logger is None:
-            return
-        classifier = get_classifier()
-        level = classifier.classify(tool_name, arguments) if classifier else "unknown"
-        entry = ActionAuditEntry(
-            entry_id=str(uuid.uuid4()),
-            tenant_id=tenant_id,
-            session_id=session_id,
-            tool_name=tool_name,
-            action_level=level,
-            arguments=arguments,
-            result_summary=result_summary[:200],
-            status=status,
-            decided_by=decided_by,
-            approval_id=approval_id,
-        )
-        await audit_logger.log_action(entry)
-    except Exception as exc:
-        logger.debug("audit log skipped: %s", exc)
-
-
-class AgentRunError(Exception):
-    def __init__(self, code: str, message: str, detail: dict[str, Any] | None = None) -> None:
-        self.code = code
-        self.message = message
-        self.detail = detail
-        super().__init__(message)
+__all__ = [
+    "AgentRunError",
+    "ToolCallRecord",
+    "ReasoningTraceRecord",
+    "ReActLoopResult",
+    "run_agent",
+    "resume_approved_tool",
+    "run_react_loop",
+    "execute_tool",
+    "_audit_tool_action",
+    "_execute_tool",
+    "_process_tool_calls_round",
+]
 
 
 async def _maybe_persist_memory(
@@ -103,10 +70,6 @@ async def _maybe_persist_memory(
     messages: list[dict[str, Any]],
     turn_count: int,
 ) -> bool:
-    """Phase F #31：将当前会话历史压缩为长期记忆并持久化。
-
-    失败时静默返回 False（不影响主流程）。
-    """
     try:
         from packages.memory import get_memory_store
         from packages.memory.store import MemoryRecord, _gen_id
@@ -145,345 +108,6 @@ async def _maybe_persist_memory(
         return False
 
 
-async def _execute_tool(
-    registry: ToolRegistry,
-    *,
-    tool_name: str,
-    arguments_json: str,
-    allowed_tools: tuple[str, ...],
-    tool_timeout: float,
-    tool_max_retries: int,
-    tenant_id: str = "",
-    session_id: str = "",
-    shadow_mode: bool = False,
-    skip_hitl: bool = False,
-) -> tuple[str, ToolCallRecord]:
-    started = time.perf_counter()
-    if not registry.is_allowed(tool_name, allowed_tools):
-        elapsed = (time.perf_counter() - started) * 1000
-        record = ToolCallRecord(
-            tool_name=tool_name,
-            arguments={},
-            status="forbidden",
-            result=None,
-            error="租户无权使用该工具",
-            latency_ms=round(elapsed, 2),
-        )
-        raise AgentRunError(
-            "AGENT_TOOL_FORBIDDEN",
-            f"工具未授权: {tool_name}",
-            detail={"tool_name": tool_name},
-        )
-
-    tool = registry.get(tool_name)
-    if not tool:
-        raise AgentRunError("AGENT_TOOL_NOT_FOUND", f"未知工具: {tool_name}")
-
-    try:
-        args = json.loads(arguments_json) if arguments_json else {}
-    except json.JSONDecodeError as e:
-        raise AgentRunError("AGENT_TOOL_BAD_ARGS", f"工具参数非 JSON: {e}") from e
-    if not isinstance(args, dict):
-        raise AgentRunError("AGENT_TOOL_BAD_ARGS", "工具参数须为 JSON 对象")
-
-    if shadow_mode:
-        return shadow_tool_record(tool_name=tool_name, arguments=args)
-
-    if not skip_hitl and tool_requires_hitl(tool_name):
-        from packages.agent.hitl import create_pending_execution
-
-        approval = create_pending_execution(
-            tenant_id=tenant_id,
-            session_id=session_id,
-            tool_name=tool_name,
-            arguments=args,
-        )
-        await _audit_tool_action(
-            tenant_id=tenant_id,
-            session_id=session_id,
-            tool_name=tool_name,
-            arguments=args,
-            status="pending",
-            approval_id=approval.approval_id,
-        )
-        raise AgentRunError(
-            "AGENT_PENDING_APPROVAL",
-            f"高风险工具需人工确认: {tool_name}",
-            detail={
-                "approval_id": approval.approval_id,
-                "tool_name": tool_name,
-                "arguments": args,
-            },
-        )
-
-    last_err: str | None = None
-    for attempt in range(tool_max_retries + 1):
-        try:
-            t0 = time.perf_counter()
-            result = await asyncio.wait_for(tool.handler(args), timeout=tool_timeout)
-            env = parse_tool_result(result)
-            if not env.ok and env.error_code == "AGENT_TOOL_FORBIDDEN":
-                msg = (
-                    env.data.get("message")
-                    if isinstance(env.data, dict)
-                    else str(env.data or "forbidden")
-                )
-                raise AgentRunError(
-                    "AGENT_TOOL_FORBIDDEN",
-                    msg,
-                    detail={"tool_name": tool_name},
-                )
-            elapsed = (time.perf_counter() - t0) * 1000
-            record = ToolCallRecord(
-                tool_name=tool_name,
-                arguments=args,
-                status="success",
-                result=result,
-                error=None,
-                latency_ms=round(elapsed, 2),
-                attempt=attempt,
-            )
-            await _audit_tool_action(
-                tenant_id=tenant_id,
-                session_id=session_id,
-                tool_name=tool_name,
-                arguments=args,
-                status="success",
-                result_summary=str(result)[:200] if result else "",
-            )
-            return result, record
-        except TimeoutError:
-            last_err = f"工具执行超时（>{tool_timeout}s）"
-        except AgentRunError:
-            raise
-        except Exception as e:
-            last_err = str(e)
-
-    elapsed = (time.perf_counter() - started) * 1000
-    record = ToolCallRecord(
-        tool_name=tool_name,
-        arguments=args,
-        status="failed",
-        result=None,
-        error=last_err,
-        latency_ms=round(elapsed, 2),
-        attempt=tool_max_retries,
-    )
-    return "", record
-
-
-def _extract_message(choice: dict[str, Any]) -> dict[str, Any]:
-    msg = choice.get("message")
-    if not isinstance(msg, dict):
-        raise AgentRunError("AGENT_UPSTREAM_ERROR", "upstream message 格式错误")
-    return msg
-
-
-@dataclass(frozen=True)
-class _ParsedToolCall:
-    tc_id: str
-    tool_name: str
-    args_raw: str
-
-
-@dataclass
-class _ToolRoundResult:
-    tool_messages: list[dict[str, Any]]
-    reflect_remaining: int
-    runtime_truncated_tools: int
-    fatal: AgentRunError | None
-
-
-def _parse_tool_calls(tool_calls: list[Any]) -> list[_ParsedToolCall]:
-    parsed: list[_ParsedToolCall] = []
-    for tc in tool_calls:
-        if not isinstance(tc, dict):
-            continue
-        fn = tc.get("function") if isinstance(tc.get("function"), dict) else {}
-        tool_name = fn.get("name")
-        args_raw = fn.get("arguments") or "{}"
-        tc_id = tc.get("id") or f"call_{len(parsed)}"
-        if not isinstance(tool_name, str):
-            continue
-        parsed.append(_ParsedToolCall(tc_id=tc_id, tool_name=tool_name, args_raw=str(args_raw)))
-    return parsed
-
-
-async def _execute_single_tool_call_raw(
-    reg: ToolRegistry,
-    parsed: _ParsedToolCall,
-    *,
-    allowed_tools: tuple[str, ...],
-    settings: Any,
-    tenant_id: str,
-    session_id: str,
-    shadow_mode: bool,
-) -> tuple[str | None, ToolCallRecord | None, AgentRunError | None]:
-    try:
-        result, record = await _execute_tool(
-            reg,
-            tool_name=parsed.tool_name,
-            arguments_json=parsed.args_raw,
-            allowed_tools=allowed_tools,
-            tool_timeout=settings.agent_tool_timeout_seconds,
-            tool_max_retries=settings.agent_tool_max_retries,
-            tenant_id=tenant_id,
-            session_id=session_id,
-            shadow_mode=shadow_mode,
-        )
-        return result, record, None
-    except AgentRunError as e:
-        if e.code == "AGENT_TOOL_FORBIDDEN":
-            return None, None, e
-        record = ToolCallRecord(
-            tool_name=parsed.tool_name,
-            arguments={},
-            status="failed",
-            result=None,
-            error=f"{e.code}: {e.message}",
-            latency_ms=0.0,
-            quality_gate="failed",
-        )
-        return None, record, None
-    except Exception as e:
-        record = ToolCallRecord(
-            tool_name=parsed.tool_name,
-            arguments={},
-            status="failed",
-            result=None,
-            error=str(e),
-            latency_ms=0.0,
-            quality_gate="failed",
-        )
-        return None, record, None
-
-
-def _finalize_tool_call(
-    parsed: _ParsedToolCall,
-    *,
-    result: str | None,
-    record: ToolCallRecord,
-    settings: Any,
-    reflect_remaining: int,
-    runtime_truncated_tools: int,
-    shadow_mode: bool,
-    shadow_trace: list[ToolCallRecord],
-    trace: list[ToolCallRecord],
-) -> tuple[dict[str, Any], int, int]:
-    if shadow_mode:
-        shadow_trace.append(record)
-    _, quality_gate = assess_tool_output(
-        parsed.tool_name,
-        result or "",
-        min_score=settings.agent_quality_min_score,
-    )
-    record = record.model_copy(update={"quality_gate": quality_gate})
-    trace.append(record)
-    tool_content = result or record.error or ""
-    if quality_gate == "low_quality" and reflect_remaining > 0:
-        reflect_remaining -= 1
-        tool_content = with_quality_hint(tool_content, QUALITY_HINT)
-    tool_content, did_trunc = truncate_tool_content(
-        tool_content,
-        settings.agent_tool_result_max_chars,
-    )
-    if did_trunc:
-        runtime_truncated_tools += 1
-    tool_msg = {
-        "role": "tool",
-        "tool_call_id": parsed.tc_id,
-        "content": tool_content,
-    }
-    return tool_msg, reflect_remaining, runtime_truncated_tools
-
-
-async def _process_tool_calls_round(
-    tool_calls: list[Any],
-    *,
-    reg: ToolRegistry,
-    allowed_tools: tuple[str, ...],
-    settings: Any,
-    tenant_id: str,
-    session_id: str,
-    shadow_mode: bool,
-    strategy: str,
-    reflect_remaining: int,
-    runtime_truncated_tools: int,
-    trace: list[ToolCallRecord],
-    shadow_trace: list[ToolCallRecord],
-) -> _ToolRoundResult:
-    parsed = _parse_tool_calls(tool_calls)
-    tool_messages: list[dict[str, Any]] = []
-    if not parsed:
-        return _ToolRoundResult(tool_messages, reflect_remaining, runtime_truncated_tools, None)
-
-    if strategy == "parallel" and len(parsed) > 1:
-        t0 = time.perf_counter()
-        exec_pairs = await asyncio.gather(
-            *(
-                _execute_single_tool_call_raw(
-                    reg,
-                    p,
-                    allowed_tools=allowed_tools,
-                    settings=settings,
-                    tenant_id=tenant_id,
-                    session_id=session_id,
-                    shadow_mode=shadow_mode,
-                )
-                for p in parsed
-            )
-        )
-        duration_ms = (time.perf_counter() - t0) * 1000
-        get_agent_perf_metrics().record_tool_parallel_batch(
-            tenant_id=tenant_id,
-            strategy=strategy,
-            duration_ms=duration_ms,
-            tool_count=len(parsed),
-        )
-        exec_results = list(zip(parsed, exec_pairs, strict=True))
-    else:
-        exec_results = []
-        for p in parsed:
-            raw = await _execute_single_tool_call_raw(
-                reg,
-                p,
-                allowed_tools=allowed_tools,
-                settings=settings,
-                tenant_id=tenant_id,
-                session_id=session_id,
-                shadow_mode=shadow_mode,
-            )
-            exec_results.append((p, raw))
-
-    for parsed_call, (result, record, fatal) in exec_results:
-        if fatal is not None:
-            return _ToolRoundResult(tool_messages, reflect_remaining, runtime_truncated_tools, fatal)
-        if record is None:
-            continue
-        if record.status == "success":
-            tool_msg, reflect_remaining, runtime_truncated_tools = _finalize_tool_call(
-                parsed_call,
-                result=result,
-                record=record,
-                settings=settings,
-                reflect_remaining=reflect_remaining,
-                runtime_truncated_tools=runtime_truncated_tools,
-                shadow_mode=shadow_mode,
-                shadow_trace=shadow_trace,
-                trace=trace,
-            )
-        else:
-            trace.append(record)
-            tool_msg = {
-                "role": "tool",
-                "tool_call_id": parsed_call.tc_id,
-                "content": f"error: {record.error}",
-            }
-        tool_messages.append(tool_msg)
-
-    return _ToolRoundResult(tool_messages, reflect_remaining, runtime_truncated_tools, None)
-
-
 async def resume_approved_tool(
     *,
     tenant_id: str,
@@ -507,7 +131,7 @@ async def resume_approved_tool(
         raise AgentRunError("AGENT_APPROVAL_INVALID", "approval 与 tenant/session 不匹配")
 
     settings = get_settings()
-    result, record = await _execute_tool(
+    result, record = await execute_tool(
         reg,
         tool_name=approval.tool_name,
         arguments_json=json.dumps(approval.arguments, ensure_ascii=False),
@@ -555,6 +179,74 @@ async def resume_approved_tool(
         "status": "completed",
         "approval_id": approval_id,
     }
+
+
+def _build_run_payload(
+    *,
+    tenant_id: str,
+    session_id: str,
+    loop: ReActLoopResult,
+    saved_state: SessionState,
+    shadow_mode: bool,
+    active_reasoning_mode: str,
+    active_tool_call_strategy: str,
+    routing: Any,
+    memory_injection: Any,
+    memory_persisted: bool,
+    token_budget_daily: int,
+    token_budget_monthly: int,
+) -> dict[str, Any]:
+    snap = get_budget_snapshot(
+        tenant_id,
+        token_budget_daily=token_budget_daily,
+        token_budget_monthly=token_budget_monthly,
+    )
+    budget_meta = ContextBudgetMeta(
+        budget=loop.budget_meta.budget,
+        estimated_tokens=estimate_messages_tokens(loop.messages),
+        truncated_messages=loop.budget_meta.truncated_messages,
+        truncated_tool_results=loop.budget_meta.truncated_tool_results + loop.runtime_truncated_tools,
+        summary_applied=loop.budget_meta.summary_applied,
+        keep_recent_turns=loop.budget_meta.keep_recent_turns,
+    )
+    payload: dict[str, Any] = {
+        "tenant_id": tenant_id,
+        "session_id": session_id,
+        "final_message": loop.final_message,
+        "tool_calls": loop.trace if not shadow_mode else [],
+        "steps": loop.steps,
+        "model": loop.resolved_model,
+        "trace_id": get_trace_id(),
+        "status": "completed",
+        "reasoning_mode": active_reasoning_mode,
+        "tool_call_strategy": active_tool_call_strategy,
+    }
+    if loop.reasoning_trace:
+        payload["reasoning_trace"] = loop.reasoning_trace
+    if shadow_mode and loop.shadow_trace:
+        payload["shadow_tool_calls"] = loop.shadow_trace
+    platform_meta: dict[str, Any] = {
+        "tool_routing": routing_meta(routing),
+        "tool_call_strategy": active_tool_call_strategy,
+        "context_budget": context_budget_platform_meta(budget_meta),
+        "context_strategy": context_strategy_platform_meta(),
+        "session_turn_count": saved_state.turn_count,
+        "session_summary": bool(saved_state.summary),
+        "reflect_remaining": loop.reflect_remaining,
+        "shadow_mode": shadow_mode,
+        "memory_persisted": memory_persisted,
+    }
+    if memory_injection is not None:
+        platform_meta["memory_injection"] = memory_injection_platform_meta(memory_injection)
+    if loop.total_tokens > 0:
+        platform_meta["usage"] = {
+            "input_tokens": loop.total_input_tokens,
+            "output_tokens": loop.total_output_tokens,
+            "total_tokens": loop.total_tokens,
+            **budget_platform_meta(snap, loop.total_tokens),
+        }
+    payload["_platform"] = platform_meta
+    return payload
 
 
 async def run_agent(
@@ -624,9 +316,9 @@ async def run_agent(
     )
     if active_reasoning_mode == "cot":
         messages = merge_cot_system_prompt(messages)
-    # Phase F #33：长记忆注入 system prompt
+
+    memory_injection = None
     if settings.context_memory_injection_enabled and new_messages:
-        # 用最新 user message 作为 query
         query_text = ""
         for m in reversed(new_messages):
             if m.get("role") == "user":
@@ -634,9 +326,7 @@ async def run_agent(
                 if isinstance(content, str):
                     query_text = content
                     break
-        budget_remaining = max(
-            0, budget_meta.budget - budget_meta.estimated_tokens
-        )
+        budget_remaining = max(0, budget_meta.budget - budget_meta.estimated_tokens)
         if budget_remaining >= settings.context_memory_injection_min_budget:
             memory_injection = await retrieve_and_inject_memory(
                 tenant_id=tenant_id,
@@ -648,8 +338,6 @@ async def run_agent(
             )
             if memory_injection.injected:
                 messages = inject_memory_into_messages(messages, memory_injection)
-    runtime_truncated_tools = 0
-    reflect_remaining = settings.agent_reflect_max_retries
 
     routing = select_tools_from_messages(
         session_messages,
@@ -665,148 +353,32 @@ async def run_agent(
         pinned_tools=pinned_tools,
     )
     tools_spec = reg.openai_tools_spec_subset(tool_names, allowed_tools)
-    trace: list[ToolCallRecord] = []
-    reasoning_trace: list[ReasoningTraceRecord] = []
-    shadow_trace: list[ToolCallRecord] = []
-    # memory_injection 在 assemble_llm_messages 后才确定
-    memory_injection = None  # type: ignore[assignment]
-    steps = 0
-    final_message = ""
-    total_input_tokens = 0
-    total_output_tokens = 0
-    total_tokens = 0
-
     pinned_prefix = 1 if budget_meta.summary_applied else 0
 
-    while steps < settings.agent_max_steps:
-        steps += 1
-        if estimate_messages_tokens(messages) > settings.agent_context_token_budget:
-            messages, dropped = drop_oldest_until_budget(
-                messages,
-                budget=settings.agent_context_token_budget,
-                pinned_prefix=pinned_prefix,
-            )
-            if dropped:
-                budget_meta = ContextBudgetMeta(
-                    budget=budget_meta.budget,
-                    estimated_tokens=estimate_messages_tokens(messages),
-                    truncated_messages=budget_meta.truncated_messages + dropped,
-                    truncated_tool_results=budget_meta.truncated_tool_results + runtime_truncated_tools,
-                    summary_applied=budget_meta.summary_applied,
-                    keep_recent_turns=budget_meta.keep_recent_turns,
-                )
-
-        payload: dict[str, Any] = {
-            "model": resolved_model,
-            "messages": messages,
-            "temperature": 0.2,
-        }
-        if tools_spec:
-            payload["tools"] = tools_spec
-            payload["tool_choice"] = "auto"
-
-        routed = await forward_with_model_router(
-            payload,
-            requested_model=model or settings.agent_model,
-        )
-        body = routed.body
-        if routed.error and body is None:
-            raise AgentRunError(
-                "AGENT_UPSTREAM_ERROR",
-                routed.error,
-                detail={"status": routed.status, "models_tried": list(routed.models_tried)},
-            )
-        if body is None or not (200 <= routed.status < 300):
-            raise AgentRunError(
-                "AGENT_UPSTREAM_ERROR",
-                f"upstream status {routed.status}",
-                detail={"upstream": body, "models_tried": list(routed.models_tried)},
-            )
-        if routed.model_used:
-            resolved_model = routed.model_used
-
-        usage = record_upstream_usage(
-            tenant_id=tenant_id,
-            path="/v1/agent/run",
-            model=resolved_model,
-            upstream_body=body,
-            trace_id=get_trace_id(),
-        )
-        if usage is not None:
-            total_input_tokens += usage.input_tokens
-            total_output_tokens += usage.output_tokens
-            total_tokens += usage.total_tokens
-
-        choices = body.get("choices")
-        if not isinstance(choices, list) or not choices:
-            raise AgentRunError("AGENT_UPSTREAM_ERROR", "upstream 无 choices")
-
-        choice = choices[0]
-        msg = _extract_message(choice)
-        if active_reasoning_mode == "cot":
-            msg, thinking = apply_cot_to_assistant_message(msg)
-            if thinking:
-                get_agent_perf_metrics().record_cot_thinking_tokens(
-                    tenant_id=tenant_id,
-                    tokens=estimate_messages_tokens([{"role": "assistant", "content": thinking}]),
-                )
-            reasoning_trace.append(
-                ReasoningTraceRecord(
-                    step=steps,
-                    thinking=thinking,
-                    visible_content=msg.get("content")
-                    if isinstance(msg.get("content"), str)
-                    else None,
-                )
-            )
-        finish = choice.get("finish_reason")
-        messages.append(msg)
-        session_messages.append(msg)
-
-        tool_calls = msg.get("tool_calls")
-        if finish == "tool_calls" or tool_calls:
-            if not isinstance(tool_calls, list) or not tool_calls:
-                raise AgentRunError("AGENT_UPSTREAM_ERROR", "finish_reason=tool_calls 但无 tool_calls")
-
-            round_result = await _process_tool_calls_round(
-                tool_calls,
-                reg=reg,
-                allowed_tools=allowed_tools,
-                settings=settings,
-                tenant_id=tenant_id,
-                session_id=session_id,
-                shadow_mode=shadow_mode,
-                strategy=active_tool_call_strategy,
-                reflect_remaining=reflect_remaining,
-                runtime_truncated_tools=runtime_truncated_tools,
-                trace=trace,
-                shadow_trace=shadow_trace,
-            )
-            if round_result.fatal is not None:
-                raise round_result.fatal
-            reflect_remaining = round_result.reflect_remaining
-            runtime_truncated_tools = round_result.runtime_truncated_tools
-            for tool_msg in round_result.tool_messages:
-                messages.append(tool_msg)
-                session_messages.append(tool_msg)
-            continue
-
-        content = msg.get("content")
-        final_message = content.strip() if isinstance(content, str) else ""
-        break
-    else:
-        raise AgentRunError(
-            "AGENT_MAX_STEPS",
-            f"超过最大步数 {settings.agent_max_steps}",
-            detail={"steps": steps},
-        )
+    loop = await run_react_loop(
+        messages=messages,
+        session_messages=session_messages,
+        registry=reg,
+        tools_spec=tools_spec,
+        resolved_model=resolved_model,
+        model=model,
+        tenant_id=tenant_id,
+        session_id=session_id,
+        allowed_tools=allowed_tools,
+        settings=settings,
+        shadow_mode=shadow_mode,
+        active_reasoning_mode=active_reasoning_mode,
+        active_tool_call_strategy=active_tool_call_strategy,
+        budget_meta=budget_meta,
+        pinned_prefix=pinned_prefix,
+        reflect_remaining=settings.agent_reflect_max_retries,
+    )
 
     saved_state = SessionState(
-        messages=session_messages,
+        messages=loop.session_messages,
         summary=state.summary,
         turn_count=state.turn_count,
     )
-    # Phase F #33：LLM 增强摘要（替换 stub_summarize）
     if settings.context_llm_summary_enabled:
         saved_state = await maybe_compact_with_llm(
             saved_state,
@@ -823,7 +395,6 @@ async def run_agent(
         )
     session_store.save_session_state(tenant_id, session_id, saved_state)
 
-    # Phase F #31：按周期触发长记忆摘要持久化
     memory_persisted = False
     if (
         settings.memory_store_enabled
@@ -843,61 +414,22 @@ async def run_agent(
             "trace_id": get_trace_id(),
             "tenant_id": tenant_id,
             "session_id": session_id,
-            "steps": steps,
-            "tool_calls": len(trace),
+            "steps": loop.steps,
+            "tool_calls": len(loop.trace),
         },
     )
 
-    snap = get_budget_snapshot(
-        tenant_id,
+    return _build_run_payload(
+        tenant_id=tenant_id,
+        session_id=session_id,
+        loop=loop,
+        saved_state=saved_state,
+        shadow_mode=shadow_mode,
+        active_reasoning_mode=active_reasoning_mode,
+        active_tool_call_strategy=active_tool_call_strategy,
+        routing=routing,
+        memory_injection=memory_injection,
+        memory_persisted=memory_persisted,
         token_budget_daily=token_budget_daily,
         token_budget_monthly=token_budget_monthly,
     )
-    payload: dict[str, Any] = {
-        "tenant_id": tenant_id,
-        "session_id": session_id,
-        "final_message": final_message,
-        "tool_calls": trace if not shadow_mode else [],
-        "steps": steps,
-        "model": resolved_model,
-        "trace_id": get_trace_id(),
-        "status": "completed",
-        "reasoning_mode": active_reasoning_mode,
-        "tool_call_strategy": active_tool_call_strategy,
-    }
-    if reasoning_trace:
-        payload["reasoning_trace"] = reasoning_trace
-    if shadow_mode and shadow_trace:
-        payload["shadow_tool_calls"] = shadow_trace
-    budget_meta = ContextBudgetMeta(
-        budget=budget_meta.budget,
-        estimated_tokens=estimate_messages_tokens(messages),
-        truncated_messages=budget_meta.truncated_messages,
-        truncated_tool_results=budget_meta.truncated_tool_results + runtime_truncated_tools,
-        summary_applied=budget_meta.summary_applied,
-        keep_recent_turns=budget_meta.keep_recent_turns,
-    )
-    platform_meta: dict[str, Any] = {
-        "tool_routing": routing_meta(routing),
-        "tool_call_strategy": active_tool_call_strategy,
-        "context_budget": context_budget_platform_meta(budget_meta),
-        "context_strategy": context_strategy_platform_meta(),
-        "session_turn_count": saved_state.turn_count,
-        "session_summary": bool(saved_state.summary),
-        "reflect_remaining": reflect_remaining,
-        "shadow_mode": shadow_mode,
-        "memory_persisted": memory_persisted,
-    }
-    if memory_injection is not None:
-        platform_meta["memory_injection"] = memory_injection_platform_meta(
-            memory_injection
-        )
-    if total_tokens > 0:
-        platform_meta["usage"] = {
-            "input_tokens": total_input_tokens,
-            "output_tokens": total_output_tokens,
-            "total_tokens": total_tokens,
-            **budget_platform_meta(snap, total_tokens),
-        }
-    payload["_platform"] = platform_meta
-    return payload
