@@ -11,7 +11,7 @@
 | 🔄 | 进行中（RFC 或实现中） |
 | ✅ | 已完成（Issue 关闭 + 边界测试绿） |
 
-**当前进度**：6 / 10（#1 ✅ [#156](https://github.com/xingyun0812/ai-platform-lab/issues/156) · #2 ✅ · #3 ✅ [#152](https://github.com/xingyun0812/ai-platform-lab/issues/152) · **#4 ✅ [#162](https://github.com/xingyun0812/ai-platform-lab/issues/162)** · **#5 ✅ [#169](https://github.com/xingyun0812/ai-platform-lab/issues/169)** · **#6 ✅ [#172](https://github.com/xingyun0812/ai-platform-lab/issues/172)** · #7 [#146](https://github.com/xingyun0812/ai-platform-lab/issues/146) ✅）
+**当前进度**：7 / 10（#1 ✅ … #7 ✅ · **#8 🟡 [#178](https://github.com/xingyun0812/ai-platform-lab/issues/178) PR-8a**）
 
 ---
 
@@ -417,7 +417,7 @@ Inbound-only coupling（深模块 + 浅 wiring）
 
 ## 8. init/get 单例泛滥
 
-**状态**：⬜ · **优先级**：P2 · **依赖**：#1 #2 后更易做
+**状态**：🟡 PR-8a 待 merge · **优先级**：P2 · **依赖**：#1 #2 后更易做 · **Issue**: [#178](https://github.com/xingyun0812/ai-platform-lab/issues/178)
 
 ### 问题
 
@@ -440,11 +440,11 @@ Inbound-only coupling（深模块 + 浅 wiring）
 
 ### 验收清单
 
-- [ ] 文档化 AppContext 字段与生命周期
-- [ ] main.py init 段改为 `ctx = build_context(settings); ctx.wire()`
-- [ ] feedback 不再静默 fallback（与 gateway 门控一致）
-- [ ] 解决 prompt/embedding `get_registry` 命名冲突
-- [ ] GitHub Issue RFC 已创建并链接
+- [x] 文档化 AppContext 字段与生命周期 → [ADR-0003](../adr/0003-app-context-singletons.md)
+- [x] main.py init 段改为 `ctx = build_context(settings); ctx.wire()`（lifespan 经 `build_app_context`）
+- [x] feedback 不再静默 fallback（与 gateway 门控一致）
+- [x] 解决 prompt/embedding `get_registry` 命名冲突（`get_prompt_registry` / `get_embedding_registry`）
+- [x] GitHub Issue RFC 已创建并链接 → [#178](https://github.com/xingyun0812/ai-platform-lab/issues/178)
 
 ---
 

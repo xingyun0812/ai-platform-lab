@@ -19,6 +19,17 @@ from packages.feedback.store import (
 logger = logging.getLogger("ai_platform.feedback.api")
 
 
+def _require_feedback_store():
+    """Gateway 仅在 feedback_enabled 时 init store；未 init 则显式失败。"""
+    store = get_feedback_store()
+    if store is None:
+        raise RuntimeError(
+            "feedback store 未初始化；请在 gateway lifespan 启用 feedback_enabled "
+            "并调用 init_feedback_store，或测试中显式 init_feedback_store()"
+        )
+    return store
+
+
 async def record_feedback(
     *,
     tenant_id: str,
@@ -31,11 +42,7 @@ async def record_feedback(
     metadata: dict | None = None,
 ) -> Feedback:
     """创建一条反馈记录；负面反馈自动尝试入库到 eval 管道。"""
-    store = get_feedback_store()
-    if store is None:
-        from packages.feedback.store import InMemoryFeedbackStore
-
-        store = InMemoryFeedbackStore()
+    store = _require_feedback_store()
 
     feedback_id = f"fb-{uuid.uuid4().hex[:12]}"
     fb = Feedback(
@@ -67,9 +74,7 @@ async def record_feedback(
 
 
 async def get_feedback(feedback_id: str) -> Feedback | None:
-    store = get_feedback_store()
-    if store is None:
-        return None
+    store = _require_feedback_store()
     return await store.get(feedback_id)
 
 
@@ -78,7 +83,5 @@ async def list_feedback(
     feedback_type: str | None = None,
     limit: int = 50,
 ) -> list[Feedback]:
-    store = get_feedback_store()
-    if store is None:
-        return []
+    store = _require_feedback_store()
     return await store.list(tenant_id, feedback_type=feedback_type, limit=limit)

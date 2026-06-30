@@ -235,8 +235,12 @@ def init_registry(
         return _global_registry
 
 
-def get_registry() -> EmbeddingRegistry | None:
+def get_embedding_registry() -> EmbeddingRegistry | None:
+    """获取全局 EmbeddingRegistry 单例（首选命名，避免与 prompt 冲突）。"""
     return _global_registry
+
+
+get_registry = get_embedding_registry  # 兼容别名
 
 
 def reset_for_tests() -> None:

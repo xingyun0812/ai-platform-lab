@@ -7,7 +7,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
-from apps.gateway.composition import wire_gateway_dependencies
+from apps.gateway.app_context import build_app_context
 from apps.gateway.platform_adapter import wire_platform
 from apps.gateway.settings import get_settings
 
@@ -19,7 +19,8 @@ async def gateway_lifespan(_app: FastAPI):
     """应用启动时绑定 PlatformPort 并初始化 Phase 依赖；关闭时记录日志。"""
     settings = get_settings()
     wire_platform()
-    wire_gateway_dependencies(settings)
+    ctx = build_app_context(settings)
+    ctx.wire()
     logger.info("gateway lifespan startup complete app=%s", settings.app_name)
     try:
         yield

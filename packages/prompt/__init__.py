@@ -7,7 +7,8 @@
     PromptVersion         — 版本数据类
     PromptRegistry        — 注册表（YAML 默认 + JSON overrides）
     init_registry()       — 初始化全局单例
-    get_registry()        — 获取全局单例
+    get_prompt_registry() — 获取全局单例（首选）
+    get_registry()        — 兼容别名
     render()              — {{var}} 模板渲染
     extract_variables()   — 提取模板变量
 
@@ -31,6 +32,7 @@ from packages.prompt.registry import (
     PromptRegistry,
     PromptRegistryError,
     PromptVersion,
+    get_prompt_registry,
     get_registry,
     init_registry,
     reset_registry_for_tests,
@@ -52,6 +54,7 @@ __all__ = [
     "VariantMetrics",
     "extract_variables",
     "get_experiment_store",
+    "get_prompt_registry",
     "get_registry",
     "init_experiment_store",
     "init_registry",
