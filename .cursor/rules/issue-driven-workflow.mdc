@@ -13,6 +13,7 @@ alwaysApply: true
 - ❌ 无 GitHub Issue 编号即开始写业务代码
 - ❌ 一个巨型 commit 混多个 Issue
 - ❌ 跳过 PR 直接合并（除维护者文档 typo 等极小改动）
+- ❌ 代码/CI 已过但 **Issue 正文验收仍为全 `[ ]`** 就 merge（见 #156）
 
 ## 必须顺序
 
@@ -22,8 +23,8 @@ docs/roadmap 或 backlog 规划
     → git checkout -b feat/issue-<N>-<short-name>
     → 实现 + 单测 + 文档
     → commit（message 含 refs/closes #N）
-    → push + 开 PR（填 PR 模板，关联 Issue）
-    → CI 绿 + review
+    → push + 开 PR（填 PR 模板，含三线验收对齐表）
+    → CI 绿 + 三线验收对齐 + review
     → merge 到 main
     → Phase 完成后打 tag
 ```
@@ -39,8 +40,14 @@ docs/roadmap 或 backlog 规划
 提交前：
 
 1. `ruff check .` / 相关 `pytest` 或 `python -m unittest` 通过
-2. PR 描述写 `closes #N`
+2. PR 描述写 `closes #N`（关闭 Issue 的 PR）或 `refs #N`（堆叠切片）
 3. **不要** `git push origin main`
+
+**merge 前（`closes #N` 的 PR 强制）— 三线验收对齐**：
+
+1. **Issue 正文**：验收 checkbox 与 PR 内「三线验收对齐」表一致；关闭 Issue 前须为 `[x]`（`gh issue edit` 或最终 PR 同步）
+2. **文档**：`docs/architecture-deepening-todo.md` §N / `docs/issues-backlog-phase-*.md` / `roadmap.md`（如适用）已更新
+3. **证据**：PR 描述贴测试命令输出 + CI Checks 全绿；架构类 Issue 至少 1 条 HTTP/集成测
 
 Issue / Milestone / Label 纪律（Phase 工作必做）：
 
@@ -48,8 +55,8 @@ Issue / Milestone / Label 纪律（Phase 工作必做）：
 2. **Milestone**：挂到对应 Phase（如 `Phase O — Agent JD2 Alignment`）
 3. **Labels**：至少 `phase-task` + `phase-<letter>`（如 `phase-o`）；缺 label 时先 `gh label create` 再建 Issue
 4. **分支名**：`feat/issue-<N>-<short-name>` 或 `fix/issue-<N>-<short-name>`（与 Issue 号一致）
-5. **Commit / PR**：message 或 body 含 `closes #N`（一个 PR 关闭一个 Issue）
-6. **合并后**：确认 Issue 自动关闭；同步更新 `docs/issues-backlog-phase-*.md` 的 PR 列（如 `✅ #99`）
+5. **Commit / PR**：message 或 body 含 `closes #N`（一个 PR 关闭一个 Issue）；PR body 填 [PR 模板](../.github/PULL_REQUEST_TEMPLATE.md) 中的「三线验收对齐」
+6. **合并后**：确认 Issue 自动关闭；**确认 Issue 正文验收清单已为 `[x]`**；同步 `docs/issues-backlog-phase-*.md` 的 PR 列（如 `✅ #99`）
 7. **Phase Tag**：该 Phase **全部** Issue merge 后，在 `main` HEAD 打 `phase-<letter>-<name>` 并 `git push origin <tag>`；**禁止**在 feature branch 或未完成 Phase 中间打 tag
 
 Phase 多 Issue 时：优先 **堆叠 PR**（#N 合并后再开 #N+1 分支），或按模块拆独立 PR，每个 PR 对应一个 Issue。
