@@ -5,12 +5,12 @@ from __future__ import annotations
 import logging
 from typing import Any
 
+from packages.agent.execution_engine import execute_plan as run_plan_execution
 from packages.agent.graph_state import AgentGraphState
 from packages.agent.plan_approval import get_plan_approval
 from packages.agent.planner import (
     PlannerError,
     generate_plan,
-    get_plan_executor,
 )
 from packages.agent.run_lifecycle import finalize_agent_run_result
 from packages.agent.runner import run_agent
@@ -100,8 +100,7 @@ async def execute_agent_graph(
             tenant_id=tenant.tenant_id,
         )
         require_approval = body.require_plan_approval or settings.plan_require_approval
-        execute_plan = get_plan_executor(mode=settings.plan_execution_mode)
-        result = await execute_plan(
+        result = await run_plan_execution(
             plan=plan,
             tenant_id=tenant.tenant_id,
             session_id=session_id,
@@ -191,9 +190,8 @@ async def _resume_approved_plan(
             session_id,
         )
 
-    execute_plan = get_plan_executor(mode=settings.plan_execution_mode)
     try:
-        result = await execute_plan(
+        result = await run_plan_execution(
             plan=entry.plan,
             tenant_id=tenant.tenant_id,
             session_id=session_id or entry.session_id or session_id,

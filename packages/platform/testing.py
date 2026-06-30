@@ -15,6 +15,7 @@ class InMemoryPlatformSettings:
     default_model: str = "test-model"
     agent_model: str = "test-agent-model"
     plan_execution_mode: str = "parallel"
+    plan_execution_backend: str = "planner"
     plan_require_approval: bool = False
     plan_max_replan_attempts: int = 2
     rag_data_root: Path = field(default_factory=lambda: Path("/tmp/rag-test"))

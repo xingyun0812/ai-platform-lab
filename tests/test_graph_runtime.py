@@ -57,19 +57,21 @@ class TestPlanApprovalResume(unittest.IsolatedAsyncioTestCase):
             model="chat-fast",
         )
 
-        with patch("packages.agent.graph_runtime.get_plan_executor", return_value=mock_execute):
-            with patch(
-                "packages.agent.graph_runtime.finalize_agent_run_result",
-                side_effect=lambda r, **kw: r,
-            ) as finalize:
-                result = await execute_agent_graph(
-                    body=body,
-                    tenant=tenant,
-                    session_store=MagicMock(),
-                    new_messages=[],
-                    step_system_messages=None,
-                    shadow_mode=False,
-                )
+        mock_settings = MagicMock(plan_max_replan_attempts=2)
+        with patch("packages.agent.graph_runtime.get_settings", return_value=mock_settings):
+            with patch("packages.agent.graph_runtime.run_plan_execution", new=mock_execute):
+                with patch(
+                    "packages.agent.graph_runtime.finalize_agent_run_result",
+                    side_effect=lambda r, **kw: r,
+                ) as finalize:
+                    result = await execute_agent_graph(
+                        body=body,
+                        tenant=tenant,
+                        session_store=MagicMock(),
+                        new_messages=[],
+                        step_system_messages=None,
+                        shadow_mode=False,
+                    )
 
         finalize.assert_called_once()
         self.assertEqual(finalize.call_args.kwargs["tenant_id"], "admin")
@@ -90,15 +92,17 @@ class TestPlanApprovalResume(unittest.IsolatedAsyncioTestCase):
         )
         tenant = MagicMock(tenant_id="admin", allowed_tools=(), allowed_models=())
 
-        with self.assertRaises(GraphRuntimeError) as ctx:
-            await execute_agent_graph(
-                body=body,
-                tenant=tenant,
-                session_store=MagicMock(),
-                new_messages=[],
-                step_system_messages=None,
-                shadow_mode=False,
-            )
+        mock_settings = MagicMock()
+        with patch("packages.agent.graph_runtime.get_settings", return_value=mock_settings):
+            with self.assertRaises(GraphRuntimeError) as ctx:
+                await execute_agent_graph(
+                    body=body,
+                    tenant=tenant,
+                    session_store=MagicMock(),
+                    new_messages=[],
+                    step_system_messages=None,
+                    shadow_mode=False,
+                )
         self.assertEqual(ctx.exception.code, "PLAN_APPROVAL_PENDING")
 
 
