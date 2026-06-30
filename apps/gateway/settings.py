@@ -150,6 +150,11 @@ class Settings(BaseSettings):
         validation_alias="PLAN_EXECUTION_MODE",
         description="Plan 执行模式：parallel（DAG 层内并行）或 serial（拓扑序串行）",
     )
+    plan_execution_backend: str = Field(
+        default="planner",
+        validation_alias="PLAN_EXECUTION_BACKEND",
+        description="Plan 执行后端：planner（默认）或 orchestrator（#162 ExecutionEngine）",
+    )
     graph_checkpoint_enabled: bool = Field(
         default=True,
         validation_alias="GRAPH_CHECKPOINT_ENABLED",
