@@ -234,8 +234,8 @@ Config/YAML · 架构倒置（library → app）
 
 | 配置 | 默认 | 说明 |
 |------|------|------|
-| `PLAN_EXECUTION_BACKEND` | `planner` | 向后兼容；设 `orchestrator` 走 workflow 桥 |
-| `PLAN_EXECUTION_MODE` | `parallel` | planner 轨层内并行；orchestrator 轨当前拓扑串行 |
+| `PLAN_EXECUTION_BACKEND` | `orchestrator` | #162 收敛主路径；层内 parallel 需设 `planner` |
+| `PLAN_EXECUTION_MODE` | `parallel` | 仅 planner 轨生效；orchestrator 轨当前拓扑串行 |
 
 Plan 审批 / long_run 仍 fallback planner 轨（#5/#6 follow-up）。
 

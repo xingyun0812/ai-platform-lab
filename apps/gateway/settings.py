@@ -151,9 +151,11 @@ class Settings(BaseSettings):
         description="Plan 执行模式：parallel（DAG 层内并行）或 serial（拓扑序串行）",
     )
     plan_execution_backend: str = Field(
-        default="planner",
+        default="orchestrator",
         validation_alias="PLAN_EXECUTION_BACKEND",
-        description="Plan 执行后端：planner（默认）或 orchestrator（#162 ExecutionEngine）",
+        description=(
+            "Plan 执行后端：orchestrator（默认，#162 workflow 轨）或 planner（层内 parallel 等）"
+        ),
     )
     graph_checkpoint_enabled: bool = Field(
         default=True,

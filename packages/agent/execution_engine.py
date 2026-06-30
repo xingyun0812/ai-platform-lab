@@ -14,12 +14,13 @@ logger = logging.getLogger("ai_platform.agent.execution_engine")
 
 _PLANNER_BACKEND = "planner"
 _ORCHESTRATOR_BACKEND = "orchestrator"
+_DEFAULT_BACKEND = _ORCHESTRATOR_BACKEND
 
 
 def resolve_plan_execution_backend() -> str:
-    """读取 ``plan_execution_backend``，默认 ``planner``（向后兼容）。"""
-    raw = getattr(get_settings(), "plan_execution_backend", _PLANNER_BACKEND)
-    backend = str(raw or _PLANNER_BACKEND).strip().lower()
+    """读取 ``plan_execution_backend``，默认 ``orchestrator``（#162 收敛）。"""
+    raw = getattr(get_settings(), "plan_execution_backend", _DEFAULT_BACKEND)
+    backend = str(raw or _DEFAULT_BACKEND).strip().lower()
     if backend not in {_PLANNER_BACKEND, _ORCHESTRATOR_BACKEND}:
         logger.warning("unknown plan_execution_backend=%r, fallback to planner", raw)
         return _PLANNER_BACKEND
