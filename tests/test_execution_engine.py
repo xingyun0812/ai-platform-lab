@@ -23,7 +23,12 @@ def _plan(*steps: PlanStep) -> AgentPlan:
 
 
 class TestResolveBackend(unittest.TestCase):
-    def test_default_planner(self) -> None:
+    def test_default_orchestrator(self) -> None:
+        mock_settings = MagicMock(plan_execution_backend="orchestrator")
+        with patch("packages.agent.execution_engine.get_settings", return_value=mock_settings):
+            self.assertEqual(resolve_plan_execution_backend(), "orchestrator")
+
+    def test_explicit_planner(self) -> None:
         mock_settings = MagicMock(plan_execution_backend="planner")
         with patch("packages.agent.execution_engine.get_settings", return_value=mock_settings):
             self.assertEqual(resolve_plan_execution_backend(), "planner")
