@@ -4,9 +4,7 @@ from __future__ import annotations
 
 import unittest
 
-from fastapi.testclient import TestClient
-
-from apps.gateway.main import create_app
+from tests.gateway_client import LifespanTestClient
 from packages.agent.self_evolve import StrategyPatch, reset_strategy_patch_store_for_tests
 
 
@@ -20,7 +18,8 @@ def _admin_headers() -> dict[str, str]:
 class TestStrategyPatchRoutes(unittest.TestCase):
     def setUp(self) -> None:
         reset_strategy_patch_store_for_tests()
-        self.client = TestClient(create_app())
+        self._client_cm = LifespanTestClient()
+        self.client = self._client_cm.__enter__()
         store = __import__(
             "packages.agent.self_evolve",
             fromlist=["get_strategy_patch_store"],
@@ -77,6 +76,9 @@ class TestStrategyPatchRoutes(unittest.TestCase):
     def test_unauthorized_without_token(self) -> None:
         resp = self.client.get("/internal/agent/strategy-patches")
         self.assertEqual(resp.status_code, 401)
+
+    def tearDown(self) -> None:
+        self._client_cm.__exit__(None, None, None)
 
 
 if __name__ == "__main__":
