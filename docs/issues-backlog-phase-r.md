@@ -57,7 +57,8 @@
 | 7a 写路径 | `run_lifecycle` + `graph_runtime` 终态 | ✅ |
 | 7b REST | `/internal/agent/strategy-patches/*` | ✅ #147 |
 | 7c Planner | approved → `generate_plan` context | ✅ #148 |
-| 7d 持久化 | Postgres `strategy_patches` | ✅ |
+| 7d 持久化 | Postgres `strategy_patches` | ✅ `PostgresStrategyPatchStore` + `test_strategy_patch_persistence.py` |
+| E2E 经验 | store → plan 注入 | ✅ `tests/test_experience_plan_e2e.py` |
 | E2E | REST approve → plan | ✅ `test_self_evolve_e2e.py` |
 
 **依赖**：Phase Q ✅ · Phase F #31 长记忆 ✅ · **预估**：5～7d（模块）+ 3～5d（#7 浅集成闭合）
