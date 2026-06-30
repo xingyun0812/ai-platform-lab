@@ -11,7 +11,7 @@
 | 🔄 | 进行中（RFC 或实现中） |
 | ✅ | 已完成（Issue 关闭 + 边界测试绿） |
 
-**当前进度**：7 / 10（#1 ✅ … #7 ✅ · **#8 🟡 [#178](https://github.com/xingyun0812/ai-platform-lab/issues/178) PR-8a**）
+**当前进度**：8 / 10（#1 ✅ … **#8 ✅ [#178](https://github.com/xingyun0812/ai-platform-lab/issues/178)** · **#9 🟡 [#180](https://github.com/xingyun0812/ai-platform-lab/issues/180) PR-9a**）
 
 ---
 
@@ -417,7 +417,7 @@ Inbound-only coupling（深模块 + 浅 wiring）
 
 ## 8. init/get 单例泛滥
 
-**状态**：🟡 PR-8a 待 merge · **优先级**：P2 · **依赖**：#1 #2 后更易做 · **Issue**: [#178](https://github.com/xingyun0812/ai-platform-lab/issues/178)
+**状态**：✅ · **优先级**：P2 · **Issue**: [#178](https://github.com/xingyun0812/ai-platform-lab/issues/178) · tag `arch-platform-178-phase8-complete` · PR [#179](https://github.com/xingyun0812/ai-platform-lab/pull/179)
 
 ### 问题
 
@@ -450,7 +450,7 @@ Inbound-only coupling（深模块 + 浅 wiring）
 
 ## 9. /internal API vs 主路径双轨
 
-**状态**：⬜ · **优先级**：P2 · **依赖**：#2 #8
+**状态**：🟡 PR-9a 进行中 · **优先级**：P2 · **依赖**：#2 #8 · **Issue**: [#180](https://github.com/xingyun0812/ai-platform-lab/issues/180)
 
 ### 问题
 
@@ -472,7 +472,7 @@ Feature flag 与 runtime wiring 脱节
 
 ### 验收清单
 
-- [ ] 文本 RAG embed 默认走 embedding service（与 multimodal 一致）
+- [x] 文本 RAG embed 默认走 embedding service（与 multimodal 一致）→ PR-9a `embed_texts`
 - [ ] semantic cache 覆盖 RAG query（或文档明确不做）
 - [ ] PII process 接入 chat/RAG 入口（或 flag 默认 off 写清）
 - [ ] OAuth2Middleware 接线或删除 dead code

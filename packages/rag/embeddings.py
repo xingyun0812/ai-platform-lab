@@ -16,13 +16,21 @@ logger = logging.getLogger("ai_platform.rag.embeddings")
 
 
 async def embed_texts(texts: list[str]) -> list[list[float]]:
-    """
-    直连上游 OpenAI 兼容 /embeddings（与 gateway 共用 LLM_BASE_URL / LLM_API_KEY）。
+    """生成文本向量。
+
+    ``embedding_service_enabled`` 时走 ``EmbeddingService``（与多模态一致）；
+    否则直连上游 OpenAI 兼容 ``/embeddings``。
     """
     if not texts:
         return []
 
     settings = get_settings()
+    if settings.embedding_service_enabled:
+        return await _embed_texts_via_service(
+            model_id=settings.embedding_default_model,
+            texts=texts,
+        )
+
     key = (settings.llm_api_key or "").strip()
     if not key:
         raise RuntimeError("LLM_API_KEY 未配置，无法生成 embedding")
@@ -71,6 +79,22 @@ async def _embed_via_service(
     if svc is None:
         raise RuntimeError("Embedding 服务未初始化")
     req = EmbeddingRequest(model_id=model_id, inputs=inputs)
+    resp = await svc.embed(req)
+    return resp.embeddings
+
+
+async def _embed_texts_via_service(
+    *,
+    model_id: str,
+    texts: list[str],
+) -> list[list[float]]:
+    from packages.embedding.models import EmbeddingRequest
+    from packages.embedding.service import get_embedding_service
+
+    svc = get_embedding_service()
+    if svc is None:
+        raise RuntimeError("Embedding 服务未初始化")
+    req = EmbeddingRequest(model_id=model_id, texts=texts)
     resp = await svc.embed(req)
     return resp.embeddings
 
