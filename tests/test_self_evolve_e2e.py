@@ -5,9 +5,9 @@ from __future__ import annotations
 import unittest
 from unittest.mock import patch
 
-from tests.gateway_client import LifespanTestClient
 from packages.agent.experience_store import reset_experience_store_for_tests
 from packages.agent.self_evolve import StrategyPatch, reset_strategy_patch_store_for_tests
+from tests.gateway_client import LifespanTestClient
 
 _E2E_MARKER = "E2E_APPROVED_STRATEGY_MARKER"
 _PLAN_JSON = (
@@ -50,6 +50,7 @@ class TestSelfEvolveGatewayE2E(unittest.TestCase):
         )
 
     def tearDown(self) -> None:
+        self._client_cm.__exit__(None, None, None)
         reset_strategy_patch_store_for_tests()
         reset_experience_store_for_tests()
 
@@ -94,9 +95,6 @@ class TestSelfEvolveGatewayE2E(unittest.TestCase):
         user_prompt = captured.get("user_prompt", "")
         self.assertIn(_E2E_MARKER, user_prompt)
         self.assertIn("已审批策略", user_prompt)
-
-    def tearDown(self) -> None:
-        self._client_cm.__exit__(None, None, None)
 
 
 if __name__ == "__main__":

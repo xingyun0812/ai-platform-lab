@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import unittest
 
-from tests.gateway_client import LifespanTestClient
 from packages.agent.self_evolve import StrategyPatch, reset_strategy_patch_store_for_tests
+from tests.gateway_client import LifespanTestClient
 
 
 def _admin_headers() -> dict[str, str]:
@@ -35,6 +35,7 @@ class TestStrategyPatchRoutes(unittest.TestCase):
         )
 
     def tearDown(self) -> None:
+        self._client_cm.__exit__(None, None, None)
         reset_strategy_patch_store_for_tests()
 
     def test_list_strategy_patches(self) -> None:
@@ -76,9 +77,6 @@ class TestStrategyPatchRoutes(unittest.TestCase):
     def test_unauthorized_without_token(self) -> None:
         resp = self.client.get("/internal/agent/strategy-patches")
         self.assertEqual(resp.status_code, 401)
-
-    def tearDown(self) -> None:
-        self._client_cm.__exit__(None, None, None)
 
 
 if __name__ == "__main__":
