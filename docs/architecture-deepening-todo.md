@@ -11,7 +11,7 @@
 | 🔄 | 进行中（RFC 或实现中） |
 | ✅ | 已完成（Issue 关闭 + 边界测试绿） |
 
-**当前进度**：5 / 10（#1 ✅ [#156](https://github.com/xingyun0812/ai-platform-lab/issues/156) · #2 ✅ · #3 ✅ [#152](https://github.com/xingyun0812/ai-platform-lab/issues/152) · **#4 ✅ [#162](https://github.com/xingyun0812/ai-platform-lab/issues/162)** · **#5 ✅ [#169](https://github.com/xingyun0812/ai-platform-lab/issues/169)** · #7 [#146](https://github.com/xingyun0812/ai-platform-lab/issues/146) ✅）
+**当前进度**：6 / 10（#1 ✅ [#156](https://github.com/xingyun0812/ai-platform-lab/issues/156) · #2 ✅ · #3 ✅ [#152](https://github.com/xingyun0812/ai-platform-lab/issues/152) · **#4 ✅ [#162](https://github.com/xingyun0812/ai-platform-lab/issues/162)** · **#5 ✅ [#169](https://github.com/xingyun0812/ai-platform-lab/issues/169)** · **#6 ✅ [#172](https://github.com/xingyun0812/ai-platform-lab/issues/172)** · #7 [#146](https://github.com/xingyun0812/ai-platform-lab/issues/146) ✅）
 
 ---
 
@@ -24,7 +24,7 @@
 | [3](#3-rag-索引-gatewayworker-队列缝) | RAG 索引 gateway/worker 队列缝 | P1 | ✅ [#152](https://github.com/xingyun0812/ai-platform-lab/issues/152) | 3～5d |
 | [4](#4-agent-planner-轨-vs-orchestrator-轨) | Agent Planner vs Orchestrator 双轨 | P0 | ✅ [#162](https://github.com/xingyun0812/ai-platform-lab/issues/162) | 7～10d |
 | [5](#5-三套-checkpointresume-语义) | 三套 Checkpoint/Resume 语义 | P1 | ✅ [#169](https://github.com/xingyun0812/ai-platform-lab/issues/169) · [#170](https://github.com/xingyun0812/ai-platform-lab/pull/170) [#171](https://github.com/xingyun0812/ai-platform-lab/pull/171) | 4～6d |
-| [6](#6-runnerpy--plannerpy-浅接口深实现) | runner + planner 浅接口深实现 | P1 | 🔄 PR-6a [#172](https://github.com/xingyun0812/ai-platform-lab/issues/172) | 5～7d |
+| [6](#6-runnerpy--plannerpy-浅接口深实现) | runner + planner 浅接口深实现 | P1 | ✅ [#172](https://github.com/xingyun0812/ai-platform-lab/issues/172) | 5～7d |
 | [7](#7-phase-r-深存储--浅集成) | Phase R 深存储 / 浅集成 | P1 | ✅ [#146](https://github.com/xingyun0812/ai-platform-lab/issues/146) | 3～5d |
 | [8](#8-initget-单例泛滥) | init/get 单例泛滥 | P2 | ⬜ | 4～6d |
 | [9](#9-internal-api-vs-主路径双轨) | /internal API vs 主路径双轨 | P2 | ⬜ | 5～8d |
@@ -283,7 +283,7 @@ Plan 审批 / long_run 仍 fallback planner 轨（#5/#6 follow-up）。
 
 ## 6. runner.py + planner.py 浅接口深实现
 
-**状态**：🔄 PR-6a ✅ PR-6b ✅ · **Issue**：[#172](https://github.com/xingyun0812/ai-platform-lab/issues/172) · [#174](https://github.com/xingyun0812/ai-platform-lab/issues/174)
+**状态**：✅ · **Issue**：[#172](https://github.com/xingyun0812/ai-platform-lab/issues/172) · [#174](https://github.com/xingyun0812/ai-platform-lab/issues/174) · [#176](https://github.com/xingyun0812/ai-platform-lab/issues/176)
 
 ### 问题
 
@@ -311,7 +311,7 @@ Plan 审批 / long_run 仍 fallback planner 轨（#5/#6 follow-up）。
 |------|------|
 | PR-6a | ReActLoop 抽取（`react_loop.py`） | ✅ [#173](https://github.com/xingyun0812/ai-platform-lab/pull/173) |
 | PR-6b | HITL/replan 单点 | ✅ [#175](https://github.com/xingyun0812/ai-platform-lab/pull/175) |
-| PR-6c | PlanExecutor 共享 context | ⬜ |
+| PR-6c | PlanExecutor 共享 context | ✅ PR #176 |
 
 - [x] `runner.py` facade + `react_loop.py` deep module（903→432 + 621 行）
 - [x] HITL/replan 逻辑只写一处（`plan_execution_policy.py`）
