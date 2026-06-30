@@ -22,7 +22,7 @@
 | [1](#1-gateway-单体-create_app) | Gateway 单体 `create_app()` | P0 | ✅ [#156](https://github.com/xingyun0812/ai-platform-lab/issues/156) | 5～7d |
 | [2](#2-packages--gateway-反向依赖) | packages ↔ gateway 反向依赖 | P0 | ✅ Phase 1 [#145](https://github.com/xingyun0812/ai-platform-lab/issues/145) | 5～8d |
 | [3](#3-rag-索引-gatewayworker-队列缝) | RAG 索引 gateway/worker 队列缝 | P1 | ✅ [#152](https://github.com/xingyun0812/ai-platform-lab/issues/152) | 3～5d |
-| [4](#4-agent-planner-轨-vs-orchestrator-轨) | Agent Planner vs Orchestrator 双轨 | P0 | ⬜ | 7～10d |
+| [4](#4-agent-planner-轨-vs-orchestrator-轨) | Agent Planner vs Orchestrator 双轨 | P0 | 🔄 [#162](https://github.com/xingyun0812/ai-platform-lab/issues/162) | 7～10d |
 | [5](#5-三套-checkpointresume-语义) | 三套 Checkpoint/Resume 语义 | P1 | ⬜ | 4～6d |
 | [6](#6-runnerpy--plannerpy-浅接口深实现) | runner + planner 浅接口深实现 | P1 | ⬜ | 5～7d |
 | [7](#7-phase-r-深存储--浅集成) | Phase R 深存储 / 浅集成 | P1 | ✅ [#146](https://github.com/xingyun0812/ai-platform-lab/issues/146) | 3～5d |
@@ -194,7 +194,7 @@ Config/YAML · 架构倒置（library → app）
 
 ## 4. Agent Planner 轨 vs Orchestrator 轨
 
-**状态**：⬜ · **优先级**：P0
+**状态**：🔄 · **优先级**：P0 · **RFC**：[#162](https://github.com/xingyun0812/ai-platform-lab/issues/162)
 
 ### 问题
 
@@ -217,11 +217,18 @@ Config/YAML · 架构倒置（library → app）
 
 ### 验收清单
 
+| 切片 | 内容 |
+|------|------|
+| PR-1 | `plan_to_orchestrator_workflow` + `plan_step` executor + 集成测 |
+| PR-2 | `ExecutionEngine` facade + graph_runtime opt-in |
+| PR-3 | checkpoint/engine 遍历环 DRY |
+| PR-4 | graph_runtime 单一入口 + E2E + tag `arch-platform-162-phase4` |
+
 - [ ] 单一执行入口（graph_runtime 只调一个 engine）
 - [ ] `plan_to_workflow` 生成的节点可执行（补 agent executor 或改节点类型）
 - [ ] 删除或合并 `checkpoint_engine` 与 `engine` 的重复遍历环
 - [ ] 至少 1 条 plan→workflow→execute 集成测试
-- [ ] GitHub Issue RFC 已创建并链接
+- [ ] GitHub Issue RFC 已创建并链接 → [#162](https://github.com/xingyun0812/ai-platform-lab/issues/162)
 
 ---
 
