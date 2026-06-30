@@ -354,6 +354,86 @@ async def _execute_output(config: dict[str, Any], ctx: Any) -> dict[str, Any]:
     return {"value": rendered}
 
 
+async def _execute_plan_step(config: dict[str, Any], ctx: Any) -> dict[str, Any]:
+    """Plan step 节点：执行 AgentPlan 中的单步（调用 run_agent）。"""
+    from packages.agent.planner import format_step_user_message
+    from packages.agent.runner import run_agent
+    from packages.contracts.agent_schemas import PlanStep
+
+    step_id = str(config.get("step_id") or "")
+    description = str(config.get("description") or "").strip()
+    if not description:
+        raise NodeExecutorError("INVALID_CONFIG", "plan_step 需要 description")
+
+    step = PlanStep(
+        id=step_id or "step",
+        description=description,
+        tool_hint=config.get("tool_hint"),
+        agent_hint=config.get("agent_hint"),
+        depends_on=[],
+    )
+    step_index = int(config.get("step_index") or 1)
+    step_total = int(config.get("step_total") or 1)
+    step_msg = format_step_user_message(step, index=step_index, total=step_total)
+
+    inputs = getattr(ctx, "inputs", {}) or {}
+    tenant_id = str(inputs.get("tenant_id") or "admin")
+    session_id = str(inputs.get("session_id") or "plan-session")
+    sub_session = f"{session_id}__step_{step_id or step_index}"
+    allowed_tools_raw = inputs.get("allowed_tools")
+    allowed_tools = (
+        tuple(allowed_tools_raw)
+        if isinstance(allowed_tools_raw, (list, tuple))
+        else tuple()
+    )
+    allowed_models_raw = inputs.get("allowed_models")
+    allowed_models = (
+        tuple(allowed_models_raw)
+        if isinstance(allowed_models_raw, (list, tuple))
+        else tuple()
+    )
+    model = inputs.get("model")
+    session_store = inputs.get("session_store")
+    step_system_messages = inputs.get("step_system_messages")
+    new_messages: list[dict[str, Any]] = [{"role": "user", "content": step_msg}]
+    if step_system_messages and step_index == 1:
+        new_messages = [*step_system_messages, *new_messages]
+
+    pinned = (step.tool_hint,) if step.tool_hint else None
+    try:
+        result = await run_agent(
+            tenant_id=tenant_id,
+            session_id=sub_session,
+            new_messages=new_messages,
+            allowed_tools=allowed_tools,
+            allowed_models=allowed_models,
+            model=model,
+            session_store=session_store,
+            pinned_tools=pinned,
+        )
+    except Exception as exc:
+        raise NodeExecutorError(
+            "PLAN_STEP_FAILED",
+            f"plan_step {step_id} 执行失败: {exc}",
+        ) from exc
+
+    status = str(result.get("status") or "completed")
+    if status == "failed":
+        raise NodeExecutorError(
+            "PLAN_STEP_FAILED",
+            str(result.get("final_message") or f"plan_step {step_id} failed"),
+        )
+
+    return {
+        "step_id": step_id,
+        "status": status,
+        "final_message": result.get("final_message"),
+        "tool_calls": result.get("tool_calls") or [],
+        "model": result.get("model"),
+        "approval_id": result.get("approval_id"),
+    }
+
+
 async def _execute_agent_call(config: dict[str, Any], ctx: Any) -> dict[str, Any]:
     """Agent 委托节点：调用子 Agent 执行任务。
 
@@ -433,6 +513,7 @@ def _register_builtin_executors() -> None:
     register_node_executor("parallel", _execute_parallel)
     register_node_executor("loop", _execute_loop)
     register_node_executor("output", _execute_output)
+    register_node_executor("plan_step", _execute_plan_step)
     register_node_executor("agent_call", _execute_agent_call)
 
 

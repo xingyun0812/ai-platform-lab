@@ -136,7 +136,7 @@ def validate_workflow(wf: Workflow) -> None:
     for n in wf.nodes:
         if n.node_type not in (
             "start", "end", "llm_call", "tool_call",
-            "condition", "parallel", "loop", "output", "agent_call",
+            "condition", "parallel", "loop", "output", "agent_call", "plan_step",
         ):
             raise WorkflowValidationError(
                 "INVALID_NODE_TYPE", f"节点 {n.node_id} 类型 {n.node_type} 未知"
@@ -168,6 +168,13 @@ def validate_workflow(wf: Workflow) -> None:
                 raise WorkflowValidationError(
                     "INVALID_AGENT_CALL",
                     f"agent_call 节点 {n.node_id} 缺少 agent_id",
+                )
+        # plan_step 节点必须有 description
+        if n.node_type == "plan_step":
+            if not str(n.config.get("description", "")).strip():
+                raise WorkflowValidationError(
+                    "INVALID_PLAN_STEP",
+                    f"plan_step 节点 {n.node_id} 缺少 description",
                 )
         # parallel 节点必须有 branches
         if n.node_type == "parallel":
