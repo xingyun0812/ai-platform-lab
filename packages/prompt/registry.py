@@ -467,8 +467,12 @@ def init_registry(
         return _global_registry
 
 
-def get_registry() -> PromptRegistry | None:
+def get_prompt_registry() -> PromptRegistry | None:
+    """获取全局 PromptRegistry 单例（首选命名，避免与 embedding 冲突）。"""
     return _global_registry
+
+
+get_registry = get_prompt_registry  # 兼容别名
 
 
 def reset_registry_for_tests() -> None:
