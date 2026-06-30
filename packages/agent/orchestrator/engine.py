@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 import time
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Protocol, runtime_checkable
 
 from packages.agent.orchestrator.graph import (
     GraphNode,
@@ -62,6 +62,160 @@ class ExecutionResult:
     execution_id: str | None = None
 
 
+@dataclass
+class TraversalComplete:
+    ctx: ExecutionContext
+    last_output: Any
+    steps: int
+    early_result: ExecutionResult | None = None
+
+
+@runtime_checkable
+class WorkflowTraversalPersister(Protocol):
+    """节点步进间可选持久化（checkpoint 轨）。"""
+
+    async def after_advance(
+        self,
+        ctx: ExecutionContext,
+        *,
+        next_node: str,
+        steps: int,
+        start_time: float,
+    ) -> None: ...
+
+    async def on_workflow_completed(
+        self,
+        ctx: ExecutionContext,
+        last_output: Any,
+        *,
+        workflow: Workflow,
+        steps: int,
+        start_time: float,
+        execution_id: str | None,
+    ) -> ExecutionResult | None: ...
+
+    async def on_node_failure_persist(
+        self,
+        ctx: ExecutionContext,
+        *,
+        node_id: str,
+        error: str,
+        steps: int,
+        start_time: float,
+    ) -> None: ...
+
+    async def after_error_redirect(
+        self,
+        ctx: ExecutionContext,
+        *,
+        next_node: str,
+        steps: int,
+        start_time: float,
+    ) -> None: ...
+
+
+async def traverse_workflow(
+    workflow: Workflow,
+    ctx: ExecutionContext,
+    *,
+    current: str,
+    steps: int,
+    max_steps: int,
+    timeout_seconds: float,
+    start_time: float,
+    execution_id: str | None = None,
+    persister: WorkflowTraversalPersister | None = None,
+) -> TraversalComplete:
+    """拓扑遍历 workflow，直至 end / 失败 / 超步数。"""
+    last_output: Any = None
+
+    while current and steps < max_steps:
+        if time.time() - start_time > timeout_seconds:
+            raise OrchestratorError("TIMEOUT", f"执行超时 {timeout_seconds}s")
+
+        ctx.current_node = current
+        node = workflow.get_node(current)
+        if node is None:
+            raise OrchestratorError("NODE_NOT_FOUND", f"节点 {current} 不存在")
+
+        steps += 1
+        logger.debug(
+            "orchestrator executing node=%s type=%s step=%d",
+            current,
+            node.node_type,
+            steps,
+        )
+        try:
+            executor = get_executor(node.node_type)
+            if executor is None:
+                raise OrchestratorError(
+                    "NO_EXECUTOR", f"节点类型 {node.node_type} 无执行器"
+                )
+            output = await executor(node.config, ctx)
+            ctx.outputs[current] = output
+            ctx.record_trace(current, "completed", {"output": _summarize(output)})
+
+            if node.node_type == "end":
+                last_output = output
+                if persister is not None:
+                    early = await persister.on_workflow_completed(
+                        ctx,
+                        last_output,
+                        workflow=workflow,
+                        steps=steps,
+                        start_time=start_time,
+                        execution_id=execution_id,
+                    )
+                    if early is not None:
+                        return TraversalComplete(
+                            ctx=ctx,
+                            last_output=last_output,
+                            steps=steps,
+                            early_result=early,
+                        )
+                break
+
+        except NodeExecutorError as exc:
+            ctx.record_trace(current, "failed", {"error": exc.message})
+            error_target = _find_error_target(workflow, current)
+            if error_target:
+                current = error_target
+                if persister is not None:
+                    await persister.after_error_redirect(
+                        ctx,
+                        next_node=current,
+                        steps=steps,
+                        start_time=start_time,
+                    )
+                continue
+            if persister is not None:
+                await persister.on_node_failure_persist(
+                    ctx,
+                    node_id=current,
+                    error=exc.message,
+                    steps=steps,
+                    start_time=start_time,
+                )
+            raise OrchestratorError("NODE_FAILED", exc.message, {"node": current}) from exc
+
+        next_node = _select_next_node(workflow, node, ctx)
+        if next_node is None:
+            raise OrchestratorError("NO_NEXT_NODE", f"节点 {current} 无可用出边")
+        current = next_node
+        if persister is not None:
+            await persister.after_advance(
+                ctx,
+                next_node=current,
+                steps=steps,
+                start_time=start_time,
+            )
+
+    if steps >= max_steps:
+        raise OrchestratorError("MAX_STEPS", f"超过最大步数 {max_steps}")
+
+    return TraversalComplete(ctx=ctx, last_output=last_output, steps=steps)
+
+
 async def execute_workflow(
     workflow: Workflow,
     *,
@@ -83,64 +237,26 @@ async def execute_workflow(
     validate_workflow(workflow)
     ctx = ExecutionContext(inputs=inputs or {})
     start_time = time.time()
-    current = workflow.start_node
-    steps = 0
-    last_output: Any = None
 
     try:
-        while current and steps < max_steps:
-            if time.time() - start_time > timeout_seconds:
-                raise OrchestratorError("TIMEOUT", f"执行超时 {timeout_seconds}s")
-            ctx.current_node = current
-            node = workflow.get_node(current)
-            if node is None:
-                raise OrchestratorError(
-                    "NODE_NOT_FOUND", f"节点 {current} 不存在"
-                )
-            steps += 1
-            logger.debug(
-                "orchestrator executing node=%s type=%s step=%d",
-                current, node.node_type, steps,
-            )
-            # 执行节点
-            try:
-                executor = get_executor(node.node_type)
-                if executor is None:
-                    raise OrchestratorError(
-                        "NO_EXECUTOR", f"节点类型 {node.node_type} 无执行器"
-                    )
-                output = await executor(node.config, ctx)
-                ctx.outputs[current] = output
-                ctx.record_trace(current, "completed", {"output": _summarize(output)})
-                if node.node_type == "end":
-                    last_output = output
-                    break
-            except NodeExecutorError as e:
-                ctx.record_trace(current, "failed", {"error": e.message})
-                # 查找 error 边
-                error_target = _find_error_target(workflow, current)
-                if error_target:
-                    current = error_target
-                    continue
-                raise OrchestratorError("NODE_FAILED", e.message, {"node": current})
-            # 决定下一节点
-            next_node = _select_next_node(workflow, node, ctx)
-            if next_node is None:
-                raise OrchestratorError(
-                    "NO_NEXT_NODE", f"节点 {current} 无可用出边"
-                )
-            current = next_node
-        if steps >= max_steps:
-            raise OrchestratorError(
-                "MAX_STEPS", f"超过最大步数 {max_steps}"
-            )
+        outcome = await traverse_workflow(
+            workflow,
+            ctx,
+            current=workflow.start_node,
+            steps=0,
+            max_steps=max_steps,
+            timeout_seconds=timeout_seconds,
+            start_time=start_time,
+        )
+        if outcome.early_result is not None:
+            return outcome.early_result
         elapsed_ms = (time.time() - start_time) * 1000
         return ExecutionResult(
             workflow_id=workflow.workflow_id,
             status="completed",
-            outputs=ctx.outputs,
-            final_output=last_output,
-            trace=ctx.trace,
+            outputs=outcome.ctx.outputs,
+            final_output=outcome.last_output,
+            trace=outcome.ctx.trace,
             execution_time_ms=elapsed_ms,
         )
     except OrchestratorError as e:

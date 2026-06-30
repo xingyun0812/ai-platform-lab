@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import time
+from dataclasses import dataclass
 from typing import Any
 
 from packages.agent.graph_checkpoint import (
@@ -15,12 +16,9 @@ from packages.agent.orchestrator.engine import (
     ExecutionContext,
     ExecutionResult,
     OrchestratorError,
-    _find_error_target,
-    _select_next_node,
-    _summarize,
+    traverse_workflow,
 )
 from packages.agent.orchestrator.graph import Workflow, validate_workflow
-from packages.agent.orchestrator.nodes import NodeExecutorError, get_executor
 
 logger = logging.getLogger("ai_platform.orchestrator.checkpoint")
 
@@ -50,6 +48,75 @@ def _sync_checkpoint_from_ctx(
     cp.current_node = current_node
     cp.status = status  # type: ignore[assignment]
     cp.error = error
+
+
+@dataclass
+class _CheckpointPersister:
+    cp: WorkflowExecutionCheckpoint
+    store: GraphCheckpointStore
+
+    async def after_advance(
+        self,
+        ctx: ExecutionContext,
+        *,
+        next_node: str,
+        steps: int,
+        start_time: float,
+    ) -> None:
+        _sync_checkpoint_from_ctx(self.cp, ctx, status="running", current_node=next_node)
+        self.store.save(self.cp)
+
+    async def on_workflow_completed(
+        self,
+        ctx: ExecutionContext,
+        last_output: Any,
+        *,
+        workflow: Workflow,
+        steps: int,
+        start_time: float,
+        execution_id: str | None,
+    ) -> ExecutionResult | None:
+        _sync_checkpoint_from_ctx(self.cp, ctx, status="completed", current_node=None)
+        self.store.save(self.cp)
+        elapsed_ms = (time.time() - start_time) * 1000
+        return ExecutionResult(
+            workflow_id=workflow.workflow_id,
+            status="completed",
+            outputs=ctx.outputs,
+            final_output=last_output,
+            trace=ctx.trace,
+            execution_time_ms=elapsed_ms,
+            execution_id=execution_id,
+        )
+
+    async def on_node_failure_persist(
+        self,
+        ctx: ExecutionContext,
+        *,
+        node_id: str,
+        error: str,
+        steps: int,
+        start_time: float,
+    ) -> None:
+        _sync_checkpoint_from_ctx(
+            self.cp,
+            ctx,
+            status="failed",
+            current_node=node_id,
+            error=error,
+        )
+        self.store.save(self.cp)
+
+    async def after_error_redirect(
+        self,
+        ctx: ExecutionContext,
+        *,
+        next_node: str,
+        steps: int,
+        start_time: float,
+    ) -> None:
+        _sync_checkpoint_from_ctx(self.cp, ctx, status="running", current_node=next_node)
+        self.store.save(self.cp)
 
 
 async def execute_workflow_checkpointed(
@@ -97,75 +164,43 @@ async def execute_workflow_checkpointed(
         current = workflow.start_node
         steps = 0
 
-    last_output: Any = None
+    persister = _CheckpointPersister(cp=cp, store=store)
 
     try:
-        while current and steps < max_steps:
-            if time.time() - start_time > timeout_seconds:
-                raise OrchestratorError("TIMEOUT", f"执行超时 {timeout_seconds}s")
-            ctx.current_node = current
-            node = workflow.get_node(current)
-            if node is None:
-                raise OrchestratorError("NODE_NOT_FOUND", f"节点 {current} 不存在")
-            steps += 1
-            try:
-                executor = get_executor(node.node_type)
-                if executor is None:
-                    raise OrchestratorError("NO_EXECUTOR", f"节点类型 {node.node_type} 无执行器")
-                output = await executor(node.config, ctx)
-                ctx.outputs[current] = output
-                ctx.record_trace(current, "completed", {"output": _summarize(output)})
-                if node.node_type == "end":
-                    last_output = output
-                    _sync_checkpoint_from_ctx(cp, ctx, status="completed", current_node=None)
-                    store.save(cp)
-                    elapsed_ms = (time.time() - start_time) * 1000
-                    return ExecutionResult(
-                        workflow_id=workflow.workflow_id,
-                        status="completed",
-                        outputs=ctx.outputs,
-                        final_output=last_output,
-                        trace=ctx.trace,
-                        execution_time_ms=elapsed_ms,
-                        execution_id=execution_id,
-                    )
-            except NodeExecutorError as e:
-                ctx.record_trace(current, "failed", {"error": e.message})
-                error_target = _find_error_target(workflow, current)
-                if error_target:
-                    current = error_target
-                    _sync_checkpoint_from_ctx(cp, ctx, status="running", current_node=current)
-                    store.save(cp)
-                    continue
-                _sync_checkpoint_from_ctx(
-                    cp, ctx, status="failed", current_node=current, error=e.message
-                )
-                store.save(cp)
-                raise OrchestratorError("NODE_FAILED", e.message, {"node": current})
-
-            next_node = _select_next_node(workflow, node, ctx)
-            if next_node is None:
-                raise OrchestratorError("NO_NEXT_NODE", f"节点 {current} 无可用出边")
-            current = next_node
-            _sync_checkpoint_from_ctx(cp, ctx, status="running", current_node=current)
-            store.save(cp)
-
-        if steps >= max_steps:
-            _sync_checkpoint_from_ctx(cp, ctx, status="failed", current_node=current, error="MAX_STEPS")
-            store.save(cp)
-            raise OrchestratorError("MAX_STEPS", f"超过最大步数 {max_steps}")
+        outcome = await traverse_workflow(
+            workflow,
+            ctx,
+            current=current,
+            steps=steps,
+            max_steps=max_steps,
+            timeout_seconds=timeout_seconds,
+            start_time=start_time,
+            execution_id=execution_id,
+            persister=persister,
+        )
+        if outcome.early_result is not None:
+            return outcome.early_result
 
         elapsed_ms = (time.time() - start_time) * 1000
         return ExecutionResult(
             workflow_id=workflow.workflow_id,
             status="completed",
-            outputs=ctx.outputs,
-            final_output=last_output,
-            trace=ctx.trace,
+            outputs=outcome.ctx.outputs,
+            final_output=outcome.last_output,
+            trace=outcome.ctx.trace,
             execution_time_ms=elapsed_ms,
             execution_id=execution_id,
         )
-    except OrchestratorError as e:
+    except OrchestratorError as exc:
+        if exc.code == "MAX_STEPS":
+            _sync_checkpoint_from_ctx(
+                cp,
+                ctx,
+                status="failed",
+                current_node=ctx.current_node,
+                error=exc.message,
+            )
+            store.save(cp)
         elapsed_ms = (time.time() - start_time) * 1000
         return ExecutionResult(
             workflow_id=workflow.workflow_id,
@@ -173,7 +208,7 @@ async def execute_workflow_checkpointed(
             outputs=ctx.outputs,
             final_output=None,
             trace=ctx.trace,
-            error=e.message,
+            error=exc.message,
             execution_time_ms=elapsed_ms,
             execution_id=execution_id,
         )
