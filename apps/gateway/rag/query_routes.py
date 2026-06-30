@@ -10,6 +10,7 @@ from apps.gateway.http_utils import json_error, resolve_tenant
 from apps.gateway.quota import get_quota_tracker
 from apps.gateway.rag.query_service import RagQueryRefusal, run_rag_query
 from apps.gateway.request_guards import check_model_allowed, check_rate_limit, check_token_budget
+from apps.gateway.request_pipeline import sanitize_main_path_text
 from apps.gateway.settings import get_settings
 from apps.gateway.tenants import TenantRecord, load_tenants
 from packages.contracts.rag_schemas import RagQueryRequest, RagQueryResponse
@@ -72,6 +73,12 @@ async def rag_query(
     if not (settings.llm_api_key or "").strip():
         return json_error(503, "UPSTREAM_NOT_CONFIGURED", "LLM_API_KEY 未配置")
 
+    query_text = body.query
+    sanitized, block_reason = await sanitize_main_path_text(query_text, settings)
+    if block_reason:
+        return json_error(422, "PII_SAFETY_BLOCKED", block_reason)
+    query_text = sanitized
+
     if not quota_tracker.has_quota(tenant.tenant_id, tenant.daily_request_quota):
         return json_error(
             429,
@@ -91,7 +98,7 @@ async def rag_query(
             result = await run_rag_query(
                 kb_id=body.kb_id,
                 version=body.version,
-                query=body.query,
+                query=query_text,
                 top_k=body.top_k,
                 min_score=body.min_score,
                 model=body.model,

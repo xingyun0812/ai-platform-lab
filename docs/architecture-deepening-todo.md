@@ -450,7 +450,7 @@ Inbound-only coupling（深模块 + 浅 wiring）
 
 ## 9. /internal API vs 主路径双轨
 
-**状态**：🟡 PR-9a 进行中 · **优先级**：P2 · **依赖**：#2 #8 · **Issue**: [#180](https://github.com/xingyun0812/ai-platform-lab/issues/180)
+**状态**：🟡 PR-9b/9c [#182](https://github.com/xingyun0812/ai-platform-lab/issues/182) 进行中 · **优先级**：P2 · **依赖**：#2 #8
 
 ### 问题
 
@@ -472,12 +472,12 @@ Feature flag 与 runtime wiring 脱节
 
 ### 验收清单
 
-- [x] 文本 RAG embed 默认走 embedding service（与 multimodal 一致）→ PR-9a `embed_texts`
-- [ ] semantic cache 覆盖 RAG query（或文档明确不做）
-- [ ] PII process 接入 chat/RAG 入口（或 flag 默认 off 写清）
-- [ ] OAuth2Middleware 接线或删除 dead code
-- [ ] ≥2 条主路径集成测（chat + rag query）
-- [ ] GitHub Issue RFC 已创建并链接
+- [x] 文本 RAG embed 默认走 embedding service（与 multimodal 一致）→ [#180](https://github.com/xingyun0812/ai-platform-lab/issues/180) PR-9a
+- [x] semantic cache 覆盖 RAG query（LLM 段与 chat 共享 `llm_semantic_cache`）→ PR-9b
+- [x] PII process 接入 chat/RAG 入口（`pii_main_path_enabled` 默认 off）→ PR-9c
+- [x] OAuth2Middleware 接线（`oauth2_enabled` 时挂载）→ PR-9c
+- [x] ≥2 条主路径集成测（chat + rag query）→ `tests/test_main_path_wiring.py`
+- [ ] GitHub Issue RFC 已创建并链接 → [#182](https://github.com/xingyun0812/ai-platform-lab/issues/182)
 
 ---
 

@@ -4,6 +4,7 @@ import logging
 import time
 from typing import Any
 
+from apps.gateway.llm_semantic_cache import lookup_llm_completion, store_llm_completion
 from apps.gateway.quota import DailyQuotaTracker
 from apps.gateway.rag.pipeline import resolve_query_version
 from apps.gateway.settings import get_settings
@@ -228,37 +229,56 @@ async def run_rag_query(
 
     llm_start = time.perf_counter()
     system_content = _resolve_rag_system_prompt(settings)
-    payload = {
-        "model": effective_model,
-        "messages": [
-            {
-                "role": "system",
-                "content": system_content,
-            },
-            {"role": "user", "content": user_prompt},
-        ],
-        "temperature": 0.2,
-    }
-    routed = await forward_with_model_router(
-        payload,
-        requested_model=model or settings.rag_query_model,
+    messages = [
+        {"role": "system", "content": system_content},
+        {"role": "user", "content": user_prompt},
+    ]
+    rag_temperature = 0.2
+    cached_body = await lookup_llm_completion(
+        tenant_id=tenant_id,
+        model=effective_model,
+        messages=messages,
+        temperature=rag_temperature,
     )
+    cache_hit = cached_body is not None
+    if cache_hit:
+        upstream_body = cached_body
+        model_used = effective_model
+        usage = None
+    else:
+        payload = {
+            "model": effective_model,
+            "messages": messages,
+            "temperature": rag_temperature,
+        }
+        routed = await forward_with_model_router(
+            payload,
+            requested_model=model or settings.rag_query_model,
+        )
+        if routed.error and routed.body is None:
+            raise RuntimeError(routed.error)
+        if routed.body is None or not (200 <= routed.status < 300):
+            raise RuntimeError(f"LLM upstream status {routed.status}: {routed.error or routed.body}")
+        upstream_body = routed.body
+        model_used = routed.model_used or effective_model
+        usage = record_upstream_usage(
+            tenant_id=tenant_id,
+            path="/v1/rag/query",
+            model=model_used,
+            upstream_body=upstream_body,
+            trace_id=get_trace_id(),
+        )
+        await store_llm_completion(
+            tenant_id=tenant_id,
+            model=effective_model,
+            messages=messages,
+            response=dict(upstream_body),
+            usage_tokens=(usage.total_tokens if usage else 0),
+            temperature=rag_temperature,
+        )
     llm_ms = (time.perf_counter() - llm_start) * 1000
 
-    if routed.error and routed.body is None:
-        raise RuntimeError(routed.error)
-    if routed.body is None or not (200 <= routed.status < 300):
-        raise RuntimeError(f"LLM upstream status {routed.status}: {routed.error or routed.body}")
-
-    answer = extract_answer(routed.body)
-    model_used = routed.model_used or effective_model
-    usage = record_upstream_usage(
-        tenant_id=tenant_id,
-        path="/v1/rag/query",
-        model=model_used,
-        upstream_body=routed.body,
-        trace_id=get_trace_id(),
-    )
+    answer = extract_answer(upstream_body)
     # Phase F #30：若命中 A/B 实验，记录指标 + 触发自动胜出
     if exp_info.get("experiment_id") and exp_info.get("variant_version") is not None:
         try:
@@ -331,6 +351,13 @@ async def run_rag_query(
     }
     if exp_info.get("experiment_id"):
         platform_meta["experiment"] = exp_info
+    if cache_hit:
+        platform_meta["cache_hit"] = True
+        cached_platform = (cached_body or {}).get("_platform")
+        if isinstance(cached_platform, dict):
+            for key in ("cache_mode", "cache_similarity", "cache_age_seconds"):
+                if key in cached_platform:
+                    platform_meta[key] = cached_platform[key]
     if settings.rag_rerank_enabled:
         platform_meta["rerank"] = {
             "provider": rerank_provider_name(settings.rag_rerank_mode, rerank_cfg),
