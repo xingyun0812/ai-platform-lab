@@ -310,13 +310,13 @@ Plan 审批 / long_run 仍 fallback planner 轨（#5/#6 follow-up）。
 | 切片 | 内容 |
 |------|------|
 | PR-6a | ReActLoop 抽取（`react_loop.py`） | ✅ [#173](https://github.com/xingyun0812/ai-platform-lab/pull/173) |
-| PR-6b | HITL/replan 单点 | ⬜ |
+| PR-6b | HITL/replan 单点 | ✅ PR #175 |
 | PR-6c | PlanExecutor 共享 context | ⬜ |
 
 - [x] `runner.py` facade + `react_loop.py` deep module（903→432 + 621 行）
-- [ ] HITL/replan 逻辑只写一处
+- [x] HITL/replan 逻辑只写一处（`plan_execution_policy.py`）
 - [x] `tests/test_runner_boundary.py` 覆盖 ReAct 主路径 + facade 契约
-- [ ] planner 测试不因 HITL 改动需改两套 executor
+- [x] planner 测试不因 HITL 改动需改两套 executor（56/56 仍绿）
 - [x] GitHub Issue RFC 已创建并链接 → [#172](https://github.com/xingyun0812/ai-platform-lab/issues/172)
 
 ---
