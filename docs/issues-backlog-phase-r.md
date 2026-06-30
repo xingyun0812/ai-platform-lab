@@ -141,7 +141,7 @@
 | 项 | 说明 |
 |----|------|
 | R1 Redis 热缓存 | 经验库当前 Postgres + 内存；原规划「Redis 热缓存」未实现 |
-| R1 run→store E2E | 全链路 HTTP run 结束写经验 + 第 2 次 plan 复用（可选 follow-up） |
+| R1 run→store E2E | 全链路 HTTP run 结束写经验 + 第 2 次 plan 复用 | ✅ `tests/test_experience_run_store_plan_e2e.py` |
 | R2 Console | `console-v2` 无长程任务列表页 |
 | R3 Router fallback | 能力感知选主模型已做；降级链仍为静态 YAML |
 
