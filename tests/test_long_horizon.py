@@ -498,6 +498,10 @@ class TestExecutePlanParallelLongRun(unittest.TestCase):
             "packages.agent.plan_execution_policy",
             str(REPO_ROOT / "packages" / "agent" / "plan_execution_policy.py"),
         )
+        _load_module(
+            "packages.agent.plan_executor",
+            str(REPO_ROOT / "packages" / "agent" / "plan_executor.py"),
+        )
 
         return _load_module(
             "packages.agent.planner",
@@ -538,10 +542,11 @@ class TestExecutePlanParallelLongRun(unittest.TestCase):
 
         perf_mock = MagicMock()
         perf_mock.record_parallel_steps = MagicMock()
+        executor_mod = sys.modules["packages.agent.plan_executor"]
 
         with (
-            patch.object(planner, "get_settings", return_value=settings_mock),
-            patch.object(planner, "get_agent_perf_metrics", return_value=perf_mock),
+            patch.object(executor_mod, "get_settings", return_value=settings_mock),
+            patch.object(executor_mod, "get_agent_perf_metrics", return_value=perf_mock),
         ):
             result = _run_async(
                 execute_plan_parallel(
@@ -586,10 +591,11 @@ class TestExecutePlanParallelLongRun(unittest.TestCase):
 
         perf_mock = MagicMock()
         perf_mock.record_parallel_steps = MagicMock()
+        executor_mod = sys.modules["packages.agent.plan_executor"]
 
         with (
-            patch.object(planner, "get_settings", return_value=settings_mock),
-            patch.object(planner, "get_agent_perf_metrics", return_value=perf_mock),
+            patch.object(executor_mod, "get_settings", return_value=settings_mock),
+            patch.object(executor_mod, "get_agent_perf_metrics", return_value=perf_mock),
         ):
             _run_async(
                 execute_plan_parallel(
@@ -632,10 +638,11 @@ class TestExecutePlanParallelLongRun(unittest.TestCase):
 
         perf_mock = MagicMock()
         perf_mock.record_parallel_steps = MagicMock()
+        executor_mod = sys.modules["packages.agent.plan_executor"]
 
         with (
-            patch.object(planner, "get_settings", return_value=settings_mock),
-            patch.object(planner, "get_agent_perf_metrics", return_value=perf_mock),
+            patch.object(executor_mod, "get_settings", return_value=settings_mock),
+            patch.object(executor_mod, "get_agent_perf_metrics", return_value=perf_mock),
         ):
             result = _run_async(
                 execute_plan_parallel(
