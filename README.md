@@ -1,8 +1,8 @@
 # ai-platform-lab
 
-最小 **AI 中台** 实验仓库（与 [《AI中台学习执行手册》](docs/AI中台学习执行手册.md) 配套）。当前完成 **Phase A～P**：模型网关、RAG（含增量与图文）、Agent（Planner/CoT/Multi-Agent）、观测评测、硬化、Prompt、MCP、Embedding、HITL、安全合规、SDK/PyPI、Console V2、生产 Helm 等。
+最小 **AI 中台** 实验仓库（与 [《AI中台学习执行手册》](docs/AI中台学习执行手册.md) 配套）。当前完成 **Phase A～R**：模型网关、RAG（含增量与图文）、Agent（Planner/CoT/Multi-Agent/Harness）、观测评测、硬化、Prompt、MCP、Embedding、HITL、安全合规、SDK/PyPI、Console V2、生产 Helm、架构加深 10/10 等。
 
-> 📊 **当前状态**：Phase A～Q ✅ · Phase R ✅（tag `phase-r-agent-harness`）· tags：`phase-o-agent-jd2`、`phase-p-multimodal`、`phase-n-pypi-sdk`  
+> 📊 **当前状态**：Phase A～R ✅ · 架构加深 #1～#10 ✅（tag `arch-platform-186-phase10-complete`）· Phase tags：`phase-r-agent-harness`、`phase-q-advanced-planning`、`phase-o-agent-jd2`  
 > 📋 **完整状态报告**：[docs/PROJECT_STATUS.md](docs/PROJECT_STATUS.md) · **Live 手验**：[docs/demo-walkthrough.md](docs/demo-walkthrough.md)
 
 ## 15 分钟快速跑通
@@ -502,6 +502,12 @@ r = c.chat.completions.create(model="gpt-4o-mini", messages=[{"role":"user","con
 | 本地 LLM 联调 | [local-llm-setup.md](docs/local-llm-setup.md) | [config/upstream_models.yaml](config/upstream_models.yaml) |
 | Phase L Issues | [issues-backlog-phase-l.md](docs/issues-backlog-phase-l.md) | — |
 | Phase M 增量索引 ✅ | [phase-m-incremental-index.md](docs/phase-m-incremental-index.md) | [issues-backlog-phase-m.md](docs/issues-backlog-phase-m.md) |
+| Phase N PyPI SDK ✅ | [phase-n-pypi-sdk.md](docs/phase-n-pypi-sdk.md) | `eval/sdk_pypi_smoke.sh` · `.github/workflows/publish-sdk.yml` |
+| Phase O Agent JD2 ✅ | [phase-o-agent-jd2-alignment.md](docs/phase-o-agent-jd2-alignment.md) | [issues-backlog-phase-o.md](docs/issues-backlog-phase-o.md) |
+| Phase P 多模态 Embedding ✅ | [phase-p-multimodal-embedding.md](docs/phase-p-multimodal-embedding.md) | `eval/multimodal_embedding_gate.py` |
+| Phase Q 任务规划前沿 ✅ | [phase-q-advanced-planning.md](docs/phase-q-advanced-planning.md) | `eval/agent_jd2_gate.py` · `eval/plan_quality_gate.py` |
+| Phase R Agent Harness ✅ | [phase-r-agent-harness.md](docs/phase-r-agent-harness.md) | [issues-backlog-phase-r.md](docs/issues-backlog-phase-r.md) · `eval/harness_capability_gate.py` |
+| 架构加深 #1～#10 ✅ | [architecture-deepening-todo.md](docs/architecture-deepening-todo.md) | [adr/README.md](docs/adr/README.md) · Issues [#156](https://github.com/xingyun0812/ai-platform-lab/issues/156)～[#186](https://github.com/xingyun0812/ai-platform-lab/issues/186) |
 | Phase A 可内测 | [phase-a-internal-beta.md](docs/phase-a-internal-beta.md) | [phase-a-build-and-code-guide.md](docs/phase-a-build-and-code-guide.md) |
 | Phase B1 计费 | [phase-b-small-production.md](docs/phase-b-small-production.md) | [phase-b-build-and-code-guide.md](docs/phase-b-build-and-code-guide.md) |
 | Phase B2 并行 | [phase-b2-parallel.md](docs/phase-b2-parallel.md) | [phase-b-build-and-code-guide.md](docs/phase-b-build-and-code-guide.md) |
@@ -540,10 +546,31 @@ r = c.chat.completions.create(model="gpt-4o-mini", messages=[{"role":"user","con
 | `phase-c-platform` | `e7e96c2` | 供应商矩阵、Region、租户 API、工具市场 |
 | `phase-d-ops` | `981ff89` | 熔断/Grafana、JWT/RBAC、控制台、账单 API |
 | `phase-e-agent-quality` | `5163bf0` | Agent 轨迹评测、Tool-RAG、上下文预算、质量门、HITL/Shadow |
+| `phase-f-capabilities` | `71e2cd1` | Prompt 版本化、MCP、长记忆、语义缓存、上下文压缩 |
+| `phase-g-embedding` | `7d76849` | Embedding 独立服务、LRU 缓存 |
+| `phase-h-agent-advanced` | `f8d9fb5` | Orchestrator、Multi-Agent、Agent 生命周期、HITL |
+| `phase-i-security` | `3d90211` | 沙箱、分级审计、PII、OAuth2/mTLS |
+| `phase-j-developer-experience` | `bbe57c4` | Python SDK、Console V2、评测飞轮 |
+| `phase-jk-complete` | `7f3f0d7` | Phase J/K 联合收口 |
+| `phase-k-infra-base` | `04eed36` | 对象存储、Helm、多 AZ、GPU 调度 |
+| `phase-l-engineering-depth` | `2b4c73f` | 工程深度、Demo、面试叙事 |
+| `phase-m-incremental-index` | `53815d4` | RAG 增量索引、BM25 差量、purge-source |
+| `phase-n-pypi-sdk` | `bf97c31` | Python SDK PyPI 发布流程 |
+| `phase-o-agent-jd2` | `15674c0` | Agent JD2 对齐（CoT、插件、SQL、Web Search） |
+| `phase-p-multimodal` | `81b6904` | 多模态 Embedding（图文 RAG 索引） |
+| `phase-q-advanced-planning` | `9dd8ac5` | Plan DAG 并行、重规划、Plan HITL、质量门禁 |
+| `phase-r-agent-harness` | `114d24e` | 自进化、长程任务、能力探测、Harness 门禁 |
+| `arch-platform-156-phase1` | `7035c72` | 架构 #1 Gateway `create_app` / composition root |
+| `arch-platform-162-phase4` | `0938788` | 架构 #4 Planner vs Orchestrator 统一执行轨 |
+| `arch-platform-169-phase5-complete` | `0f920dc` | 架构 #5 三套 Checkpoint/Resume + long_run 续跑 |
+| `arch-platform-172-phase6-complete` | `086f09d` | 架构 #6 runner/planner 浅接口深实现 |
+| `arch-platform-178-phase8-complete` | `9d0cb8f` | 架构 #8 AppContext 单例装配 |
+| `arch-platform-186-phase10-complete` | `9b97404` | 架构 #10 TelemetryRegistry · 清单 10/10 收官 |
 
 ```bash
 git fetch origin --tags
-git show phase-e-agent-quality
+git show phase-r-agent-harness
+git show arch-platform-186-phase10-complete
 ```
 
 ## 目录说明
