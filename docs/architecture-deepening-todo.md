@@ -11,7 +11,7 @@
 | 🔄 | 进行中（RFC 或实现中） |
 | ✅ | 已完成（Issue 关闭 + 边界测试绿） |
 
-**当前进度**：9 / 10（#1 ✅ … **#9 ✅ [#182](https://github.com/xingyun0812/ai-platform-lab/issues/182)** · **#10 🟡 [#186](https://github.com/xingyun0812/ai-platform-lab/issues/186)**）
+**当前进度**：**10 / 10 收官**（#1～#10 全部 ✅ · 末项 [#186](https://github.com/xingyun0812/ai-platform-lab/issues/186) · tag `arch-platform-186-phase10-complete`）
 
 ---
 
@@ -26,9 +26,9 @@
 | [5](#5-三套-checkpointresume-语义) | 三套 Checkpoint/Resume 语义 | P1 | ✅ [#169](https://github.com/xingyun0812/ai-platform-lab/issues/169) · [#170](https://github.com/xingyun0812/ai-platform-lab/pull/170) [#171](https://github.com/xingyun0812/ai-platform-lab/pull/171) | 4～6d |
 | [6](#6-runnerpy--plannerpy-浅接口深实现) | runner + planner 浅接口深实现 | P1 | ✅ [#172](https://github.com/xingyun0812/ai-platform-lab/issues/172) | 5～7d |
 | [7](#7-phase-r-深存储--浅集成) | Phase R 深存储 / 浅集成 | P1 | ✅ [#146](https://github.com/xingyun0812/ai-platform-lab/issues/146) | 3～5d |
-| [8](#8-initget-单例泛滥) | init/get 单例泛滥 | P2 | ⬜ | 4～6d |
-| [9](#9-internal-api-vs-主路径双轨) | /internal API vs 主路径双轨 | P2 | ⬜ | 5～8d |
-| [10](#10-observability-指标碎片化) | Observability 指标碎片化 | P3 | ⬜ | 2～4d |
+| [8](#8-initget-单例泛滥) | init/get 单例泛滥 | P2 | ✅ [#178](https://github.com/xingyun0812/ai-platform-lab/issues/178) | 4～6d |
+| [9](#9-internal-api-vs-主路径双轨) | /internal API vs 主路径双轨 | P2 | ✅ [#182](https://github.com/xingyun0812/ai-platform-lab/issues/182) | 5～8d |
+| [10](#10-observability-指标碎片化) | Observability 指标碎片化 | P3 | ✅ [#186](https://github.com/xingyun0812/ai-platform-lab/issues/186) | 2～4d |
 
 ```mermaid
 flowchart TB
@@ -483,7 +483,7 @@ Feature flag 与 runtime wiring 脱节
 
 ## 10. Observability 指标碎片化
 
-**状态**：🟡 PR 待 merge · **Issue**: [#186](https://github.com/xingyun0812/ai-platform-lab/issues/186)
+**状态**：✅ · **Issue**: [#186](https://github.com/xingyun0812/ai-platform-lab/issues/186) · PR [#188](https://github.com/xingyun0812/ai-platform-lab/pull/188) · tag `arch-platform-186-phase10-complete`
 
 ### 问题
 
@@ -507,7 +507,7 @@ Feature flag 与 runtime wiring 脱节
 - [x] `/metrics` 不再在 main.py 堆 try/append（`TelemetryRegistry` + `core_routes`）
 - [x] 新增模块指标只需 register，不改 main
 - [x] 1 个测试断言 `/metrics` 含关键 metric 名（`tests/test_telemetry_registry.py`）
-- [ ] GitHub Issue RFC 已创建并链接 → [#186](https://github.com/xingyun0812/ai-platform-lab/issues/186)
+- [x] GitHub Issue RFC 已创建并链接 → [#186](https://github.com/xingyun0812/ai-platform-lab/issues/186)
 
 ---
 
@@ -542,3 +542,4 @@ Feature flag 与 runtime wiring 脱节
 |------|------|
 | 2026-06-11 | 初版：全仓库架构探索 10 项候选入库 |
 | 2026-06-11 | #2 选定 C+A 混合方案，RFC [Issue #145](https://github.com/xingyun0812/ai-platform-lab/issues/145) |
+| 2026-06-30 | **10/10 收官**：#186 TelemetryRegistry merge · tag `arch-platform-186-phase10-complete` |
