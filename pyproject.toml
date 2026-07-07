@@ -28,11 +28,44 @@ dependencies = [
   "opentelemetry-exporter-otlp-proto-grpc>=1.27.0",
 ]
 
+
 [project.optional-dependencies]
 dev = [
-  "ruff>=0.8.0",
+  "ruff>=0.8.1",
   "pytest>=8.0",
+  "mypy>=1.8",
+  "pre-commit>=3.0",
 ]
+
+[tool.mypy]
+python_version = "3.11"
+strict = false
+warn_unused_configs = true
+enable_error_code = "ignore-without-code"
+show_error_codes = true
+
+# 按模块逐步覆盖，从 core 接口开始
+[[tool.mypy.overrides]]
+module = "packages.platform.*"
+ignore_errors = false
+
+[[tool.mypy.overrides]]
+module = "packages.contracts.*"
+ignore_errors = false
+
+[[tool.mypy.overrides]]
+module = [
+  "packages.agent.*",
+  "packages.rag.*",
+  "packages.observability.*",
+  "packages.memory.*",
+  "packages.auth.*",
+  "apps.*",
+  "tests.*",
+  "eval.*",
+]
+ignore_errors = true
+
 
 [tool.ruff]
 line-length = 100
