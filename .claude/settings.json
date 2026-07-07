@@ -1,0 +1,19 @@
+{
+  "project": {
+    "description": "AI Platform Lab — learning/interview AI platform (gateway, RAG, Agent, eval, hardening)",
+    "githubRepo": "xingyun0812/ai-platform-lab"
+  },
+  "permissions": {
+    "allow": [
+      "Bash(uvicorn apps.gateway.main:app *)",
+      "Bash(docker compose *)",
+      "Bash(curl *)",
+      "Bash(python -m pytest *)",
+      "Bash(ruff *)",
+      "Bash(python eval/*.py *)",
+      "Bash(just *)",
+      "Bash(pre-commit *)",
+      "Bash(pkill *)"
+    ]
+  }
+}
