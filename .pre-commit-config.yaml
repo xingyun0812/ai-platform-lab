@@ -1,0 +1,18 @@
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.11.0
+    hooks:
+      - id: ruff
+        args: [--fix]
+        types_or: [python, pyi]
+      - id: ruff-format
+        types_or: [python, pyi]
+
+  - repo: local
+    hooks:
+      - id: validate-baseline-jsonl
+        name: validate baseline JSONL
+        entry: python eval/run.py validate-baseline
+        language: system
+        pass_filenames: false
+        files: ^eval/baselines/
