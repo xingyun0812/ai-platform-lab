@@ -1,0 +1,37 @@
+# <PROJECT_NAME> Justfile
+
+# 启动
+up:
+    docker compose up -d --build
+
+# 测试
+test:
+    python -m pytest tests/ -q
+
+test-cov:
+    python -m pytest tests/ --cov=<module> --cov-report=term-missing -q
+
+# Lint
+lint:
+    ruff check .
+
+fmt:
+    ruff format .
+
+fmt-check:
+    ruff format --check .
+
+# 类型检查
+type:
+    mypy <module>/
+
+# 安装
+setup:
+    pip install -e ".[dev]"
+
+hooks:
+    pre-commit install
+
+# 默认
+_default:
+    @just --list

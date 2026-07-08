@@ -1,0 +1,37 @@
+# <PROJECT_NAME> Justfile
+
+# 编译
+build:
+    cargo build
+
+build-release:
+    cargo build --release
+
+# 测试
+test:
+    cargo test
+
+test-cov:
+    cargo llvm-cov --html
+
+# Lint
+lint:
+    cargo clippy -- -D warnings
+
+fmt:
+    cargo fmt
+
+fmt-check:
+    cargo fmt --check
+
+# 审计
+# 需要 cargo install cargo-audit
+audit:
+    cargo audit
+
+hooks:
+    pre-commit install
+
+# 默认
+_default:
+    @just --list

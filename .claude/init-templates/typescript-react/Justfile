@@ -1,0 +1,40 @@
+# <PROJECT_NAME> Justfile
+
+# 启动
+dev:
+    npm run dev
+
+build:
+    npm run build
+
+# 测试
+test:
+    npx vitest run
+
+test-watch:
+    npx vitest
+
+# Lint
+lint:
+    npm run lint
+
+fmt:
+    npx prettier --write .
+
+fmt-check:
+    npx prettier --check .
+
+# 类型检查
+type:
+    npx tsc --noEmit
+
+# 安装
+setup:
+    npm install
+
+hooks:
+    pre-commit install
+
+# 默认
+_default:
+    @just --list
