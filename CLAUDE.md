@@ -78,6 +78,23 @@ python eval/acceptance_smoke.py
 | `DATABASE_URL` | Postgres connection string |
 | `EVAL_API_KEY` | Eval pipeline API key (≈LLM_API_KEY) |
 
+## Memory & Documentation
+
+This project has a persistent memory system. Claude loads it automatically each session:
+
+- **Memory index**: `/Users/zhangyue/.claude/projects/-Users-zhangyue-IdeaProjects-ai-platform-lab/memory/MEMORY.md`
+  - `user-profile` — developer role, tech stack, language preference
+  - `project-constraints` — collaboration workflow red lines
+  - `project-commands` — quick command reference
+  - `architecture-decisions` — ADR snapshot index
+  - `known-issues` — gotchas, workarounds, honest gaps
+  - `recurring-tasks` — SOP for releases, gate checks, phase closure
+
+Key reference docs:
+- `docs/closure-sop.md` — capability closure checklist
+- `CHANGELOG.md` — release history
+- `docs/roadmap.md` — future plans & gaps
+
 ## Ruff Config
 
 See `pyproject.toml` `[tool.ruff]` — line-length=100, target-version=py311.
