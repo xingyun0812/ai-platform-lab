@@ -27,6 +27,60 @@ jobs:
           python eval/run.py validate-baseline
           python eval/agent_run.py validate-baseline
 
+      - name: Coverage report
+        run: |
+          python -m pytest tests/ \
+            --cov=packages \
+            --cov-branch \
+            --cov-report=term-missing \
+            --cov-report=html:coverage-report \
+            --cov-report=json:coverage-report/coverage.json \
+            -q
+          python -c "
+import json
+with open('coverage-report/coverage.json') as f:
+    d = json.load(f)
+pc = d.get('totals', {}).get('percent_covered', 0)
+print(f'Overall coverage: {pc:.1f}%')
+"
+
+      - name: Upload coverage artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report-${{ github.run_id }}
+          path: coverage-report/
+          retention-days: 14
+
+      - name: Post coverage PR comment
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const report = JSON.parse(fs.readFileSync('coverage-report/coverage.json', 'utf8'));
+            const t = report.totals || {};
+            const body = `## Coverage Report
+
+| Metric | Value |
+|--------|-------|
+| Lines | ${t.covered_lines || 0} / ${t.num_statements || 0} |
+| Branch | ${t.covered_branches || 0} / ${t.num_branches || 0} |
+| **Coverage** | **${(t.percent_covered || 0).toFixed(1)}%** |
+
+[Coverage HTML artifact](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
+`;
+            github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: body
+            });
+
+      - name: Security audit
+        run: |
+          pip install pip-audit
+          pip-audit --desc
+
   smoke:
     runs-on: ubuntu-latest
     steps:
