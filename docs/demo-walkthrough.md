@@ -89,6 +89,18 @@ sequenceDiagram
 
 ## 第 4～7 分钟：RAG v1 索引与查询
 
+> **幕后 API 映射**：以下 curl 演示的 `/internal/index` 是平台内部编排接口。
+> 用户在实际使用中不直接调用它，而是通过 Console 管理后台操作：
+>
+> | 用户操作 | 背后触发的 API | 说明 |
+> |----------|---------------|------|
+> | 点「上传文档」→ 选文件 → 点「提交」 | `POST /internal/index/upload` | 上传文件并自动索引，进度条 pending → success |
+> | 点「同步知识库」或「刷新」 | `POST /internal/index`（带 `source_uri`） | 重新索引服务器上已有文件 |
+> | 在 Chat UI 提问 | `POST /internal/retrieve` | 后台 RAG 召回片段喂给 LLM，用户无感知 |
+>
+> 用户只感知到「文档传上去了」和「问答有结果了」，不会看到 `task_id`、`chunks_indexed` 这些细节。
+> 这个模式与云厂商（AWS Bedrock、阿里云百炼）一致——SDK/控制台在后端调索引 API，用户不直接调用它。
+
 ### 4.1 索引 v1（curl，可同时在 Console RAG 页看知识库）
 
 ```bash

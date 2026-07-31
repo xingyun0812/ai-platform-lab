@@ -27,6 +27,9 @@ jobs:
           python eval/run.py validate-baseline
           python eval/agent_run.py validate-baseline
 
+      - name: Doc-code sync check
+        run: python scripts/check_doc_sync.py --ci
+
       - name: Coverage report
         run: |
           python -m pytest tests/ \
@@ -35,6 +38,7 @@ jobs:
             --cov-report=term-missing \
             --cov-report=html:coverage-report \
             --cov-report=json:coverage-report/coverage.json \
+            --cov-fail-under=60 \
             -q
           python -c "
 import json

@@ -13,7 +13,9 @@
       "Bash(python eval/*.py *)",
       "Bash(just *)",
       "Bash(pre-commit *)",
-      "Bash(pkill *)"
+      "Bash(pkill *)",
+      "Bash(chmod +x .claude/hooks/*)",
+      "Bash(scripts/check_doc_sync.py *)"
     ]
   }
 }

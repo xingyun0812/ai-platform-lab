@@ -90,10 +90,30 @@ This project has a persistent memory system. Claude loads it automatically each 
   - `known-issues` — gotchas, workarounds, honest gaps
   - `recurring-tasks` — SOP for releases, gate checks, phase closure
 
+### Session State
+
+| File | Purpose | When to update |
+|------|---------|----------------|
+| `feature_list.json` | All 38 features with status + verification evidence | When adding/removing features |
+| `progress.md` | Current active feature, recent milestones, next action | Start and end of each session |
+| `session-handoff.md` | Quick context restore for multi-session work | End of session if work is interrupted |
+
 Key reference docs:
 - `docs/closure-sop.md` — capability closure checklist
 - `CHANGELOG.md` — release history
 - `docs/roadmap.md` — future plans & gaps
+
+## Harness Hooks & Workflows
+
+| Purpose | Path |
+|---------|------|
+| Pre-commit hook | `.claude/hooks/pre-commit` — ruff + pre-commit 框架 |
+| Pre-push hook | `.claude/hooks/pre-push` — 禁止直推 main |
+| CI 监控工作流 | `.claude/workflows/ci-monitor.md` — 触发: `/workflow ci-monitor` |
+| Eval 门禁工作流 | `.claude/workflows/eval-gate-runner.md` — 触发: `/workflow eval-gate-runner` |
+| Phase 收尾工作流 | `.claude/workflows/phase-closure.md` — 触发: `/workflow phase-closure` |
+| 文档同步检查 | `scripts/check_doc_sync.py` — 验证代码 API 与文档同步 (`--ci` 模式 50% 阈值) |
+| Nightly eval | Scheduled task — 工作日 6:42 AM 自动运行 eval 门禁 |
 
 ## Ruff Config
 
