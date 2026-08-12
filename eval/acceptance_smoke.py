@@ -1797,6 +1797,74 @@ async def run_checks(*, with_llm: bool) -> list[Check]:
     except Exception as e:
         out.append(Check("W6", "demo-b 令牌桶 429", False, str(e)))
 
+    # Phase W — Self-Refine 核心引擎结构完整性
+    try:
+        from packages.agent.self_refine import SelfRefineConfig, FeedbackRound, SelfRefineResult
+
+        # 验证配置默认值
+        cfg = SelfRefineConfig()
+        cfg_ok = (
+            cfg.max_iterations == 5
+            and cfg.convergence_strategy == "hybrid"
+            and cfg.convergence_threshold == 0.85
+            and cfg.max_total_llm_calls == 15
+            and len(cfg.feedback_dimensions) == 5
+            and "correctness" in cfg.feedback_dimensions
+        )
+
+        # 验证配置校验
+        cfg_valid = True
+        try:
+            SelfRefineConfig(max_iterations=20)
+            cfg_valid = False
+        except ValueError:
+            pass
+
+        # 验证 dataclass 结构完整性
+        round_ = FeedbackRound(iteration=1, feedback="good", feedback_dimension="correctness")
+        round_ok = round_.iteration == 1 and round_.feedback_dimension == "correctness"
+
+        result = SelfRefineResult(prompt="test", final_output="out", config=SelfRefineConfig())
+        result_ok = (
+            result.prompt == "test"
+            and result.final_output == "out"
+            and result.success is True
+            and result.iterations_completed == 0
+        )
+
+        # 验证序列化
+        d = result.to_dict()
+        ser_ok = d["prompt"] == "test" and d["success"] is True
+
+        smoke_ok = all([cfg_ok, cfg_valid, round_ok, result_ok, ser_ok])
+        out.append(
+            Check(
+                "PW",
+                "Self-Refine 引擎结构完整性",
+                smoke_ok,
+                f"cfg={cfg_ok} valid={cfg_valid} round={round_ok} result={result_ok} ser={ser_ok}",
+            )
+        )
+    except Exception as e:
+        out.append(Check("PW", "Self-Refine 引擎结构完整性", False, str(e)))
+
+    # Phase W — Self-Refine API 路由存在性
+    try:
+        from apps.gateway.agent.routes import router
+
+        routes = [r.path for r in router.routes]
+        has_route = any("/self-refine" in r for r in routes)
+        out.append(
+            Check(
+                "PW",
+                "Self-Refine API 路由存在",
+                has_route,
+                f"routes={[r for r in routes if 'self-refine' in r]}",
+            )
+        )
+    except Exception as e:
+        out.append(Check("PW", "Self-Refine API 路由存在", False, str(e)))
+
     return out
 
 
