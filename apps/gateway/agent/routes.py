@@ -35,6 +35,9 @@ from packages.contracts.agent_schemas import (
 from packages.contracts.agent_schemas import (
     ResearchResult as ResearchResultSchema,
 )
+from packages.contracts.agent_schemas import (
+    SelfRefineResult as SelfRefineResultSchema,
+)
 from packages.observability.otel import component_span
 
 logger = logging.getLogger("ai_platform.gateway.agent")
@@ -490,6 +493,82 @@ async def agent_research(
             depth_completed=result.depth_completed,
             execution_time_ms=result.execution_time_ms,
             error=result.error,
+        ).model_dump(exclude_none=True),
+    })
+
+
+@router.post("/self-refine")
+async def agent_self_refine(
+    body: AgentRunRequest,
+    x_tenant_id: Annotated[str | None, Header(alias="X-Tenant-Id")] = None,
+    authorization: Annotated[str | None, Header()] = None,
+) -> Any:
+    """Phase W: Self-Refine 推理。
+
+    独立 Self-Refine 端点：首轮生成 → 自我反馈 → 自我修正 → 迭代收敛。
+    不经过 ReAct 循环。
+    """
+    tenants = load_tenants()
+    tenant = _require_tenant(x_tenant_id, authorization, tenants)
+    if isinstance(tenant, JSONResponse):
+        return tenant
+    if not x_tenant_id or body.tenant_id.strip() != x_tenant_id.strip():
+        return json_error(400, "TENANT_MISMATCH", "body.tenant_id 须与 X-Tenant-Id 一致")
+    settings = get_settings()
+    rate_err = check_rate_limit(tenant)
+    if rate_err is not None:
+        return rate_err
+    budget_err = check_token_budget(tenant)
+    if budget_err is not None:
+        return budget_err
+    if not (settings.llm_api_key or "").strip():
+        return json_error(503, "UPSTREAM_NOT_CONFIGURED", "LLM_API_KEY 未配置")
+
+    prompt = (body.goal or _last_user_goal(body.messages) or "").strip()
+    if not prompt:
+        return json_error(400, "INVALID_REQUEST", "Self-Refine 需要 goal 或 user 消息")
+
+    src = body.self_refine_config
+    from packages.agent.self_refine import SelfRefineConfig as SelfRefineConfigDC, run_self_refine
+
+    cfg = SelfRefineConfigDC(
+        max_iterations=src.max_iterations if src else 5,
+        generator_model=src.generator_model if src else None,
+        feedback_model=src.feedback_model if src else None,
+        convergence_strategy=src.convergence_strategy if src else "hybrid",
+        convergence_threshold=src.convergence_threshold if src else 0.85,
+        max_total_llm_calls=src.max_total_llm_calls if src else 15,
+        temperature=src.temperature if src else 0.3,
+        timeout_seconds=src.timeout_seconds if src else 120.0,
+    )
+
+    try:
+        with component_span("self_refine", {"tenant": tenant.tenant_id}):
+            result = await run_self_refine(
+                prompt=prompt,
+                config=cfg,
+                model=body.model,
+            )
+    except Exception as e:
+        logger.exception("agent_self_refine failed tenant=%s", tenant.tenant_id)
+        return json_error(503, "SELF_REFINE_ERROR", str(e))
+
+    return JSONResponse({
+        "tenant_id": tenant.tenant_id,
+        "session_id": body.session_id.strip(),
+        "model": body.model or settings.default_model,
+        "final_message": result.final_output,
+        "self_refine_result": SelfRefineResultSchema(
+            prompt=result.prompt,
+            final_output=result.final_output,
+            iterations_completed=result.iterations_completed,
+            converged=result.converged,
+            convergence_reason=result.convergence_reason,
+            trace=[t.to_dict() for t in result.trace],
+            execution_time_ms=result.execution_time_ms,
+            total_llm_calls=result.total_llm_calls,
+            error=result.error,
+            success=result.success,
         ).model_dump(exclude_none=True),
     })
 

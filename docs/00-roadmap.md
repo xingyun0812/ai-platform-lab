@@ -372,6 +372,31 @@
 
 ---
 
+## Phase W — Self-Refine（自我修正推理 ✅）
+
+> **状态**：✅ **已交付**（Phase W · 2026-08-12）
+> **Issue**：[#204](https://github.com/xingyun0812/ai-platform-lab/issues/204)
+> **ADR**：[0008-self-refine.md](./adr/0008-self-refine.md)
+> **门禁**：`python eval/self_refine_quality_gate.py run && gate`
+
+| 组件 | 内容 | 状态 |
+|------|------|------|
+| W1 | Self-Refine 核心引擎（generate/feedback/refine/convergence） | ✅ |
+| W2 | Pydantic Schemas + AgentRunRequest 集成 | ✅ |
+| W3 | `POST /v1/agent/self-refine` API | ✅ |
+| W4 | 命名区分（vs self_evolve） | ✅ |
+| W5 | 单元测试 ≥ 15 个 | ✅ |
+| W6 | 质量门禁 eval/self_refine_quality_gate.py | ✅ |
+| W7 | 设计文档 + ADR | ✅ |
+
+**前置**：Phase Q（Graph Runtime）· Phase R（Harness）· Phase S（ToT API 风格参考）
+
+**三路收敛策略**：llm_judged（LLM 判断）、similarity（语义相似度）、hybrid（sequential AND）
+**模型分离**：generator_model / feedback_model 可分别指定
+**成本控制**：max_total_llm_calls 默认 15，硬上限 30
+
+---
+
 ## 已知限制（面试时主动说）
 
 > **说明**：Phase A～K 已交付大量能力（MCP、HITL、Multi-Agent、语义缓存、PII、Console V2 等），本节区分 **「已有但 opt-in / 实验级」** 与 **「仍缺或仍为 stub」**，避免与 README 矛盾。Phase L 目标是把 stub 做深，见 [phase-l-engineering-depth.md](./02-phase-l-00-engineering-depth.md)。

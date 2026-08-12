@@ -1,6 +1,6 @@
 # ai-platform-lab
 
-最小 **AI 中台** 实验仓库（与 [《AI中台学习执行手册》](docs/90-ai-learning-handbook.md) 配套）。当前完成 **Phase A～R**：模型网关、RAG（含增量与图文）、Agent（Planner/CoT/Multi-Agent/Harness）、观测评测、硬化、Prompt、MCP、Embedding、HITL、安全合规、SDK/PyPI、Console V2、生产 Helm、架构加深 10/10 等。
+最小 **AI 中台** 实验仓库（与 [《AI中台学习执行手册》](docs/90-ai-learning-handbook.md) 配套）。当前完成 **Phase A～W**：模型网关、RAG（含增量与图文）、Agent（Planner/CoT/Multi-Agent/Harness/Self-Refine）、观测评测、硬化、Prompt、MCP、Embedding、HITL、安全合规、SDK/PyPI、Console V2、生产 Helm、架构加深 10/10 等。
 
 > 📊 **当前状态**：Phase A～R ✅ · 架构加深 #1～#10 ✅（tag `arch-platform-186-phase10-complete`）· Phase tags：`phase-r-agent-harness`、`phase-q-advanced-planning`、`phase-o-agent-jd2`  
 > 📋 **完整状态报告**：[docs/00-PROJECT_STATUS.md](docs/00-PROJECT_STATUS.md) · **Live 手验**：[docs/90-demo-walkthrough.md](docs/90-demo-walkthrough.md)

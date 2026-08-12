@@ -308,6 +308,14 @@
       "phase": "R",
       "verifiedBy": ["python eval/harness_capability_gate.py run"],
       "evidence": "自进化 Agent、跨 session 长程任务、模型能力探测"
+    },
+    {
+      "id": "F39",
+      "name": "Self-Refine 自我修正推理",
+      "status": "done",
+      "phase": "W",
+      "verifiedBy": ["python eval/self_refine_quality_gate.py run", "python -m pytest tests/test_self_refine.py -q"],
+      "evidence": "generate/feedback/refine/convergence 循环、三路收敛策略、模型分离、max_total_llm_calls 硬上限"
     }
   ]
 }

@@ -58,6 +58,10 @@ class AgentRunRequest(BaseModel):
         default=None,
         description="Deep Research 配置",
     )
+    self_refine_config: SelfRefineConfig | None = Field(
+        default=None,
+        description="Phase W: Self-Refine 配置",
+    )
 
 
 class PlanStep(BaseModel):
@@ -140,6 +144,11 @@ class AgentRunResponse(BaseModel):
     research_result: ResearchResult | None = Field(
         default=None,
         description="Deep Research 结果",
+    )
+    # Phase W: Self-Refine
+    self_refine_result: SelfRefineResult | None = Field(
+        default=None,
+        description="Self-Refine 结果",
     )
 
 
@@ -280,3 +289,50 @@ class ResearchResult(BaseModel):
     depth_completed: int = 0
     execution_time_ms: float = 0.0
     error: str | None = None
+
+
+# ---------------------------------------------------------------------------
+# Phase W: Self-Refine 数据结构
+# ---------------------------------------------------------------------------
+
+
+class SelfRefineConfig(BaseModel):
+    """Self-Refine 策略配置。"""
+    enabled: bool = True
+    max_iterations: int = Field(default=5, ge=1, le=10)
+    generator_model: str | None = None
+    feedback_model: str | None = None
+    convergence_strategy: str = Field(
+        default="hybrid",
+        pattern="^(llm_judged|similarity|hybrid)$",
+    )
+    convergence_threshold: float = Field(default=0.85, ge=0.0, le=1.0)
+    max_total_llm_calls: int = Field(default=15, ge=1, le=30)
+    feedback_dimensions: list[str] | None = None
+    temperature: float = Field(default=0.3, ge=0.0, le=2.0)
+    timeout_seconds: float = Field(default=120.0, ge=1.0)
+
+
+class FeedbackRoundSchema(BaseModel):
+    """自反馈轮次记录（序列化用）。"""
+    iteration: int
+    feedback: str = ""
+    feedback_dimension: str | None = None
+    feedback_error: str | None = None
+    refine_error: str | None = None
+    output_after_refine: str = ""
+    elapsed_ms: float = 0.0
+
+
+class SelfRefineResult(BaseModel):
+    """Self-Refine 最终结果（序列化用）。"""
+    prompt: str
+    final_output: str
+    iterations_completed: int = 0
+    converged: bool = False
+    convergence_reason: str = ""
+    trace: list[FeedbackRoundSchema] = Field(default_factory=list)
+    execution_time_ms: float = 0.0
+    total_llm_calls: int = 0
+    error: str | None = None
+    success: bool = True
