@@ -232,7 +232,7 @@ def test_worker_replicas_and_postgres_config():
 
 def test_docs_exist():
     path = os.path.join(_DOCS_DIR, "phase-k-multi-az.md")
-    assert os.path.exists(path), "docs/phase-k-multi-az.md not found"
+    assert os.path.exists(path), "docs/02-phase-k-multi-az.md not found"
     content = _read_raw(path)
     for section in ["Topology", "Qdrant", "Redis Sentinel", "Postgres",
                     "PodDisruptionBudget", "NetworkPolicy", "Chaos", "Known Limits"]:
@@ -258,7 +258,7 @@ if __name__ == "__main__":
     run_test("13 chaos-test.yaml PodChaos targeting us-east-1a pod-kill", test_chaos_test_yaml)
     run_test("14 All multi-AZ templates parse after stripping Go templates", test_all_templates_parse_after_stripping)
     run_test("15 worker.replicas=4, postgres replica enabled, standby_zones", test_worker_replicas_and_postgres_config)
-    run_test("16 docs/phase-k-multi-az.md exists with required sections", test_docs_exist)
+    run_test("16 docs/02-phase-k-multi-az.md exists with required sections", test_docs_exist)
 
     total = len(_passed) + len(_failed)
     print(f"\n=== Results: {len(_passed)}/{total} passed ===")

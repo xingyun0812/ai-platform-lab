@@ -94,9 +94,47 @@ async def execute_agent_graph(
         goal = (body.goal or _last_user_goal(body.messages) or "").strip()
         if not goal:
             raise GraphRuntimeError("INVALID_REQUEST", "auto_plan 需要 goal 或 user 消息")
+
+        # Phase S: 可选 ToT 前置推理 → 注入 Planner context
+        context: str | None = None
+        tot_ctx: str | None = None
+        if body.tot_config and body.tot_config.enabled:
+            try:
+                from packages.agent.tot import TotConfig as TotConfigDC
+                from packages.agent.tot import run_tot
+
+                tc = body.tot_config
+                cfg = TotConfigDC(
+                    search_algorithm=tc.search_algorithm,
+                    branching_factor=tc.branching_factor,
+                    beam_width=tc.beam_width,
+                    max_depth=tc.max_depth,
+                    max_total_nodes=tc.max_total_nodes,
+                    value_threshold=tc.value_threshold,
+                    temperature=tc.temperature,
+                    timeout_seconds=tc.timeout_seconds,
+                )
+                tot_result = await run_tot(goal=goal, config=cfg, model=body.model)
+                if tot_result.best_answer:
+                    tot_ctx = (
+                        "【ToT 推理结果】\n"
+                        f"对目标「{goal}」进行了多路径推理搜索，"
+                        f"最优推理链：\n{tot_result.best_answer}\n"
+                    )
+                    logger.info(
+                        "tot context injected for goal=%.40s nodes=%d",
+                        goal,
+                        tot_result.total_nodes,
+                    )
+            except Exception as exc:
+                logger.warning("tot pre-processing failed, skipping: %s", exc)
+
+        if tot_ctx:
+            context = tot_ctx
+
         plan, _ = await generate_plan(
             goal=goal,
-            context=None,
+            context=context,
             model=body.model,
             allowed_models=tenant.allowed_models,
             allowed_tools=tenant.allowed_tools,

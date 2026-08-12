@@ -38,3 +38,116 @@ agents:
     can_be_delegated_to: true
     max_delegation_depth: 2
     enabled: true
+
+  # ---- Phase T: Multi-Agent Debate 角色 ----
+  - agent_id: debate_proposer_1
+    name: 辩论提案者 1
+    role: specialist
+    description: "Phase T — Multi-Agent Debate 提案者"
+    system_prompt: |
+      你是辩论提案者。请针对用户的问题进行推理，给出你的答案和理由。
+      输出应当清晰、有逻辑、有论据支撑。
+    model: null
+    allowed_tools: []
+    can_delegate: false
+    can_be_delegated_to: true
+    max_delegation_depth: 1
+    enabled: true
+    metadata:
+      debate_role: proposer
+
+  - agent_id: debate_proposer_2
+    name: 辩论提案者 2
+    role: specialist
+    description: "Phase T — Multi-Agent Debate 提案者"
+    system_prompt: |
+      你是辩论提案者。请针对用户的问题进行推理，给出你的答案和理由。
+      从与提案者1不同的角度思考问题。
+    model: null
+    allowed_tools: []
+    can_delegate: false
+    can_be_delegated_to: true
+    max_delegation_depth: 1
+    enabled: true
+    metadata:
+      debate_role: proposer
+
+  - agent_id: debate_proposer_3
+    name: 辩论提案者 3
+    role: specialist
+    description: "Phase T — Multi-Agent Debate 提案者"
+    system_prompt: |
+      你是辩论提案者。请针对用户的问题进行推理，给出你的答案和理由。
+      你的风格是发散思维，考虑非常规的可能性。
+    model: null
+    allowed_tools: []
+    can_delegate: false
+    can_be_delegated_to: true
+    max_delegation_depth: 1
+    enabled: true
+    metadata:
+      debate_role: proposer
+
+  - agent_id: debate_critic_1
+    name: 辩论评论者 1
+    role: reviewer
+    description: "Phase T — Multi-Agent Debate 评论者"
+    system_prompt: |
+      你是辩论评论者。请严格评审目标提案的逻辑完整性、事实准确性和推理过程。
+      指出漏洞、错误假设和改进方向。
+    model: null
+    allowed_tools: []
+    can_delegate: false
+    can_be_delegated_to: true
+    max_delegation_depth: 1
+    enabled: true
+    metadata:
+      debate_role: critic
+
+  - agent_id: debate_critic_2
+    name: 辩论评论者 2
+    role: reviewer
+    description: "Phase T — Multi-Agent Debate 评论者"
+    system_prompt: |
+      你是辩论评论者。请从实践角度评审目标提案的可行性和完整性。
+      关注实现细节、边界情况和潜在风险。
+    model: null
+    allowed_tools: []
+    can_delegate: false
+    can_be_delegated_to: true
+    max_delegation_depth: 1
+    enabled: true
+    metadata:
+      debate_role: critic
+
+  - agent_id: debate_critic_3
+    name: 辩论评论者 3
+    role: reviewer
+    description: "Phase T — Multi-Agent Debate 评论者"
+    system_prompt: |
+      你是辩论评论者。请从批判性思维角度评审提案。
+      检查是否有多余假设、逻辑跳跃或未被质疑的前提。
+    model: null
+    allowed_tools: []
+    can_delegate: false
+    can_be_delegated_to: true
+    max_delegation_depth: 1
+    enabled: true
+    metadata:
+      debate_role: critic
+
+  - agent_id: debate_judge
+    name: 辩论裁判
+    role: reviewer
+    description: "Phase T — Multi-Agent Debate 裁判"
+    system_prompt: |
+      你是辩论裁判。请综合考虑所有提案和评议，给出最终答案。
+      你的裁决应当客观、公正、有理有据。
+    model: null
+    allowed_tools: []
+    can_delegate: false
+    can_be_delegated_to: true
+    max_delegation_depth: 1
+    enabled: true
+    metadata:
+      debate_role: judge

@@ -1,0 +1,14 @@
+# Computer Use Agent 配置
+
+computer_use:
+  # 最大步数（截图→分析→动作循环）
+  max_steps: 10
+
+  # 总超时（秒）
+  timeout_seconds: 120.0
+
+  # 沙箱模式（process | docker）
+  sandbox_mode: process
+
+  # DISPLAY 环境变量
+  display: ":99"

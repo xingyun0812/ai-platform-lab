@@ -1,7 +1,7 @@
 # JD 要求 vs ai-platform-lab 能力对照（临时研究稿）
 
 > **用途**：投递前自查、面试准备、补叙事缺口。  
-> **性质**：临时文档，研究完可删或合并进 `interview-narrative.md`。  
+> **性质**：临时文档，研究完可删或合并进 `90-interview-narrative.md`。  
 > **基准**：仓库 `main` Phase A～M + Phase N（PyPI SDK）+ **Phase O**（Agent JD2 对齐 · tag `phase-o-agent-jd2`）；对照三份真实 JD 原文。  
 > **图例**：✅ 有且能讲 · ⚠️ 有但偏 lab/浅 · ❌ 无或不对口
 
@@ -75,7 +75,7 @@ flowchart LR
 
 | JD 原文要点 | 覆盖 | 关键文件 / API | 说明 |
 |-------------|------|----------------|------|
-| Agent 系统整体架构设计与演进 | ⚠️ | `docs/architecture.md`、`docs/roadmap.md`、Phase A～M | 有渐进架构叙事；非亿级在线产品演进 |
+| Agent 系统整体架构设计与演进 | ⚠️ | `docs/00-architecture.md`、`docs/00-roadmap.md`、Phase A～M | 有渐进架构叙事；非亿级在线产品演进 |
 | **Agent Runtime** | ✅ | `packages/agent/runner.py` | ReAct 环：`max_steps`、tool trace、`POST /v1/agent/run` |
 | **Tool 抽象** | ✅ | `packages/agent/registry.py`、`tool_router.py`、`tool_envelope.py` | 注册表 + JSON Schema + handler |
 | **Memory 抽象** | ✅ | `packages/memory/`、`apps/gateway/memory_routes.py` | Postgres 持久化 + summarize API |
@@ -91,7 +91,7 @@ flowchart LR
 |---------|------|------|
 | 扎实工程基础 | ✅ | 484+ 单测、Issue 驱动、CI |
 | Python/TS/Go 熟练 | ✅ Python | `pyproject.toml`；Console 为 TS/React（`console-v2/`） |
-| LLM 与 Agent 基本原理 | ✅ | `docs/week4-agent-runtime.md`、`enterprise-ai-platform-sop.md` |
+| LLM 与 Agent 基本原理 | ✅ | `docs/01-week4-agent-runtime.md`、`02-phase-e-sop.md` |
 | 产品 sense / 协作 | ❌ | 需口述其他经历 |
 
 ### 3.3 JD1 面试话术（30 秒）
@@ -134,7 +134,7 @@ flowchart LR
 | RAG | ✅ | `packages/rag/`、`eval/run.py` | baseline + compare |
 | 工具/函数调用 | ✅ | `runner.py` | OpenAI 兼容 |
 | Agent 框架 | ⚠️ | 自研 | **未用** LangChain/LlamaIndex 作依赖 |
-| LangChain / LlamaIndex / AutoGPT / ReAct | ⚠️ | `docs/week4-agent-runtime.md` | **ReAct 有**；其余为概念对齐 |
+| LangChain / LlamaIndex / AutoGPT / ReAct | ⚠️ | `docs/01-week4-agent-runtime.md` | **ReAct 有**；其余为概念对齐 |
 | OpenAI Function Calling | ✅ | `llm_proxy.py`、`runner.py` | — |
 | API 设计 | ✅ | `apps/gateway/*_routes.py` | OpenAI 兼容 + internal API |
 | 插件 / 微服务 | ⚠️ | MCP + Compose + Helm | 非完整微服务体系 |
@@ -276,9 +276,9 @@ flowchart LR
 | 缺口 | 影响 JD | 怎么讲 |
 |------|---------|--------|
 | 非 LangChain 系依赖 | JD1/JD2 | 「自研 Runtime，概念与 LCEL/LangGraph 对齐」 |
-| Multi-Agent 浅（无黑板） | JD1/JD2 | 主动引用 `phase-h-multi-agent.md` |
+| Multi-Agent 浅（无黑板） | JD1/JD2 | 主动引用 `02-phase-h-02-multi-agent.md` |
 | 无真实业务场景 | JD1/JD2 | 用 vertical demo + eval 代替 |
-| lab 规模非生产 | 全部 | `roadmap.md` §已知限制 |
+| lab 规模非生产 | 全部 | `00-roadmap.md` §已知限制 |
 
 ### 7.2 JD2 特有缺口
 
@@ -318,8 +318,8 @@ flowchart LR
 | Agent 垂直链 | `eval/agent_vertical_smoke.py` | Multi-Agent + HITL + RAG |
 | 反馈飞轮 | `python eval/feedback_loop_demo.py --live` | AgentOps |
 | SDK | `python eval/sdk_smoke.py` | 工程落地 |
-| 叙事稿 | `docs/interview-narrative.md` | 10～15 分钟口述 |
-| 动手 demo | `docs/demo-walkthrough.md` | Console + curl |
+| 叙事稿 | `docs/90-interview-narrative.md` | 10～15 分钟口述 |
+| 动手 demo | `docs/90-demo-walkthrough.md` | Console + curl |
 
 ---
 
@@ -327,15 +327,15 @@ flowchart LR
 
 | 文档 | 用途 |
 |------|------|
-| [phase-o-agent-jd2-alignment.md](./phase-o-agent-jd2-alignment.md) | **Phase O 开发计划（JD2 §4.1）** |
-| [issues-backlog-phase-o.md](./issues-backlog-phase-o.md) | Phase O Issue 粘贴正文 |
-| [interview-narrative.md](./interview-narrative.md) | 正式面试叙事 |
-| [demo-walkthrough.md](./demo-walkthrough.md) | 演示脚本 |
-| [PROJECT_STATUS.md](./PROJECT_STATUS.md) | 一页纸完成度 |
-| [roadmap.md](./roadmap.md) | 已知限制 |
-| [phase-h-multi-agent.md](./phase-h-multi-agent.md) | Multi-Agent 诚实边界 |
-| [phase-h-orchestrator.md](./phase-h-orchestrator.md) | 编排引擎 |
-| [enterprise-ai-platform-sop.md](./enterprise-ai-platform-sop.md) | 大厂 SOP 对照 |
+| [phase-o-agent-jd2-alignment.md](./02-phase-o-00-agent-jd2-alignment.md) | **Phase O 开发计划（JD2 §4.1）** |
+| [issues-backlog-phase-o.md](./99-issues-backlog-phase-o.md) | Phase O Issue 粘贴正文 |
+| [interview-narrative.md](./90-interview-narrative.md) | 正式面试叙事 |
+| [demo-walkthrough.md](./90-demo-walkthrough.md) | 演示脚本 |
+| [PROJECT_STATUS.md](./00-PROJECT_STATUS.md) | 一页纸完成度 |
+| [roadmap.md](./00-roadmap.md) | 已知限制 |
+| [phase-h-multi-agent.md](./02-phase-h-02-multi-agent.md) | Multi-Agent 诚实边界 |
+| [phase-h-orchestrator.md](./02-phase-h-01-orchestrator.md) | 编排引擎 |
+| [enterprise-ai-platform-sop.md](./02-phase-e-sop.md) | 大厂 SOP 对照 |
 
 ---
 

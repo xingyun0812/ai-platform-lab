@@ -1,0 +1,21 @@
+# Multi-Agent Debate 配置
+# 通过 debate_config 请求体字段传入
+
+debate:
+  # 辩论 Agent 数量
+  num_proposers: 3
+
+  # 辩论轮数（1=仅提案, 2=提案+评议, 3=含反驳）
+  num_rounds: 2
+
+  # proposer 生成温度（越高越多样）
+  temperature: 0.7
+
+  # critic 评议温度（越低越确定）
+  critic_temperature: 0.3
+
+  # judge 裁定温度（最低）
+  judge_temperature: 0.1
+
+  # 总超时（秒）
+  timeout_seconds: 120.0

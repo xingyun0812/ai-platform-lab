@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 from typing import Any
 
-_COT_MODES = frozenset({"react", "cot"})
+_COT_MODES = frozenset({"react", "cot", "tot"})
 _THINKING_RE = re.compile(r"<thinking>(.*?)</thinking>", re.DOTALL | re.IGNORECASE)
 
 COT_SYSTEM_APPEND = (

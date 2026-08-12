@@ -1,0 +1,33 @@
+# ToT (Tree of Thoughts) 搜索策略配置
+# 通过 AGENT_TOT_CONFIG 环境变量或 settings 加载
+
+tot:
+  # 默认搜索算法（bfs | dfs | mcts）
+  search_algorithm: "bfs"
+
+  # 每个节点生成的候选思维数
+  branching_factor: 3
+
+  # BFS 每层保留的节点数（beam width）
+  beam_width: 2
+
+  # 最大搜索深度
+  max_depth: 5
+
+  # 总节点数上限（安全阀）
+  max_total_nodes: 50
+
+  # DFS 剪枝阈值（value < threshold 的节点被剪枝；null 表示不剪枝）
+  value_threshold: null
+
+  # 生成时的温度
+  temperature: 0.7
+
+  # 总超时（秒）
+  timeout_seconds: 120.0
+
+  # MCTS 探索常数 C（UCB 公式），值越大越偏向探索
+  mcts_exploration_weight: 1.4
+
+  # MCTS 每次迭代的模拟次数
+  mcts_simulations: 5

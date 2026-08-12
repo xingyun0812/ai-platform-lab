@@ -36,7 +36,7 @@ def main() -> None:
             "Phase A：索引任务由 gateway 入 Redis 队列，本进程 BLPOP 后执行 run_index_task。\n"
             "环境变量：REDIS_URL、USE_INDEX_WORKER=true、QDRANT_URL、LLM_API_KEY\n"
             "Compose：docker compose up -d --build\n"
-            "详见 docs/phase-a-internal-beta.md"
+            "详见 docs/02-phase-a-internal-beta.md"
         )
         return
 

@@ -10,6 +10,7 @@ from packages.agent.tools.builtin import (
     handle_math_llm_stub,
     handle_search_web_stub,
 )
+from packages.agent.tools.fetch_url import handle_fetch_url
 from packages.agent.tools.sql_query import handle_sql_query
 from packages.agent.tools.web_search import handle_web_search
 
@@ -125,6 +126,18 @@ def build_default_registry() -> dict[str, ToolDefinition]:
                 "required": ["problem"],
             },
             handler=handle_math_llm_stub,
+        ),
+        "fetch_url": ToolDefinition(
+            name="fetch_url",
+            description="获取指定 URL 的网页正文内容，返回纯文本摘要（用于 Deep Research 阅读搜索结果）",
+            parameters_schema={
+                "type": "object",
+                "properties": {
+                    "url": {"type": "string", "description": "网页 URL，如 https://example.com/article"},
+                },
+                "required": ["url"],
+            },
+            handler=handle_fetch_url,
         ),
     }
 

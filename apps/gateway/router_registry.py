@@ -14,6 +14,7 @@ from apps.gateway.agent.long_run_routes import router as long_run_router
 from apps.gateway.agent.plan_approval_routes import router as plan_approval_router
 from apps.gateway.agent.plan_workflow_routes import router as plan_workflow_router
 from apps.gateway.agent.routes import router as agent_router
+from apps.gateway.agent.computer_use_routes import router as computer_use_router
 from apps.gateway.agent.strategy_patch_routes import router as strategy_patch_router
 from apps.gateway.agent_lifecycle_routes import router as agent_lifecycle_router
 from apps.gateway.audit_action_routes import router as audit_action_router
@@ -50,6 +51,7 @@ def mount_gateway_routers(app: FastAPI) -> None:
         rag_router,
         rag_query_router,
         agent_router,
+        computer_use_router,
         agent_approval_router,
         strategy_patch_router,
         plan_workflow_router,

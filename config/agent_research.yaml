@@ -1,0 +1,18 @@
+# Deep Research 配置
+# 通过 research_config 请求体字段传入
+
+research:
+  # 分解出的子问题数
+  max_sub_questions: 5
+
+  # 每个搜索保留的结果数
+  results_per_query: 5
+
+  # 迭代深入轮数（1=不迭代）
+  max_depth: 2
+
+  # 总超时（秒）
+  timeout_seconds: 300.0
+
+  # LLM 生成温度
+  temperature: 0.3

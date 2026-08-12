@@ -318,9 +318,9 @@ def test_kustomization_yaml_exists():
 
 
 def test_docs_phase_k_helm_exists():
-    """docs/phase-k-helm.md design doc exists."""
+    """docs/02-phase-k-helm.md design doc exists."""
     path = os.path.join(_REPO_ROOT, "docs", "phase-k-helm.md")
-    assert os.path.exists(path), f"docs/phase-k-helm.md not found at {path}"
+    assert os.path.exists(path), f"docs/02-phase-k-helm.md not found at {path}"
     content = _read_raw(path)
     # Should contain key sections
     assert "Helm" in content, "design doc should mention Helm"
@@ -351,7 +351,7 @@ if __name__ == "__main__":
     run_test("17 ingress.yaml supports TLS and is gated by .Values.ingress.enabled", test_ingress_template_has_tls_support)
     run_test("18 Chart.yaml has keywords and maintainers", test_chart_yaml_has_keywords_and_maintainers)
     run_test("19 deploy/k8s/kustomization.yaml exists and parses", test_kustomization_yaml_exists)
-    run_test("20 docs/phase-k-helm.md design doc exists", test_docs_phase_k_helm_exists)
+    run_test("20 docs/02-phase-k-helm.md design doc exists", test_docs_phase_k_helm_exists)
 
     total = len(_passed) + len(_failed)
     print(f"\n=== Results: {len(_passed)}/{total} passed ===")
