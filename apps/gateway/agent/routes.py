@@ -538,6 +538,7 @@ async def agent_self_refine(
         convergence_strategy=src.convergence_strategy if src else "hybrid",
         convergence_threshold=src.convergence_threshold if src else 0.85,
         max_total_llm_calls=src.max_total_llm_calls if src else 15,
+        feedback_dimensions=tuple(src.feedback_dimensions) if src and src.feedback_dimensions else None,
         temperature=src.temperature if src else 0.3,
         timeout_seconds=src.timeout_seconds if src else 120.0,
     )
@@ -557,7 +558,7 @@ async def agent_self_refine(
         "tenant_id": tenant.tenant_id,
         "session_id": body.session_id.strip(),
         "model": body.model or settings.default_model,
-        "final_message": result.final_output,
+        "final_message": result.final_output[:500] if result.final_output else "",
         "self_refine_result": SelfRefineResultSchema(
             prompt=result.prompt,
             final_output=result.final_output,

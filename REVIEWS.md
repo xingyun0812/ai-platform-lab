@@ -1,168 +1,79 @@
 ---
 phase: W
-reviewers: [codex]
-reviewed_at: 2026-08-12T12:00:00+08:00
-plans_reviewed: [.planning/PLAN.md]
+reviewers: [claude, codex]
+reviewed_at: 2026-08-12T13:00:00+08:00
+plans_reviewed: [Commit bc19f51 — Phase W Self-Refine]
 reviewer_status:
+  claude: success
   codex: success
-  claude: skipped (self — running inside Claude Code)
-  gemini: skipped (known auth failure from prior run)
-  opencode: failed (empty output)
+  gemini: skipped
+  opencode: skipped
+  qwen: skipped
+  cursor: skipped
 trimmed_reviewers: {}
 ---
 
-# Cross-AI Plan Review — Phase W: Self-Refine
+# Cross-AI Code Review — Phase W: Self-Refine
 
-## Executive Note
+## Consensus Top Concerns
 
-This review covers the **Phase W Self-Refine implementation plan** (`.planning/PLAN.md`),
-which addresses GitHub Issue #204 (updated: Phase V → W). The plan was independently
-reviewed by **Codex CLI**, which produced a thorough analysis.
+### 1. `feedback_dimensions` not passed through gateway route (HIGH)
 
----
+**Both reviewers flagged.** The route handler at `apps/gateway/agent/routes.py:534-543` does a manual field-by-field mapping from Pydantic `SelfRefineConfig` to dataclass `SelfRefineConfig`, but **omits `feedback_dimensions`**. Users sending custom dimensions via the API have them silently ignored; the dataclass always uses the 5 default dimensions.
 
-## Codex Review
+**Fix:** Add `feedback_dimensions=tuple(src.feedback_dimensions) if src and src.feedback_dimensions else None` to the dataclass constructor.
 
-### Summary
+### 2. Similarity convergence dead code — `packages.agent.tools.embedding` doesn't exist (HIGH)
 
-The Phase W plan is thorough and well-researched, mapping the Self-Refine algorithm to
-the project's established patterns from ToT/Debate/Research. The implementation order is
-logical (models -> engine -> API -> tests -> docs -> metadata). The plan correctly
-identifies key pitfalls (self-blindness, runaway LLM calls, false convergence) and
-includes sensible mitigations. The main concerns are around a small deviation from the
-project's module structure convention, a definitional ambiguity in the hybrid convergence
-strategy, statistical fragility of the quality gate benchmark, and a few missing edge
-cases in the test coverage.
+**Both reviewers flagged.** The import path `packages.agent.tools.embedding` does not exist in the codebase. The `_check_similarity()` function always falls back to exact string matching (`current.strip() == previous.strip()`). This means:
+- `similarity` strategy behaves like exact-match (convergence almost never detected)
+- `hybrid` strategy always degrades to exact-match + LLM judge (extra cost with no benefit)
 
-### Strengths
+**Fix:** Either create `packages/agent/tools/embedding.py` with `compute_similarity`, or wire to the existing embedding service from Phase P.
 
-1. **Thorough pattern analysis** — Every integration point mapped against the
-   ToT/Debate/Research precedent. Significantly reduces integration risk.
+### 3. `context` parameter dead code (MEDIUM)
 
-2. **LLM call budget enforcement** — `max_total_llm_calls` with hard upper limit (30)
-   is well-designed. Essential since Self-Refine costs up to 4 calls per iteration.
+`run_self_refine()` accepts a `context` parameter, and `generate()` uses it. But the gateway route never passes context — `AgentRunRequest` has no `context` field for self-refine. The code path is entirely dead at the API level.
 
-3. **Graceful error degradation** — Retry-1 + degrade-to-empty for feedback() is a
-   good pragmatic choice. Empty feedback causes a no-op pass-through, avoiding loop crash.
+**Fix:** Either add `context` to the API schema, or remove the parameter from `run_self_refine()`.
 
-4. **Three convergence strategies** — Offering `llm_judged`, `similarity`, and `hybrid`
-   gives flexibility. Defaulting to `hybrid` balances LLM cost against false-convergence risk.
+### 4. `cfg.enabled` never checked (MEDIUM)
 
-5. **Model separation** — Supporting separate `generator_model` and `feedback_model`
-   mitigates the "self-blindness" problem where the same model critiques its own output.
+`SelfRefineConfig.enabled` exists (default `True`) but is never checked in the orchestrator or route. Setting `enabled=False` has zero effect.
 
-6. **Fail-open Result pattern** — Every error path returns a populated `SelfRefineResult`
-   with `error` field set, matching codebase convention. `best-so-far` on timeout is
-   a good practical choice.
+**Fix:** Check `cfg.enabled` at the start of `run_self_refine()`, bypass to single-shot when disabled.
 
-7. **W4 naming distinction** — Explicitly distinguishing from `self_evolve.py` (Phase R)
-   prevents a confusing naming collision.
+### 5. `final_output` not truncated in API response (MEDIUM)
 
-### Concerns
+Research endpoint truncates to 500 chars (`result.report[:500]`). Self-Refine returns `result.final_output` verbatim. Inconsistent.
 
-#### MEDIUM: `engine.py` diverges from established module structure
-
-The plan proposes `packages/agent/self_refine/engine.py` as the core orchestrator.
-None of the existing modes use this convention:
-- ToT: `tree.py` + `generator.py` + `evaluator.py` + `searcher.py`
-- Debate: `models.py` + everything in `__init__.py`
-- Research: `models.py` + `decomposer.py` + `searcher.py` + `synthesizer.py`
-
-**Suggestion**: Either merge into `__init__.py` (Debate pattern), or rename to
-`orchestrator.py` / `loop.py` for semantic clarity.
-
-#### MEDIUM: Hybrid convergence definition needs formalization
-
-The plan describes hybrid as "similarity quick check first, llm_judged to confirm if
-below threshold" — sequential AND logic. But "hybrid" could also mean logical OR.
-These give different results:
-- Scenario: LLM says "converged" but similarity = 0.4 (below 0.85 threshold)
-  - OR -> converged (stops)
-  - Sequential AND -> unconverged (continues)
-
-The sequential-AND is more conservative. Formalize as:
-```
-if similarity >= threshold -> converged (stop, skip LLM judge)
-else -> ask LLM judge; if LLM says no improvement -> converged; else -> continue
-```
-
-#### LOW: Quality gate benchmark (10 GSM8K) is statistically fragile
-
-The gate checks `self-refine(3) accuracy >= single-shot + 5%` on 10 problems. With only
-10 samples, margin of error is roughly +/-15% at 95% CI. A 5% threshold is within the
-noise floor. The gate could easily flake.
-
-**Suggestion**: Increase to 30+ problems, or relax to no-regression check.
-
-#### LOW: Missing hybrid-optimization test
-
-W5 covers the three strategies individually but no test verifies that when similarity
-is above threshold, the LLM judge call is skipped (the cost-saving behavior).
-
-#### LOW: Context growth not addressed in plan
-
-Each refinement round sends the full prompt + current output. After 5 iterations,
-per-round context grows linearly. Should be documented as a known limitation.
-
-#### LOW: `router_registry.py` not mentioned in plan
-
-If ToT/Debate/Research are registered there, Self-Refine must also be. The modification
-list should confirm this (or state it's unchanged).
-
-### Suggestions
-
-1. **Formalize hybrid convergence** as sequential-AND with pseudocode in the plan.
-2. **Rename `engine.py` to `orchestrator.py`** or merge into `__init__.py`.
-3. **Increase quality gate to 30+ problems**, or relax to no-regression.
-4. **Add hybrid-optimization test** verifying similarity shortcut skips LLM judge call.
-5. **Document context growth limitation** with a follow-up marker.
-6. **Confirm `router_registry.py`** needs no changes (or add to modification list).
-
-### Risk Assessment
-
-**Overall: LOW-MEDIUM**
-
-The plan is mature and addresses the critical concerns from the earlier issue-level review.
-Remaining issues are structural (module naming) and definitional (hybrid convergence),
-not correctness. Integration risk is low due to thorough pattern analysis.
-
-| Risk Area | Level | Rationale |
-|-----------|-------|----------|
-| Algorithm correctness | LOW | Well-defined strategies, clear loop design |
-| Cost/performance | LOW | max_total_llm_calls guard, hybrid optimization |
-| Error handling | LOW | Retry-1 + degrade pattern for failures |
-| Pattern consistency | MEDIUM | engine.py deviates from established naming |
-| Test coverage | LOW | 15 tests; minor gap in hybrid optimization |
-| Integration completeness | LOW | Mapped against all existing integration points |
+**Fix:** Truncate `final_message` to match Research endpoint pattern.
 
 ---
 
-## Consensus Summary
+## Full Findings
 
-### Agreed Strengths
+| ID | Severity | Reviewer | Description |
+|----|----------|----------|-------------|
+| F1 | HIGH | both | `feedback_dimensions` not forwarded from Pydantic to dataclass in gateway route |
+| F2 | HIGH | both | `packages.agent.tools.embedding` doesn't exist — similarity convergence always falls back to exact match |
+| F3 | MEDIUM | both | `context` parameter dead code, never passed from API |
+| F4 | MEDIUM | both | `cfg.enabled` flag exists but is never checked |
+| F5 | MEDIUM | both | `final_output` not truncated (Research endpoint truncates to 500 chars) |
+| F6 | MEDIUM | codex | Empty feedback conflated with optimal; `convergence_reason` should distinguish |
+| F7 | LOW | codex | `dir()` fallback in exception handler is unusual and unnecessary |
+| F8 | LOW | both | `except (ImportError, Exception)` double-catches ImportError |
+| F9 | LOW | codex | Eval silently excludes no-answer questions from accuracy denominator |
+| F10 | LOW | claude | Free-text feedback path unreachable through default config |
+| F11 | LOW | claude | No `min_length` validation on `feedback_dimensions` in Pydantic schema |
+| F12 | LOW | claude | `prompt` parameter in `convergence_check` is unused |
 
-- Thorough pattern analysis with explicit integration mapping
-- LLM call budget enforcement
-- Graceful error degradation for feedback()
-- Three convergence strategies with hybrid default
-- Model separation (generator/feedback)
-- Fail-open result pattern
-- Explicit naming distinction from self_evolve.py
+## Risk Assessment
 
-### Agreed Concerns
+**Overall: LOW-MEDIUM.** No logic bugs in the main loop. The two HIGH findings (F1, F2) are configuration/plumbing issues, not correctness bugs. The implementation is well-structured and follows established patterns.
 
-1. **MEDIUM** — `engine.py` naming deviates from established sub-module conventions
-2. **MEDIUM** — Hybrid convergence strategy needs formalization
-3. **LOW** — Quality gate benchmark (10 problems) statistically fragile
-4. **LOW** — Missing hybrid-optimization test
-5. **LOW** — Context growth not documented in plan
-6. **LOW** — `router_registry.py` not in modification list
+## Recommendations
 
-### Recommendations for Action
-
-1. Rename `engine.py` to `orchestrator.py` or merge into `__init__.py`
-2. Formalize hybrid convergence as sequential-AND with pseudocode
-3. Increase quality gate to 30+ problems or relax to no-regression
-4. Add hybrid-optimization test to W5 table
-5. Document context growth as known limitation
-6. Confirm router_registry.py status
+1. Apply fixes for F1, F3, F4, F5 (quick route/plumbing fixes)
+2. Address F2 by wiring to existing embedding service or documenting the limitation
+3. F6-F12 can be deferred to next iteration

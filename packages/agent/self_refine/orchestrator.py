@@ -62,18 +62,13 @@ async def _call_llm(
 
 async def generate(
     prompt: str,
-    context: str | None,
     model: str | None,
     temperature: float,
 ) -> str:
     """初始输出生成。"""
-    user_msg = prompt
-    if context:
-        user_msg = f"Context:\n{context}\n\nTask:\n{prompt}"
-
     return await _call_llm(
         system="You are a helpful assistant. Produce the best possible output.",
-        user=user_msg,
+        user=prompt,
         model=model,
         temperature=temperature,
     )
@@ -216,7 +211,6 @@ async def _check_llm_judged(
 
 async def run_self_refine(
     prompt: str,
-    context: str | None = None,
     config: SelfRefineConfig | None = None,
     model: str | None = None,
 ) -> SelfRefineResult:
@@ -227,7 +221,6 @@ async def run_self_refine(
 
     Args:
         prompt: 用户 prompt。
-        context: 可选背景信息（memory/RAG 摘要等）。
         config: Self-Refine 配置。缺省使用默认值。
         model: 模型名。缺省使用 generator_model 或 settings 默认。
 
@@ -244,11 +237,32 @@ async def run_self_refine(
     generator_model = cfg.generator_model or model
     feedback_model = cfg.feedback_model or generator_model
 
+    if not cfg.enabled:
+        # bypass: single-shot without iteration
+        current_output = await generate(
+            prompt=prompt,
+            model=generator_model,
+            temperature=cfg.temperature,
+        )
+        llm_call_count += 1
+        elapsed = (time.time() - start) * 1000
+        return SelfRefineResult(
+            prompt=prompt,
+            final_output=current_output,
+            config=cfg,
+            iterations_completed=0,
+            converged=True,
+            convergence_reason="disabled",
+            trace=[],
+            execution_time_ms=elapsed,
+            total_llm_calls=llm_call_count,
+            success=True,
+        )
+
     try:
         # W1: 初始生成
         current_output = await generate(
             prompt=prompt,
-            context=context,
             model=generator_model,
             temperature=cfg.temperature,
         )
