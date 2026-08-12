@@ -64,9 +64,9 @@ python eval/acceptance_smoke.py
 
 ## Key Architecture Files
 
-- `docs/architecture.md` — system overview
-- `docs/roadmap.md` — future plans & gaps
-- `docs/PROJECT_STATUS.md` — current status
+- `docs/00-architecture.md` — system overview
+- `docs/00-roadmap.md` — future plans & gaps
+- `docs/00-PROJECT_STATUS.md` — current status
 - `docs/adr/` — architecture decision records (3 so far)
 
 ## Environment
@@ -99,9 +99,9 @@ This project has a persistent memory system. Claude loads it automatically each 
 | `session-handoff.md` | Quick context restore for multi-session work | End of session if work is interrupted |
 
 Key reference docs:
-- `docs/closure-sop.md` — capability closure checklist
+- `docs/00-closure-sop.md` — capability closure checklist
 - `CHANGELOG.md` — release history
-- `docs/roadmap.md` — future plans & gaps
+- `docs/00-roadmap.md` — future plans & gaps
 
 ## Harness Hooks & Workflows
 

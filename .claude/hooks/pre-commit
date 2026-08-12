@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+# ai-platform-lab Claude Hooks — pre-commit
+# 在 git commit 前自动运行 ruff + pre-commit 框架
+
+set -euo pipefail
+
+echo "==> [claude-hook] 运行 pre-commit 框架..."
+if command -v pre-commit &>/dev/null && [ -f .pre-commit-config.yaml ]; then
+    pre-commit run --from-ref HEAD --to-ref HEAD 2>/dev/null || {
+        echo "⚠️  pre-commit 检查失败。修复后重试，或使用 --no-verify 跳过。"
+        exit 1
+    }
+fi

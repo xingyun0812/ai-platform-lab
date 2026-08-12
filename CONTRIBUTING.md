@@ -11,7 +11,7 @@
 本项目采用 **Issue 驱动开发**：每个功能 / 修复都先开 Issue，再开 PR，最后打 Tag。
 
 ```
-docs/roadmap.md / issues-backlog-*.md（规划）
+docs/00-roadmap.md / issues-backlog-*.md（规划）
     ↓
 GitHub Issue（创建 + 认领，含验收标准）
     ↓
@@ -101,10 +101,10 @@ git commit -m "refactor: 抽取 PII 检测的公共 pattern 加载逻辑"
 | 线 | 要求 |
 |----|------|
 | **Issue 正文** | 验收 checkbox 与 PR 表一致；关闭 Issue 前须为 `[x]` |
-| **文档** | `architecture-deepening-todo.md` / backlog / `roadmap.md`（如适用）已同步 |
+| **文档** | `90-architecture-deepening-todo.md` / backlog / `00-roadmap.md`（如适用）已同步 |
 | **证据** | PR 贴测试命令输出；CI Checks 全绿 |
 
-禁止：仅改代码与 `architecture-deepening-todo.md`，却 leave Issue body 全 `[ ]` 就 merge（#156 教训）。
+禁止：仅改代码与 `90-architecture-deepening-todo.md`，却 leave Issue body 全 `[ ]` 就 merge（#156 教训）。
 
 ### 1.5 合并打 Tag
 
@@ -121,7 +121,7 @@ git commit -m "refactor: 抽取 PII 检测的公共 pattern 加载逻辑"
 | 开分支 | `feat/issue-<N>-<short-name>`，从最新 `main` 拉出 |
 | 开 PR | 标题含 Issue 主题；body 写 `closes #N`；填三线验收对齐表 |
 | 合并前 | Issue 正文 `[x]` + 文档同步 + CI/测试证据（§1.4.1） |
-| 合并后 | Issue 关闭；backlog 更新 PR 号；必要时更新 `roadmap.md` / Phase 规划 doc |
+| 合并后 | Issue 关闭；backlog 更新 PR 号；必要时更新 `00-roadmap.md` / Phase 规划 doc |
 | Phase 收尾 | 全部 Issue ✅ 后：`git tag -a phase-x-name -m "..." && git push origin phase-x-name` |
 
 ### 1.6 历史补录（仅维护者一次性操作）
@@ -202,7 +202,7 @@ python3 eval/acceptance_smoke.py
 
 ### 3.2 待创建的 Issue
 
-[docs/issues-backlog.md](docs/issues-backlog.md) 包含 #45-#52 的完整 Issue 正文，可直接复制粘贴到 GitHub。维护者批量创建后，贡献者认领。
+[docs/99-issues-backlog.md](docs/99-issues-backlog.md) 包含 #45-#52 的完整 Issue 正文，可直接复制粘贴到 GitHub。维护者批量创建后，贡献者认领。
 
 ---
 
@@ -217,7 +217,7 @@ python3 eval/acceptance_smoke.py
 | I (#41-#44) | 历史已合并 | ✅ tag `phase-i-security` |
 | **L (#53-#63)** | #37-#47 等 | ✅ tag `phase-l-engineering-depth` |
 | **M (M1-M4)** | [#63](https://github.com/xingyun0812/ai-platform-lab/issues/63)–[#66](https://github.com/xingyun0812/ai-platform-lab/issues/66) | ✅ PR [#68](https://github.com/xingyun0812/ai-platform-lab/pull/68)–[#71](https://github.com/xingyun0812/ai-platform-lab/pull/71) 堆叠补录 |
-| **N (N1-N4)** | 见 [issues-backlog-phase-n.md](docs/issues-backlog-phase-n.md) | ⏳ 规划中 |
+| **N (N1-N4)** | 见 [issues-backlog-phase-n.md](docs/99-issues-backlog-phase-n.md) | ⏳ 规划中 |
 
 > **注意**：roadmap 中的 `#NN` 为规划编号；GitHub Issue 以实际分配为准。从 Phase J 起，**每个 Issue 必须对应一个 PR**。
 
@@ -242,7 +242,7 @@ python3 eval/acceptance_smoke.py
 每个新 Issue 必须包含：
 - `docs/phase-<letter>-<area>.md` — 设计文档
 - `README.md` 更新（如适用）
-- `docs/roadmap.md` 标记 ✅
+- `docs/00-roadmap.md` 标记 ✅
 - `.env.example` 新增配置项
 
 ### 5.4 测试要求

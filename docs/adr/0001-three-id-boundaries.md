@@ -48,4 +48,4 @@ Phase Q7（Graph Runtime / Orchestrator）与 Phase R2（长程任务）都涉�
 - `packages/agent/graph_runtime.py`
 - `packages/agent/long_horizon.py`
 - `packages/agent/orchestrator/checkpoint_engine.py`
-- `docs/phase-r-agent-harness.md` §2.1
+- `docs/02-phase-r-00-agent-harness.md` §2.1

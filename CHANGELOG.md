@@ -40,8 +40,8 @@
 
 ### Changed
 
-- `docs/PROJECT_STATUS.md`：更新完成度总览
-- `docs/roadmap.md`：Phase R 标记完成
+- `docs/00-PROJECT_STATUS.md`：更新完成度总览
+- `docs/00-roadmap.md`：Phase R 标记完成
 
 ---
 

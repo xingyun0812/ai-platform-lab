@@ -6,12 +6,12 @@ body:
     attributes:
       value: |
         感谢贡献！这是 Phase J/K/L 规划的任务。
-        请先在 [roadmap.md](../docs/roadmap.md) 确认 Issue 编号与内容。
+        请先在 [roadmap.md](../docs/00-roadmap.md) 确认 Issue 编号与内容。
   - type: input
     id: issue-number
     attributes:
       label: "Roadmap Issue 编号"
-      description: "对应 docs/roadmap.md 中的 #NN"
+      description: "对应 docs/00-roadmap.md 中的 #NN"
       placeholder: "#45"
     validations:
       required: true

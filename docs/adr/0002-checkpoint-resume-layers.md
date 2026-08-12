@@ -90,4 +90,4 @@ POST /internal/orchestrator/executions/{execution_id}/resume
 - `apps/gateway/agent/long_run_routes.py` — resume 路由
 - `packages/agent/execution_handle.py` — 三层只读聚合
 - `apps/gateway/agent/execution_handle_routes.py` — `GET /v1/agent/execution-status`
-- `docs/architecture-deepening-todo.md` §5
+- `docs/90-architecture-deepening-todo.md` §5

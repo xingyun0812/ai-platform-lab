@@ -1,15 +1,15 @@
 # ai-platform-lab
 
-最小 **AI 中台** 实验仓库（与 [《AI中台学习执行手册》](docs/AI中台学习执行手册.md) 配套）。当前完成 **Phase A～R**：模型网关、RAG（含增量与图文）、Agent（Planner/CoT/Multi-Agent/Harness）、观测评测、硬化、Prompt、MCP、Embedding、HITL、安全合规、SDK/PyPI、Console V2、生产 Helm、架构加深 10/10 等。
+最小 **AI 中台** 实验仓库（与 [《AI中台学习执行手册》](docs/90-ai-learning-handbook.md) 配套）。当前完成 **Phase A～R**：模型网关、RAG（含增量与图文）、Agent（Planner/CoT/Multi-Agent/Harness）、观测评测、硬化、Prompt、MCP、Embedding、HITL、安全合规、SDK/PyPI、Console V2、生产 Helm、架构加深 10/10 等。
 
 > 📊 **当前状态**：Phase A～R ✅ · 架构加深 #1～#10 ✅（tag `arch-platform-186-phase10-complete`）· Phase tags：`phase-r-agent-harness`、`phase-q-advanced-planning`、`phase-o-agent-jd2`  
-> 📋 **完整状态报告**：[docs/PROJECT_STATUS.md](docs/PROJECT_STATUS.md) · **Live 手验**：[docs/demo-walkthrough.md](docs/demo-walkthrough.md)
+> 📋 **完整状态报告**：[docs/00-PROJECT_STATUS.md](docs/00-PROJECT_STATUS.md) · **Live 手验**：[docs/90-demo-walkthrough.md](docs/90-demo-walkthrough.md)
 
 ## 15 分钟快速跑通
 
 ```bash
 cd /Users/zhangyue/IdeaProjects/ai-platform-lab
-cp .env.example .env          # 填 LLM_BASE_URL + LLM_API_KEY，见 docs/local-llm-setup.md
+cp .env.example .env          # 填 LLM_BASE_URL + LLM_API_KEY，见 docs/01-local-llm-setup.md
 docker compose up -d --build  # postgres + redis + gateway :8000 + worker + qdrant
 curl -s http://127.0.0.1:8000/healthz
 ```
@@ -33,7 +33,7 @@ curl -s http://127.0.0.1:8000/v1/rag/query \
 python eval/run.py run
 ```
 
-平台叙事：[docs/architecture.md](docs/architecture.md) · 路线图与缺口：[docs/roadmap.md](docs/roadmap.md) · Phase A 起点：[docs/phase-a-internal-beta.md](docs/phase-a-internal-beta.md)
+平台叙事：[docs/00-architecture.md](docs/00-architecture.md) · 路线图与缺口：[docs/00-roadmap.md](docs/00-roadmap.md) · Phase A 起点：[docs/02-phase-a-internal-beta.md](docs/02-phase-a-internal-beta.md)
 
 ---
 
@@ -43,7 +43,7 @@ python eval/run.py run
 
 - **认领 Issue** → [Issues 待办](https://github.com/xingyun0812/ai-platform-lab/issues)
 - **提 PR 前必读** → [CONTRIBUTING.md](CONTRIBUTING.md)（分支命名 / commit 规范 / 测试要求）
-- **待创建 Issue 清单** → [docs/issues-backlog.md](docs/issues-backlog.md)（#45-#52）
+- **待创建 Issue 清单** → [docs/99-issues-backlog.md](docs/99-issues-backlog.md)（#45-#52）
 - **讨论/提问** → [Discussions](https://github.com/xingyun0812/ai-platform-lab/discussions)
 
 ---
@@ -107,15 +107,15 @@ curl -s http://127.0.0.1:8000/v1/chat/completions \
 
 ## RAG 管道（第 2 周）
 
-详见 [docs/week2-rag-pipeline.md](docs/week2-rag-pipeline.md)。Compose 已含 Qdrant，无需单独 `--profile vectors`。
+详见 [docs/01-week2-rag-pipeline.md](docs/01-week2-rag-pipeline.md)。Compose 已含 Qdrant，无需单独 `--profile vectors`。
 
 ## RAG 问答（第 3 周）
 
-详见 [docs/week3-rag-query.md](docs/week3-rag-query.md)。评测用例 [eval/baseline.jsonl](eval/baseline.jsonl)。
+详见 [docs/01-week3-rag-query.md](docs/01-week3-rag-query.md)。评测用例 [eval/baseline.jsonl](eval/baseline.jsonl)。
 
 ## Agent 运行时（第 4 周）
 
-详见 [docs/week4-agent-runtime.md](docs/week4-agent-runtime.md)。
+详见 [docs/01-week4-agent-runtime.md](docs/01-week4-agent-runtime.md)。
 
 ## 观测与评测（第 5 周）
 
@@ -126,7 +126,7 @@ python eval/run.py compare eval/runs/run_a.json eval/runs/run_b.json
 python eval/load_smoke.py --concurrency 50
 ```
 
-详见 [docs/week5-observability-eval.md](docs/week5-observability-eval.md)。
+详见 [docs/01-week5-observability-eval.md](docs/01-week5-observability-eval.md)。
 
 ## 硬化与平台叙事（第 6 周）
 
@@ -134,7 +134,7 @@ python eval/load_smoke.py --concurrency 50
 - **限流**：租户令牌桶 → `RATE_LIMIT_EXCEEDED`
 - **Compose**：`docker compose up -d --build`
 
-详见 [docs/week6-hardening.md](docs/week6-hardening.md)。
+详见 [docs/01-week6-hardening.md](docs/01-week6-hardening.md)。
 
 ## Phase A — 可内测
 
@@ -150,7 +150,7 @@ python eval/agent_run.py validate-baseline
 python eval/acceptance_smoke.py
 ```
 
-详见 [docs/phase-a-internal-beta.md](docs/phase-a-internal-beta.md)。
+详见 [docs/02-phase-a-internal-beta.md](docs/02-phase-a-internal-beta.md)。
 
 ## Phase B1 — Token 计量与预算
 
@@ -165,7 +165,7 @@ curl -s "http://127.0.0.1:8000/internal/billing/usage?hours=24" \
   -H "Authorization: Bearer sk-tenant-admin-change-me"
 ```
 
-详见 [docs/phase-b-small-production.md](docs/phase-b-small-production.md)。
+详见 [docs/02-phase-b-small-production.md](docs/02-phase-b-small-production.md)。
 
 ## Phase B2 — 密钥 / 混合检索 / 可观测（并行）
 
@@ -178,7 +178,7 @@ docker compose --profile vault up -d          # 可选 Vault :8200
 docker compose --profile observability up -d  # 可选可观测栈
 ```
 
-详见 [docs/phase-b2-parallel.md](docs/phase-b2-parallel.md)。
+详见 [docs/02-phase-b2-parallel.md](docs/02-phase-b2-parallel.md)。
 
 ## Phase B3 — rerank + kb 金丝雀
 
@@ -190,7 +190,7 @@ docker compose --profile observability up -d  # 可选可观测栈
 python eval/canary_stats.py --samples 1000   # 命中率模拟
 ```
 
-详见 [docs/phase-b3-rerank-canary.md](docs/phase-b3-rerank-canary.md)。
+详见 [docs/02-phase-b3-rerank-canary.md](docs/02-phase-b3-rerank-canary.md)。
 
 ## Phase C — 平台化
 
@@ -199,7 +199,7 @@ python eval/canary_stats.py --samples 1000   # 命中率模拟
 - **租户 API**：`GET /internal/tenants/{id}/profile`，`PATCH .../limits`
 - **工具市场**：申请 → admin 审批 → `data/tenant_overrides.json`
 
-详见 [docs/phase-c-platform.md](docs/phase-c-platform.md)。
+详见 [docs/02-phase-c-platform.md](docs/02-phase-c-platform.md)。
 
 ## Phase D — 运维 / 治理 / 控制台
 
@@ -208,7 +208,7 @@ python eval/canary_stats.py --samples 1000   # 命中率模拟
 - **控制台**：http://127.0.0.1:8000/console/
 - **账单**：`GET /internal/billing/invoice?month=YYYY-MM`
 
-详见 [docs/phase-d-ops.md](docs/phase-d-ops.md)。远期见 [phase-d-future-evolution.md](docs/phase-d-future-evolution.md)。
+详见 [docs/02-phase-d-01-ops.md](docs/02-phase-d-01-ops.md)。远期见 [phase-d-future-evolution.md](docs/02-phase-d-99-future-evolution.md)。
 
 ## Phase E — Agent 效果深化
 
@@ -223,7 +223,7 @@ python eval/agent_run.py validate-baseline
 python eval/agent_run.py run --min-pass-rate 0.8   # 需 LLM_API_KEY
 ```
 
-详见 [docs/phase-e-agent-quality.md](docs/phase-e-agent-quality.md)。大厂 SOP 对照见 [enterprise-ai-platform-sop.md](docs/enterprise-ai-platform-sop.md)。
+详见 [docs/02-phase-e-agent-quality.md](docs/02-phase-e-agent-quality.md)。大厂 SOP 对照见 [enterprise-ai-platform-sop.md](docs/02-phase-e-sop.md)。
 
 ## Phase G — 语义缓存（#34）
 
@@ -242,7 +242,7 @@ python3 tests/test_semantic_cache.py
 curl -s http://127.0.0.1:8000/metrics | grep semantic_cache
 ```
 
-详见 [docs/phase-g-semantic-cache.md](docs/phase-g-semantic-cache.md)。Gap 分析与 Roadmap 见 [docs/gap-analysis-diagram.md](docs/gap-analysis-diagram.md) 与 [docs/roadmap-gantt.md](docs/roadmap-gantt.md)。
+详见 [docs/02-phase-g-01-semantic-cache.md](docs/02-phase-g-01-semantic-cache.md)。Gap 分析与 Roadmap 见 [docs/90-gap-analysis-diagram.md](docs/90-gap-analysis-diagram.md) 与 [docs/00-roadmap-gantt.md](docs/00-roadmap-gantt.md)。
 
 ## Phase F — Prompt 版本化（#29）
 
@@ -252,7 +252,7 @@ curl -s http://127.0.0.1:8000/metrics | grep semantic_cache
 - **REST API**：`GET/POST /internal/prompts/*` 创建版本、切换 active、渲染预览
 - **向后兼容**：prompt_id 不在 registry 时自动回退 legacy txt
 
-详见 [docs/phase-f-prompt-registry.md](docs/phase-f-prompt-registry.md)。
+详见 [docs/02-phase-f-01-prompt-registry.md](docs/02-phase-f-01-prompt-registry.md)。
 
 ## Phase F — Prompt A/B 实验（#30）
 
@@ -262,7 +262,7 @@ curl -s http://127.0.0.1:8000/metrics | grep semantic_cache
 - **手动 promote**：admin 显式提升 winner 为 active（不自动切换，防误判）
 - **REST API**：`POST /internal/prompts/{id}/experiments/*`
 
-详见 [docs/phase-f-prompt-experiment.md](docs/phase-f-prompt-experiment.md)。
+详见 [docs/02-phase-f-02-prompt-experiment.md](docs/02-phase-f-02-prompt-experiment.md)。
 
 ## Phase F — 长记忆持久化（#31）
 
@@ -272,7 +272,7 @@ curl -s http://127.0.0.1:8000/metrics | grep semantic_cache
 - **检索**：keyword 模糊匹配（默认）/ semantic embedding（可选）
 - **REST API**：`POST/GET/DELETE /internal/memory/*`
 
-详见 [docs/phase-f-memory.md](docs/phase-f-memory.md)。
+详见 [docs/02-phase-f-03-memory.md](docs/02-phase-f-03-memory.md)。
 
 ## Phase F — 上下文压缩（#33）
 
@@ -281,7 +281,7 @@ curl -s http://127.0.0.1:8000/metrics | grep semantic_cache
 - **Token 感知注入**：检索 session 长记忆，按剩余 budget 动态注入 system prompt
 - **降级链**：LLM 失败 → stub → 完全关闭
 
-详见 [docs/phase-f-context-compress.md](docs/phase-f-context-compress.md)。
+详见 [docs/02-phase-f-05-context-compress.md](docs/02-phase-f-05-context-compress.md)。
 
 ## Phase F — MCP 真实集成（#32）
 
@@ -291,7 +291,7 @@ curl -s http://127.0.0.1:8000/metrics | grep semantic_cache
 - **失败降级**：单 server 失败不影响其他；全部失败回退 `mcp_stub.py`
 - **REST API**：`POST/GET/DELETE /internal/mcp/servers/*`
 
-详见 [docs/phase-f-mcp.md](docs/phase-f-mcp.md)。
+详见 [docs/02-phase-f-04-mcp.md](docs/02-phase-f-04-mcp.md)。
 
 ## Phase H — 控制流编排引擎（#37）
 
@@ -302,7 +302,7 @@ curl -s http://127.0.0.1:8000/metrics | grep semantic_cache
 - **安全限制**：max_steps + timeout + max_parallel 防死循环
 - **REST API**：`POST/GET/DELETE /internal/orchestrator/workflows/*`
 
-详见 [docs/phase-h-orchestrator.md](docs/phase-h-orchestrator.md)。
+详见 [docs/02-phase-h-01-orchestrator.md](docs/02-phase-h-01-orchestrator.md)。
 
 ## Phase H — Multi-Agent 协作框架（#38）
 
@@ -326,7 +326,7 @@ curl -s -X POST http://127.0.0.1:8000/internal/agents/rag_specialist/delegate \
   -H "Content-Type: application/json" -d '{"task":"检索 RAG 资料"}'
 ```
 
-详见 [docs/phase-h-multi-agent.md](docs/phase-h-multi-agent.md)。
+详见 [docs/02-phase-h-02-multi-agent.md](docs/02-phase-h-02-multi-agent.md)。
 
 ## Phase H — Agent 生命周期管理（#39）
 
@@ -336,7 +336,7 @@ curl -s -X POST http://127.0.0.1:8000/internal/agents/rag_specialist/delegate \
 - **流量分割**：canary 模式按百分比分流
 - **REST API**：`POST /internal/agent-lifecycle/{agent_id}/versions` + `/activate` + `/rollback`
 
-详见 [docs/phase-h-agent-lifecycle.md](docs/phase-h-agent-lifecycle.md)。
+详见 [docs/02-phase-h-03-agent-lifecycle.md](docs/02-phase-h-03-agent-lifecycle.md)。
 
 ## Phase H — HITL 完整工作流（#40）
 
@@ -347,7 +347,7 @@ curl -s -X POST http://127.0.0.1:8000/internal/agents/rag_specialist/delegate \
 - **REST API**：`POST /internal/hitl/approvals` + `/approve` + `/reject` + `/cancel`
 - **向后兼容**：`packages/agent/hitl.py` 委托到新 service
 
-详见 [docs/phase-h-hitl.md](docs/phase-h-hitl.md)。
+详见 [docs/02-phase-h-04-hitl.md](docs/02-phase-h-04-hitl.md)。
 
 ## Phase G — Embedding 独立服务（#35）
 
@@ -357,7 +357,7 @@ curl -s -X POST http://127.0.0.1:8000/internal/agents/rag_specialist/delegate \
 - **REST API**：`POST /internal/embeddings/embed` + 模型 CRUD + 缓存管理
 - **独立部署**：可从 RAG 管道解耦，独立扩缩容
 
-详见 [docs/phase-g-embedding.md](docs/phase-g-embedding.md)。
+详见 [docs/02-phase-g-02-embedding.md](docs/02-phase-g-02-embedding.md)。
 
 ## Phase I — 沙箱容器隔离（#41）
 
@@ -367,7 +367,7 @@ curl -s -X POST http://127.0.0.1:8000/internal/agents/rag_specialist/delegate \
 - **REST API**：`POST /internal/sandbox/execute` + 档案 CRUD
 - **默认关闭**：`SANDBOX_ENABLED=false`
 
-详见 [docs/phase-i-sandbox.md](docs/phase-i-sandbox.md)。
+详见 [docs/02-phase-i-01-sandbox.md](docs/02-phase-i-01-sandbox.md)。
 
 ## Phase I — 动作分级审计（#42）
 
@@ -377,7 +377,7 @@ curl -s -X POST http://127.0.0.1:8000/internal/agents/rag_specialist/delegate \
 - **审计日志**：每次工具调用记录 action_level + 状态
 - **REST API**：`POST /internal/audit-actions/classify` + 审计动作查询
 
-详见 [docs/phase-i-audit-actions.md](docs/phase-i-audit-actions.md)。
+详见 [docs/02-phase-i-02-audit-actions.md](docs/02-phase-i-02-audit-actions.md)。
 
 ## Phase I — PII 脱敏 + 内容安全（#43）
 
@@ -387,7 +387,7 @@ curl -s -X POST http://127.0.0.1:8000/internal/agents/rag_specialist/delegate \
 - **完整管道**：detect + redact + safety 一站式
 - **REST API**：`POST /internal/pii/process` + 模式/策略 CRUD
 
-详见 [docs/phase-i-pii.md](docs/phase-i-pii.md)。
+详见 [docs/02-phase-i-03-pii.md](docs/02-phase-i-03-pii.md)。
 
 ## Phase I — OAuth2 / mTLS（#44）
 
@@ -397,7 +397,7 @@ curl -s -X POST http://127.0.0.1:8000/internal/agents/rag_specialist/delegate \
 - **opt-in 设计**：默认关闭，保持现有 JWT HS256 鉴权
 - **REST API**：`GET /internal/auth/oauth2/authorize` + callback + userinfo
 
-详见 [docs/phase-i-auth.md](docs/phase-i-auth.md)。
+详见 [docs/02-phase-i-04-auth.md](docs/02-phase-i-04-auth.md)。
 
 ## Phase J — Python SDK（#29）
 
@@ -405,7 +405,7 @@ curl -s -X POST http://127.0.0.1:8000/internal/agents/rag_specialist/delegate \
 - **6 个资源类**：chat / rag / agent / embedding / memory / orchestrator
 - **同步 + 异步**：`Client` + `AsyncClient`
 - **类型注解完整**：py.typed marker
-- **独立包**：`pip install ai-platform-lab`（PyPI，见 [phase-n-pypi-sdk.md](docs/phase-n-pypi-sdk.md)）或开发态 `pip install -e sdk/python`
+- **独立包**：`pip install ai-platform-lab`（PyPI，见 [phase-n-pypi-sdk.md](docs/02-phase-n-pypi-sdk.md)）或开发态 `pip install -e sdk/python`
 
 ```python
 from ai_platform_lab import Client
@@ -413,7 +413,7 @@ c = Client("http://localhost:8000", api_key="sk-...")
 r = c.chat.completions.create(model="gpt-4o-mini", messages=[{"role":"user","content":"hi"}])
 ```
 
-详见 [docs/phase-j-python-sdk.md](docs/phase-j-python-sdk.md)。
+详见 [docs/02-phase-j-01-python-sdk.md](docs/02-phase-j-01-python-sdk.md)。
 
 ## Phase J — Console V2（#30）
 
@@ -423,7 +423,7 @@ r = c.chat.completions.create(model="gpt-4o-mini", messages=[{"role":"user","con
 - **JWT 登录**：token 存 localStorage
 - **构建产物**：`apps/console/static/`，由 FastAPI 托管
 
-详见 [docs/phase-j-console-v2.md](docs/phase-j-console-v2.md)。
+详见 [docs/02-phase-j-02-console-v2.md](docs/02-phase-j-02-console-v2.md)。
 
 ## Phase J — 评测 Pipeline（#31）
 
@@ -433,7 +433,7 @@ r = c.chat.completions.create(model="gpt-4o-mini", messages=[{"role":"user","con
 - **无 LLM 降级**：无 `EVAL_API_KEY` 时跳过 live 用例
 - **CLI**：`python eval/run.py run-eval` + `gate`
 
-详见 [docs/phase-j-eval-pipeline.md](docs/phase-j-eval-pipeline.md)。
+详见 [docs/02-phase-j-03-eval-pipeline.md](docs/02-phase-j-03-eval-pipeline.md)。
 
 ## Phase J — 反馈飞轮（#32）
 
@@ -445,7 +445,7 @@ r = c.chat.completions.create(model="gpt-4o-mini", messages=[{"role":"user","con
 - **A/B 实验自动创建**：`FEEDBACK_LOOP_AUTO_EXPERIMENT=true` 时启用
 - **REST API**：`/internal/feedback` + `/internal/quality` + `/internal/feedback-loop`
 
-详见 [docs/phase-j-feedback-loop.md](docs/phase-j-feedback-loop.md)。
+详见 [docs/02-phase-j-04-feedback-loop.md](docs/02-phase-j-04-feedback-loop.md)。
 
 ## Phase K — 对象存储接入（#33）
 
@@ -455,7 +455,7 @@ r = c.chat.completions.create(model="gpt-4o-mini", messages=[{"role":"user","con
 - **REST API**：`POST /internal/storage/upload` + 下载 + 列表
 - **配置切换**：`STORAGE_BACKEND=local|s3|oss`
 
-详见 [docs/phase-k-object-storage.md](docs/phase-k-object-storage.md)。
+详见 [docs/02-phase-k-object-storage.md](docs/02-phase-k-object-storage.md)。
 
 ## Phase K — K8s Helm Chart（#34）
 
@@ -465,7 +465,7 @@ r = c.chat.completions.create(model="gpt-4o-mini", messages=[{"role":"user","con
 - **Ingress + TLS**：可选 cert-manager
 - **生产配置**：`values-prod.yaml`（3 replicas + 50Gi + 外部 DB）
 
-详见 [docs/phase-k-helm.md](docs/phase-k-helm.md)。
+详见 [docs/02-phase-k-helm.md](docs/02-phase-k-helm.md)。
 
 ## Phase K — 多 AZ 高可用（#35）
 
@@ -476,7 +476,7 @@ r = c.chat.completions.create(model="gpt-4o-mini", messages=[{"role":"user","con
 - **PDB + NetworkPolicy**：自愿中断保护 + 网络隔离
 - **Chaos 测试**：`deploy/k8s/chaos-test.yaml`（ChaosMesh 杀单 AZ 验证）
 
-详见 [docs/phase-k-multi-az.md](docs/phase-k-multi-az.md)。
+详见 [docs/02-phase-k-multi-az.md](docs/02-phase-k-multi-az.md)。
 
 ## Phase K — GPU 弹性调度（#36）
 
@@ -487,47 +487,47 @@ r = c.chat.completions.create(model="gpt-4o-mini", messages=[{"role":"user","con
 - **成本看板**：Grafana JSON（GPU 小时费 + 节省率）
 - **Dev/Prod 分层**：T4（便宜）+ A100（生产）
 
-详见 [docs/phase-k-gpu-scheduling.md](docs/phase-k-gpu-scheduling.md)。
+详见 [docs/02-phase-k-gpu-scheduling.md](docs/02-phase-k-gpu-scheduling.md)。
 
 ## 文档与代码导读
 
 | 周次 | 接口 / 演示 | 构建思路与代码导读 |
 |------|-------------|-------------------|
-| 全路线 | [AI中台学习执行手册](docs/AI中台学习执行手册.md) | — |
-| 架构 | [architecture.md](docs/architecture.md) | [roadmap.md](docs/roadmap.md) |
-| Gap 分析 | [gap-analysis-diagram.md](docs/gap-analysis-diagram.md) | [roadmap-gantt.md](docs/roadmap-gantt.md) |
-| Phase L 工程深度 | [phase-l-engineering-depth.md](docs/phase-l-engineering-depth.md) | [phase-l-priority-roi.md](docs/phase-l-priority-roi.md) |
-| Phase L Console ✅ | [phase-l-console-integration.md](docs/phase-l-console-integration.md) | [demo-walkthrough.md](docs/demo-walkthrough.md) |
-| Phase L Wave1 ✅ | [interview-narrative.md](docs/interview-narrative.md) | `./eval/platform_demo.sh` · `eval/sdk_smoke.py` |
-| 本地 LLM 联调 | [local-llm-setup.md](docs/local-llm-setup.md) | [config/upstream_models.yaml](config/upstream_models.yaml) |
-| Phase L Issues | [issues-backlog-phase-l.md](docs/issues-backlog-phase-l.md) | — |
-| Phase M 增量索引 ✅ | [phase-m-incremental-index.md](docs/phase-m-incremental-index.md) | [issues-backlog-phase-m.md](docs/issues-backlog-phase-m.md) |
-| Phase N PyPI SDK ✅ | [phase-n-pypi-sdk.md](docs/phase-n-pypi-sdk.md) | `eval/sdk_pypi_smoke.sh` · `.github/workflows/publish-sdk.yml` |
-| Phase O Agent JD2 ✅ | [phase-o-agent-jd2-alignment.md](docs/phase-o-agent-jd2-alignment.md) | [issues-backlog-phase-o.md](docs/issues-backlog-phase-o.md) |
-| Phase P 多模态 Embedding ✅ | [phase-p-multimodal-embedding.md](docs/phase-p-multimodal-embedding.md) | `eval/multimodal_embedding_gate.py` |
-| Phase Q 任务规划前沿 ✅ | [phase-q-advanced-planning.md](docs/phase-q-advanced-planning.md) | `eval/agent_jd2_gate.py` · `eval/plan_quality_gate.py` |
-| Phase R Agent Harness ✅ | [phase-r-agent-harness.md](docs/phase-r-agent-harness.md) | [issues-backlog-phase-r.md](docs/issues-backlog-phase-r.md) · `eval/harness_capability_gate.py` |
-| 架构加深 #1～#10 ✅ | [architecture-deepening-todo.md](docs/architecture-deepening-todo.md) | [adr/README.md](docs/adr/README.md) · Issues [#156](https://github.com/xingyun0812/ai-platform-lab/issues/156)～[#186](https://github.com/xingyun0812/ai-platform-lab/issues/186) |
-| Phase A 可内测 | [phase-a-internal-beta.md](docs/phase-a-internal-beta.md) | [phase-a-build-and-code-guide.md](docs/phase-a-build-and-code-guide.md) |
-| Phase B1 计费 | [phase-b-small-production.md](docs/phase-b-small-production.md) | [phase-b-build-and-code-guide.md](docs/phase-b-build-and-code-guide.md) |
-| Phase B2 并行 | [phase-b2-parallel.md](docs/phase-b2-parallel.md) | [phase-b-build-and-code-guide.md](docs/phase-b-build-and-code-guide.md) |
-| Phase B3 rerank | [phase-b3-rerank-canary.md](docs/phase-b3-rerank-canary.md) | [phase-b-build-and-code-guide.md](docs/phase-b-build-and-code-guide.md) |
-| Phase C 平台化 | [phase-c-platform.md](docs/phase-c-platform.md) | [phase-c-build-and-code-guide.md](docs/phase-c-build-and-code-guide.md) |
-| Phase D 运维 | [phase-d-ops.md](docs/phase-d-ops.md) | [phase-d-build-and-code-guide.md](docs/phase-d-build-and-code-guide.md) · [phase-d-future-evolution.md](docs/phase-d-future-evolution.md) |
-| Phase E Agent 效果 | [phase-e-agent-quality.md](docs/phase-e-agent-quality.md) | [phase-e-build-and-code-guide.md](docs/phase-e-build-and-code-guide.md) · [enterprise-ai-platform-sop.md](docs/enterprise-ai-platform-sop.md) |
-| Phase F 能力中台 | [phase-f-prompt-registry.md](docs/phase-f-prompt-registry.md) 等 | [phase-f-build-and-code-guide.md](docs/phase-f-build-and-code-guide.md) |
-| Phase G 模型服务 | [phase-g-semantic-cache.md](docs/phase-g-semantic-cache.md) | [phase-g-build-and-code-guide.md](docs/phase-g-build-and-code-guide.md) |
-| Phase H Agent 高阶 | [phase-h-orchestrator.md](docs/phase-h-orchestrator.md) 等 | [phase-h-build-and-code-guide.md](docs/phase-h-build-and-code-guide.md) |
-| Phase I 安全合规 | [phase-i-sandbox.md](docs/phase-i-sandbox.md) 等 | [phase-i-build-and-code-guide.md](docs/phase-i-build-and-code-guide.md) |
-| Phase J 开发者体验 | [phase-j-python-sdk.md](docs/phase-j-python-sdk.md) 等 | [phase-j-build-and-code-guide.md](docs/phase-j-build-and-code-guide.md) |
-| Phase K 生产基础设施 | [phase-k-helm.md](docs/phase-k-helm.md) 等 | [phase-k-build-and-code-guide.md](docs/phase-k-build-and-code-guide.md) |
-| 大厂 SOP 对照 | [enterprise-ai-platform-sop.md](docs/enterprise-ai-platform-sop.md) | 按周次/Phase 的踩坑与 SOP |
-| 第 1 周 Gateway | [week1-gateway.md](docs/week1-gateway.md) | [gateway-build-and-code-guide.md](docs/gateway-build-and-code-guide.md) |
-| 第 2 周 RAG 管道 | [week2-rag-pipeline.md](docs/week2-rag-pipeline.md) | [rag-build-and-code-guide.md](docs/rag-build-and-code-guide.md) |
-| 第 3 周 RAG 问答 | [week3-rag-query.md](docs/week3-rag-query.md) | [rag-query-build-and-code-guide.md](docs/rag-query-build-and-code-guide.md) |
-| 第 4 周 Agent | [week4-agent-runtime.md](docs/week4-agent-runtime.md) | [agent-build-and-code-guide.md](docs/agent-build-and-code-guide.md) |
-| 第 5 周 观测/评测 | [week5-observability-eval.md](docs/week5-observability-eval.md) | [observability-eval-build-and-code-guide.md](docs/observability-eval-build-and-code-guide.md) |
-| 第 6 周 硬化 | [week6-hardening.md](docs/week6-hardening.md) | [hardening-build-and-code-guide.md](docs/hardening-build-and-code-guide.md) |
+| 全路线 | [AI中台学习执行手册](docs/90-ai-learning-handbook.md) | — |
+| 架构 | [architecture.md](docs/00-architecture.md) | [roadmap.md](docs/00-roadmap.md) |
+| Gap 分析 | [gap-analysis-diagram.md](docs/90-gap-analysis-diagram.md) | [roadmap-gantt.md](docs/00-roadmap-gantt.md) |
+| Phase L 工程深度 | [phase-l-engineering-depth.md](docs/02-phase-l-00-engineering-depth.md) | [phase-l-priority-roi.md](docs/02-phase-l-01-priority-roi.md) |
+| Phase L Console ✅ | [phase-l-console-integration.md](docs/02-phase-l-31-console-integration.md) | [demo-walkthrough.md](docs/90-demo-walkthrough.md) |
+| Phase L Wave1 ✅ | [interview-narrative.md](docs/90-interview-narrative.md) | `./eval/platform_demo.sh` · `eval/sdk_smoke.py` |
+| 本地 LLM 联调 | [local-llm-setup.md](docs/01-local-llm-setup.md) | [config/upstream_models.yaml](config/upstream_models.yaml) |
+| Phase L Issues | [issues-backlog-phase-l.md](docs/99-issues-backlog-phase-l.md) | — |
+| Phase M 增量索引 ✅ | [phase-m-incremental-index.md](docs/02-phase-m-incremental-index.md) | [issues-backlog-phase-m.md](docs/99-issues-backlog-phase-m.md) |
+| Phase N PyPI SDK ✅ | [phase-n-pypi-sdk.md](docs/02-phase-n-pypi-sdk.md) | `eval/sdk_pypi_smoke.sh` · `.github/workflows/publish-sdk.yml` |
+| Phase O Agent JD2 ✅ | [phase-o-agent-jd2-alignment.md](docs/02-phase-o-00-agent-jd2-alignment.md) | [issues-backlog-phase-o.md](docs/99-issues-backlog-phase-o.md) |
+| Phase P 多模态 Embedding ✅ | [phase-p-multimodal-embedding.md](docs/02-phase-p-multimodal-embedding.md) | `eval/multimodal_embedding_gate.py` |
+| Phase Q 任务规划前沿 ✅ | [phase-q-advanced-planning.md](docs/02-phase-q-00-advanced-planning.md) | `eval/agent_jd2_gate.py` · `eval/plan_quality_gate.py` |
+| Phase R Agent Harness ✅ | [phase-r-agent-harness.md](docs/02-phase-r-00-agent-harness.md) | [issues-backlog-phase-r.md](docs/99-issues-backlog-phase-r.md) · `eval/harness_capability_gate.py` |
+| 架构加深 #1～#10 ✅ | [architecture-deepening-todo.md](docs/90-architecture-deepening-todo.md) | [adr/README.md](docs/adr/README.md) · Issues [#156](https://github.com/xingyun0812/ai-platform-lab/issues/156)～[#186](https://github.com/xingyun0812/ai-platform-lab/issues/186) |
+| Phase A 可内测 | [phase-a-internal-beta.md](docs/02-phase-a-internal-beta.md) | [phase-a-build-and-code-guide.md](docs/02-phase-a-guide.md) |
+| Phase B1 计费 | [phase-b-small-production.md](docs/02-phase-b-small-production.md) | [phase-b-build-and-code-guide.md](docs/02-phase-b-guide.md) |
+| Phase B2 并行 | [phase-b2-parallel.md](docs/02-phase-b2-parallel.md) | [phase-b-build-and-code-guide.md](docs/02-phase-b-guide.md) |
+| Phase B3 rerank | [phase-b3-rerank-canary.md](docs/02-phase-b3-rerank-canary.md) | [phase-b-build-and-code-guide.md](docs/02-phase-b-guide.md) |
+| Phase C 平台化 | [phase-c-platform.md](docs/02-phase-c-platform.md) | [phase-c-build-and-code-guide.md](docs/02-phase-c-guide.md) |
+| Phase D 运维 | [phase-d-ops.md](docs/02-phase-d-01-ops.md) | [phase-d-build-and-code-guide.md](docs/02-phase-d-00-guide.md) · [phase-d-future-evolution.md](docs/02-phase-d-99-future-evolution.md) |
+| Phase E Agent 效果 | [phase-e-agent-quality.md](docs/02-phase-e-agent-quality.md) | [phase-e-build-and-code-guide.md](docs/02-phase-e-guide.md) · [enterprise-ai-platform-sop.md](docs/02-phase-e-sop.md) |
+| Phase F 能力中台 | [phase-f-prompt-registry.md](docs/02-phase-f-01-prompt-registry.md) 等 | [phase-f-build-and-code-guide.md](docs/02-phase-f-00-guide.md) |
+| Phase G 模型服务 | [phase-g-semantic-cache.md](docs/02-phase-g-01-semantic-cache.md) | [phase-g-build-and-code-guide.md](docs/02-phase-g-00-guide.md) |
+| Phase H Agent 高阶 | [phase-h-orchestrator.md](docs/02-phase-h-01-orchestrator.md) 等 | [phase-h-build-and-code-guide.md](docs/02-phase-h-00-guide.md) |
+| Phase I 安全合规 | [phase-i-sandbox.md](docs/02-phase-i-01-sandbox.md) 等 | [phase-i-build-and-code-guide.md](docs/02-phase-i-00-guide.md) |
+| Phase J 开发者体验 | [phase-j-python-sdk.md](docs/02-phase-j-01-python-sdk.md) 等 | [phase-j-build-and-code-guide.md](docs/02-phase-j-00-guide.md) |
+| Phase K 生产基础设施 | [phase-k-helm.md](docs/02-phase-k-helm.md) 等 | [phase-k-build-and-code-guide.md](docs/02-phase-k-00-guide.md) |
+| 大厂 SOP 对照 | [enterprise-ai-platform-sop.md](docs/02-phase-e-sop.md) | 按周次/Phase 的踩坑与 SOP |
+| 第 1 周 Gateway | [week1-gateway.md](docs/01-week1-gateway.md) | [gateway-build-and-code-guide.md](docs/01-week1-guide.md) |
+| 第 2 周 RAG 管道 | [week2-rag-pipeline.md](docs/01-week2-rag-pipeline.md) | [rag-build-and-code-guide.md](docs/01-week2-guide.md) |
+| 第 3 周 RAG 问答 | [week3-rag-query.md](docs/01-week3-rag-query.md) | [rag-query-build-and-code-guide.md](docs/01-week3-guide.md) |
+| 第 4 周 Agent | [week4-agent-runtime.md](docs/01-week4-agent-runtime.md) | [agent-build-and-code-guide.md](docs/01-week4-guide.md) |
+| 第 5 周 观测/评测 | [week5-observability-eval.md](docs/01-week5-observability-eval.md) | [observability-eval-build-and-code-guide.md](docs/01-week5-guide.md) |
+| 第 6 周 硬化 | [week6-hardening.md](docs/01-week6-hardening.md) | [hardening-build-and-code-guide.md](docs/01-week6-guide.md) |
 
 ## 周次里程碑（Git Tag）
 

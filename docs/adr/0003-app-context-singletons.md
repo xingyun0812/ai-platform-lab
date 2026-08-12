@@ -57,6 +57,6 @@ ctx.wire()
 
 ## References
 
-- `docs/architecture-deepening-todo.md` §8
+- `docs/90-architecture-deepening-todo.md` §8
 - `apps/gateway/app_context.py`
 - `apps/gateway/composition.py`
