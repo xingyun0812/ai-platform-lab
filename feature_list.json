@@ -1,7 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/xingyun0812/ai-platform-lab/main/feature_list.schema.json",
   "project": "ai-platform-lab",
-  "updated": "2026-07-08",
+  "updated": "2026-08-13",
   "activePhase": "post-delivery",
   "activeFeature": null,
   "features": [
@@ -10,7 +10,10 @@
       "name": "多租户 Gateway",
       "status": "done",
       "phase": "A",
-      "verifiedBy": ["pytest tests/", "ci.yml"],
+      "verifiedBy": [
+        "pytest tests/",
+        "ci.yml"
+      ],
       "evidence": "鉴权、日配额、trace_id"
     },
     {
@@ -18,7 +21,9 @@
       "name": "RAG 管道",
       "status": "done",
       "phase": "A",
-      "verifiedBy": ["pytest tests/"],
+      "verifiedBy": [
+        "pytest tests/"
+      ],
       "evidence": "异步索引、kb 版本、Qdrant"
     },
     {
@@ -26,7 +31,9 @@
       "name": "RAG 问答",
       "status": "done",
       "phase": "A",
-      "verifiedBy": ["pytest tests/"],
+      "verifiedBy": [
+        "pytest tests/"
+      ],
       "evidence": "min_score 拒答、citations、baseline"
     },
     {
@@ -34,7 +41,9 @@
       "name": "Agent 运行时",
       "status": "done",
       "phase": "A",
-      "verifiedBy": ["pytest tests/"],
+      "verifiedBy": [
+        "pytest tests/"
+      ],
       "evidence": "工具白名单、session、tool_trace"
     },
     {
@@ -42,7 +51,9 @@
       "name": "Token 计量与预算",
       "status": "done",
       "phase": "B1",
-      "verifiedBy": ["pytest tests/"],
+      "verifiedBy": [
+        "pytest tests/"
+      ],
       "evidence": "Postgres token 计量、租户预算、billing API"
     },
     {
@@ -50,7 +61,9 @@
       "name": "密钥/混合检索/可观测",
       "status": "done",
       "phase": "B2",
-      "verifiedBy": ["pytest tests/"],
+      "verifiedBy": [
+        "pytest tests/"
+      ],
       "evidence": "密钥 Env/Vault、RAG hybrid、OTel Collector"
     },
     {
@@ -58,7 +71,9 @@
       "name": "Rerank + kb 金丝雀",
       "status": "done",
       "phase": "B3",
-      "verifiedBy": ["pytest tests/"],
+      "verifiedBy": [
+        "pytest tests/"
+      ],
       "evidence": "RAG rerank stub、kb 版本金丝雀路由"
     },
     {
@@ -66,7 +81,9 @@
       "name": "平台化",
       "status": "done",
       "phase": "C",
-      "verifiedBy": ["pytest tests/"],
+      "verifiedBy": [
+        "pytest tests/"
+      ],
       "evidence": "供应商矩阵、Region、租户 API、工具市场"
     },
     {
@@ -74,7 +91,9 @@
       "name": "运维/治理/控制台",
       "status": "done",
       "phase": "D",
-      "verifiedBy": ["pytest tests/"],
+      "verifiedBy": [
+        "pytest tests/"
+      ],
       "evidence": "熔断/Grafana、JWT/RBAC、控制台、账单 API"
     },
     {
@@ -82,7 +101,9 @@
       "name": "Agent 效果深化",
       "status": "done",
       "phase": "E",
-      "verifiedBy": ["pytest tests/"],
+      "verifiedBy": [
+        "pytest tests/"
+      ],
       "evidence": "轨迹评测、意图路由、Session 滚动摘要、HITL stub"
     },
     {
@@ -90,7 +111,9 @@
       "name": "Prompt 版本化 + A/B 测试",
       "status": "done",
       "phase": "F",
-      "verifiedBy": ["pytest tests/"],
+      "verifiedBy": [
+        "pytest tests/"
+      ],
       "evidence": "版本表、模板渲染、灰度切换、流量分桶"
     },
     {
@@ -98,7 +121,9 @@
       "name": "长记忆持久化",
       "status": "done",
       "phase": "F",
-      "verifiedBy": ["pytest tests/"],
+      "verifiedBy": [
+        "pytest tests/"
+      ],
       "evidence": "Postgres memory 表、Redis 热缓存、summarize API"
     },
     {
@@ -106,7 +131,9 @@
       "name": "MCP 真实集成",
       "status": "done",
       "phase": "F",
-      "verifiedBy": ["pytest tests/"],
+      "verifiedBy": [
+        "pytest tests/"
+      ],
       "evidence": "stdio/HTTP 双协议、工具注册、鉴权、版本管理"
     },
     {
@@ -114,7 +141,9 @@
       "name": "上下文压缩",
       "status": "done",
       "phase": "F",
-      "verifiedBy": ["pytest tests/"],
+      "verifiedBy": [
+        "pytest tests/"
+      ],
       "evidence": "滑窗截断、LLM 摘要压缩、Token 感知注入"
     },
     {
@@ -122,7 +151,9 @@
       "name": "语义缓存",
       "status": "done",
       "phase": "G",
-      "verifiedBy": ["pytest tests/"],
+      "verifiedBy": [
+        "pytest tests/"
+      ],
       "evidence": "Gateway 层 Embedding 相似度查询、Redis 缓存、命中率 metrics"
     },
     {
@@ -130,7 +161,9 @@
       "name": "Embedding 独立服务",
       "status": "done",
       "phase": "G",
-      "verifiedBy": ["pytest tests/"],
+      "verifiedBy": [
+        "pytest tests/"
+      ],
       "evidence": "Provider 抽象、LRU 缓存"
     },
     {
@@ -138,7 +171,9 @@
       "name": "控制流编排引擎",
       "status": "done",
       "phase": "H",
-      "verifiedBy": ["pytest tests/"],
+      "verifiedBy": [
+        "pytest tests/"
+      ],
       "evidence": "DAG、条件分支、循环控制、子任务调度"
     },
     {
@@ -146,7 +181,9 @@
       "name": "Multi-Agent 协作",
       "status": "done",
       "phase": "H",
-      "verifiedBy": ["pytest tests/"],
+      "verifiedBy": [
+        "pytest tests/"
+      ],
       "evidence": "主从委托、并行工具调用、结果聚合"
     },
     {
@@ -154,7 +191,9 @@
       "name": "Agent 生命周期管理",
       "status": "done",
       "phase": "H",
-      "verifiedBy": ["pytest tests/"],
+      "verifiedBy": [
+        "pytest tests/"
+      ],
       "evidence": "版本注册、灰度发布、蓝绿切换、回滚"
     },
     {
@@ -162,7 +201,9 @@
       "name": "HITL 完整工作流",
       "status": "done",
       "phase": "H",
-      "verifiedBy": ["pytest tests/"],
+      "verifiedBy": [
+        "pytest tests/"
+      ],
       "evidence": "审批队列(DB)、Webhook 通知、超时处理"
     },
     {
@@ -170,7 +211,9 @@
       "name": "沙箱容器隔离",
       "status": "done",
       "phase": "I",
-      "verifiedBy": ["pytest tests/"],
+      "verifiedBy": [
+        "pytest tests/"
+      ],
       "evidence": "Docker seccomp profile、gVisor 可选"
     },
     {
@@ -178,7 +221,9 @@
       "name": "动作分级审计",
       "status": "done",
       "phase": "I",
-      "verifiedBy": ["pytest tests/"],
+      "verifiedBy": [
+        "pytest tests/"
+      ],
       "evidence": "read-only/write/destructive 三级、审计日志"
     },
     {
@@ -186,7 +231,9 @@
       "name": "PII 脱敏 + 内容安全",
       "status": "done",
       "phase": "I",
-      "verifiedBy": ["pytest tests/"],
+      "verifiedBy": [
+        "pytest tests/"
+      ],
       "evidence": "正则/模型双重检测、脱敏 API"
     },
     {
@@ -194,7 +241,9 @@
       "name": "OAuth2 / mTLS",
       "status": "done",
       "phase": "I",
-      "verifiedBy": ["pytest tests/"],
+      "verifiedBy": [
+        "pytest tests/"
+      ],
       "evidence": "OAuth2 授权码流程、mTLS 双向认证"
     },
     {
@@ -202,7 +251,9 @@
       "name": "Python SDK + PyPI 发布",
       "status": "done",
       "phase": "J",
-      "verifiedBy": ["eval/sdk_pypi_smoke.sh"],
+      "verifiedBy": [
+        "eval/sdk_pypi_smoke.sh"
+      ],
       "evidence": "OpenAI 风格 SDK、PyPI 发布管道"
     },
     {
@@ -210,7 +261,9 @@
       "name": "Console V2",
       "status": "done",
       "phase": "J",
-      "verifiedBy": ["npx vite --config console-v2/vite.config.ts"],
+      "verifiedBy": [
+        "npx vite --config console-v2/vite.config.ts"
+      ],
       "evidence": "React 管理 UI、已挂载到 /console/"
     },
     {
@@ -218,7 +271,9 @@
       "name": "评测数据集 + CI 门禁",
       "status": "done",
       "phase": "J",
-      "verifiedBy": ["python eval/run.py gate --threshold 5"],
+      "verifiedBy": [
+        "python eval/run.py gate --threshold 5"
+      ],
       "evidence": "基准数据集、CI 评测门禁"
     },
     {
@@ -226,7 +281,9 @@
       "name": "反馈飞轮",
       "status": "done",
       "phase": "J",
-      "verifiedBy": ["eval/feedback_loop_demo --live"],
+      "verifiedBy": [
+        "eval/feedback_loop_demo --live"
+      ],
       "evidence": "Bad Case 捕获、Eval、Prompt 迭代"
     },
     {
@@ -234,7 +291,9 @@
       "name": "对象存储接入",
       "status": "done",
       "phase": "K",
-      "verifiedBy": ["pytest tests/"],
+      "verifiedBy": [
+        "pytest tests/"
+      ],
       "evidence": "S3/OSS 集成、替换本地文件存储"
     },
     {
@@ -242,7 +301,9 @@
       "name": "K8s Helm Chart",
       "status": "done",
       "phase": "K",
-      "verifiedBy": ["helm lint deploy/helm/"],
+      "verifiedBy": [
+        "helm lint deploy/helm/"
+      ],
       "evidence": "Gateway/Worker/Qdrant Chart、HPA"
     },
     {
@@ -266,7 +327,9 @@
       "name": "RAG 真 Rerank",
       "status": "done",
       "phase": "L",
-      "verifiedBy": ["pytest tests/"],
+      "verifiedBy": [
+        "pytest tests/"
+      ],
       "evidence": "Rerank Provider、LLM-as-Judge"
     },
     {
@@ -274,7 +337,9 @@
       "name": "RAG 增量索引",
       "status": "done",
       "phase": "M",
-      "verifiedBy": ["pytest tests/"],
+      "verifiedBy": [
+        "pytest tests/"
+      ],
       "evidence": "向量增量、BM25 差量、purge-source"
     },
     {
@@ -282,7 +347,9 @@
       "name": "Agent JD2 对齐",
       "status": "done",
       "phase": "O",
-      "verifiedBy": ["python eval/agent_jd2_gate.py run"],
+      "verifiedBy": [
+        "python eval/agent_jd2_gate.py run"
+      ],
       "evidence": "Planner、CoT、Multi-Agent v2 黑板、工具集、数据分析 Vertical"
     },
     {
@@ -290,7 +357,9 @@
       "name": "多模态 Embedding",
       "status": "done",
       "phase": "P",
-      "verifiedBy": ["python eval/multimodal_embedding_gate.py run"],
+      "verifiedBy": [
+        "python eval/multimodal_embedding_gate.py run"
+      ],
       "evidence": "图文混合向量化、RAG 图文索引"
     },
     {
@@ -298,7 +367,9 @@
       "name": "任务规划前沿对齐",
       "status": "done",
       "phase": "Q",
-      "verifiedBy": ["python eval/plan_quality_gate.py run"],
+      "verifiedBy": [
+        "python eval/plan_quality_gate.py run"
+      ],
       "evidence": "Structured Plan、DAG 并行、重规划、Plan HITL"
     },
     {
@@ -306,7 +377,9 @@
       "name": "Agent Harness 前沿",
       "status": "done",
       "phase": "R",
-      "verifiedBy": ["python eval/harness_capability_gate.py run"],
+      "verifiedBy": [
+        "python eval/harness_capability_gate.py run"
+      ],
       "evidence": "自进化 Agent、跨 session 长程任务、模型能力探测"
     },
     {
@@ -314,8 +387,42 @@
       "name": "Self-Refine 自我修正推理",
       "status": "done",
       "phase": "W",
-      "verifiedBy": ["python eval/self_refine_quality_gate.py run", "python -m pytest tests/test_self_refine.py -q"],
+      "verifiedBy": [
+        "python eval/self_refine_quality_gate.py run",
+        "python -m pytest tests/test_self_refine.py -q"
+      ],
       "evidence": "generate/feedback/refine/convergence 循环、三路收敛策略、模型分离、max_total_llm_calls 硬上限"
+    },
+    {
+      "id": "F40",
+      "name": "Memory Governance — quality_filter",
+      "status": "done",
+      "phase": "R",
+      "verifiedBy": [
+        "tests/test_memory_quality.py"
+      ],
+      "evidence": "quality_filter L1 准入：min_content_length、has_substance、echo guard"
+    },
+    {
+      "id": "F41",
+      "name": "Memory Governance — dedup_filter",
+      "status": "done",
+      "phase": "R",
+      "verifiedBy": [
+        "tests/test_experience_dedup.py"
+      ],
+      "evidence": "dedup_filter L2 语义去重：skip/merge_lessons/store 三分支、自定义 config 透传"
+    },
+    {
+      "id": "F42",
+      "name": "Memory Governance — rerank + metrics",
+      "status": "done",
+      "phase": "R",
+      "verifiedBy": [
+        "tests/test_experience_rerank.py",
+        "tests/test_memory_governance_e2e.py"
+      ],
+      "evidence": "LLM judge rerank、缓存 TTL、fail-open、Prometheus metrics、E2E 集成"
     }
   ]
 }
