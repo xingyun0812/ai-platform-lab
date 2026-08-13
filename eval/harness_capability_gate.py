@@ -103,8 +103,8 @@ REQUIRED_PATHS: tuple[tuple[str, Path], ...] = (
     ("capability_profile", REPO_ROOT / "packages" / "agent" / "capability_profile.py"),
     ("harness_benchmark", REPO_ROOT / "eval" / "harness_capability_benchmark.py"),
     ("harness_baseline", BASELINE_PATH),
-    ("phase_r_doc", REPO_ROOT / "docs" / "phase-r-agent-harness.md"),
-    ("capability_report_sample", REPO_ROOT / "docs" / "phase-r-capability-report-sample.md"),
+    ("phase_r_doc", REPO_ROOT / "docs" / "02-phase-r-00-agent-harness.md"),
+    ("capability_report_sample", REPO_ROOT / "docs" / "02-phase-r-04-capability-report-sample.md"),
 )
 
 
