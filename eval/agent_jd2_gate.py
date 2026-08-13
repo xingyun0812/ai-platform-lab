@@ -148,7 +148,7 @@ REQUIRED_PATHS: tuple[tuple[str, Path], ...] = (
     ("sql_query", REPO_ROOT / "packages" / "agent" / "tools" / "sql_query.py"),
     ("data_analysis_workflow", REPO_ROOT / "config" / "workflows" / "data_analysis.yaml"),
     ("perf_metrics", REPO_ROOT / "packages" / "agent" / "perf_metrics.py"),
-    ("phase_o_doc", REPO_ROOT / "docs" / "phase-o-agent-jd2-alignment.md"),
+    ("phase_o_doc", REPO_ROOT / "docs" / "02-phase-o-00-agent-jd2-alignment.md"),
 )
 
 
