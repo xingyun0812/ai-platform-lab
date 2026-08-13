@@ -8,6 +8,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import os
@@ -643,12 +644,129 @@ def list_approved_strategy_patches(tenant_id: str, *, limit: int = 1) -> list[St
     return get_strategy_patch_store().list_approved(tenant_id, limit=limit)
 
 
-def format_approved_strategy_context(tenant_id: str, *, limit: int = 1) -> str:
-    """将 approved patch 格式化为 planner context 片段；失败返回空串（fail-open）。"""
+def _rerank_patches_by_goal(
+    patches: list[StrategyPatch],
+    goal: str,
+) -> list[StrategyPatch]:
+    """Filter strategy patches by relevance to current goal using rerank_experiences.
+
+    Wraps StrategyPatch objects as lightweight structures compatible with
+    rerank_experiences by building ad-hoc ExperienceRecord-like objects.
+    """
+    if not patches or not goal:
+        return patches
+
+    try:
+        from packages.agent.experience_store import ExperienceRecord
+
+        # 构造临时的 ExperienceRecord 对象用于 rerank
+        pseudo_records: list[ExperienceRecord] = []
+        for patch in patches:
+            change = patch.proposed_change or {}
+            lessons_text = (
+                f"策略建议: field={change.get('field', 'unknown')}, "
+                f"new={change.get('new', '')}, reason={change.get('reason', '')}"
+            )
+            tmp = ExperienceRecord(
+                experience_id=patch.patch_id,
+                tenant_id=patch.tenant_id,
+                task_signature="strategy_patch",
+                goal=goal,
+                plan=None,  # type: ignore[arg-type]
+                tool_calls=[],
+                outcome="success",
+                lessons=lessons_text,
+                created_at=patch.created_at,
+            )
+            pseudo_records.append(tmp)
+
+        filtered = _run_async_rerank(goal, pseudo_records)
+
+        # 映射回 StrategyPatch
+        kept_ids = {r.experience_id for r in filtered}
+        return [p for p in patches if p.patch_id in kept_ids] or patches
+    except Exception as exc:
+        logger.warning("_rerank_patches_by_goal failed, returning all patches: %s", exc)
+        return patches
+
+
+_rerank_loop: asyncio.AbstractEventLoop | None = None
+
+
+def _run_async_rerank(
+    goal: str,
+    records: list[Any],
+) -> list[Any]:
+    """Synchronous wrapper to run rerank_experiences in an event loop.
+
+    format_approved_strategy_context is a sync function called from
+    generate_plan (which is async), so we need to bridge into the async
+    rerank call. We reuse the running loop if available.
+    """
+    global _rerank_loop
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        if _rerank_loop is None or _rerank_loop.is_closed():
+            _rerank_loop = asyncio.new_event_loop()
+        loop = _rerank_loop
+
+    from packages.agent.experience_store import rerank_experiences
+
+    if loop.is_running():
+        # When called from an async context (generate_plan), create a sub-task
+        import concurrent.futures
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+            future = pool.submit(asyncio.run, rerank_experiences(goal, records, max_relevant=len(records)))
+            return future.result()
+    else:
+        return loop.run_until_complete(
+            rerank_experiences(goal, records, max_relevant=len(records))
+        )
+
+
+def format_approved_strategy_context(
+    tenant_id: str,
+    *,
+    limit: int = 1,
+    goal: str | None = None,
+    rerank_enabled: bool | None = None,
+) -> str:
+    """将 approved patch 格式化为 planner context 片段；失败返回空串（fail-open）。
+
+    Args:
+        tenant_id: 租户 ID。
+        limit: 最多获取的 patch 数量。
+        goal: 当前任务目标（可选）。传入后进行 LLM judge rerank 过滤。
+        rerank_enabled: 是否启用 rerank。None 时从 MemoryGovernanceConfig 读取。
+
+    若 goal 为 None 或 rerank 失败，返回全部 patches（fail-open）。
+    """
     try:
         patches = list_approved_strategy_patches(tenant_id, limit=limit)
         if not patches:
             return ""
+
+        # 3b: Rerank filter — prune irrelevant patches against current goal
+        if goal:
+            if rerank_enabled is None:
+                from packages.memory.config import MemoryGovernanceConfig
+
+                mg_cfg = MemoryGovernanceConfig()
+                rerank_enabled = mg_cfg.rerank_enabled
+
+            if rerank_enabled:
+                try:
+                    # 将 patches 转换为伪 ExperienceRecord 进行 rerank
+                    patches = _rerank_patches_by_goal(patches, goal)
+                except Exception as exc:
+                    logger.warning(
+                        "patch rerank failed for tenant=%s, using all patches: %s",
+                        tenant_id,
+                        exc,
+                    )
+
         lines: list[str] = []
         for patch in patches:
             change = patch.proposed_change or {}

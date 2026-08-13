@@ -121,7 +121,7 @@ def _make_plan(goal: str = "test goal") -> object:
 def _make_record(
     goal: str = "test goal",
     outcome: str = "success",
-    lessons: str = "经验 1: test lesson",
+    lessons: str = "经验 1: test lesson with enough content for quality gate",
     tenant_id: str = "t1",
 ) -> object:
     plan = _make_plan(goal)
@@ -451,7 +451,7 @@ class TestPlannerExperienceInjection(unittest.TestCase):
     def test_experience_injected_into_context(self) -> None:
         """当有成功经验时，应能检索并注入 lessons。"""
         goal = "生成财务报告"
-        r = _make_record(goal=goal, outcome="success", lessons="经验 P1: 先对账再输出")
+        r = _make_record(goal=goal, outcome="success", lessons="经验 P1: 先对账再输出。经验不足 20 字会被 quality filter 拦截")
         _run_async(_exp_mod.store_experience(r))
 
         sig = _exp_mod.compute_task_signature(goal)

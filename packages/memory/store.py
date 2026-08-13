@@ -24,9 +24,27 @@ import uuid
 from dataclasses import dataclass, field
 from typing import Any
 
+from packages.memory.config import MemoryGovernanceConfig
 from packages.memory.metrics import get_memory_metrics
 
 logger = logging.getLogger("ai_platform.memory")
+
+
+_CHINESE_RANGE = range(0x4E00, 0xA000)  # CJK Unified Ideographs
+
+
+def _has_letter(content: str) -> bool:
+    """Check if content has at least one letter (including CJK)."""
+    for ch in content:
+        if ch.isalpha():
+            return True
+        if ord(ch) in _CHINESE_RANGE:
+            return True
+        # Also check other Unicode letter categories
+        cat = ord(ch)
+        if 0x3400 <= cat < 0x4DC0:  # CJK Extension A + B
+            return True
+    return False
 
 
 @dataclass
@@ -41,6 +59,9 @@ class MemoryRecord:
     metadata: dict[str, Any] = field(default_factory=dict)
     created_at: float = field(default_factory=time.time)
     expires_at: float | None = None
+    access_count: int = 0
+    last_accessed_at: float | None = None
+    weight: float = 1.0
 
     def to_dict(self) -> dict[str, Any]:
         return _dc.asdict(self)
@@ -70,11 +91,81 @@ def _cosine_similarity(a: list[float], b: list[float]) -> float:
     return dot / ((na**0.5) * (nb**0.5))
 
 
+def _apply_weighted_score(
+    scored: list[tuple[float, MemoryRecord]],
+) -> list[tuple[float, MemoryRecord]]:
+    """Convert raw similarity scores to weighted final scores.
+
+    final_score = similarity * 0.7 + normalized_weight * 0.3
+    normalized_weight = min(1.0, weight / max_weight_in_results)
+    """
+    if not scored:
+        return scored
+    max_weight = max(r.weight for _, r in scored)
+    if max_weight <= 0:
+        max_weight = 1.0
+    result: list[tuple[float, MemoryRecord]] = []
+    for sim, r in scored:
+        norm_w = min(1.0, r.weight / max_weight)
+        final_score = sim * 0.7 + norm_w * 0.3
+        result.append((final_score, r))
+    return result
+
+
+# --------------------------------------------------------------------- #
+# Quality filter
+# --------------------------------------------------------------------- #
+
+
+def quality_filter(
+    record: MemoryRecord,
+    *,
+    config: MemoryGovernanceConfig | None = None,
+    input_message: str | None = None,
+) -> tuple[bool, str]:
+    """L1 准入过滤：拦截低质数据。
+
+    Args:
+        record: 待写入的记忆记录。
+        config: 治理配置。为 None 时使用默认配置。
+        input_message: 触发该记忆的输入消息（用于回声检测）。
+
+    Returns:
+        (pass: bool, reason: str) — (True, "") 表示放行；
+        (False, reason) 表示拦截。
+    """
+    cfg = config or MemoryGovernanceConfig()
+
+    if not cfg.quality_filter_enabled:
+        return True, ""
+
+    content = record.content or ""
+
+    # min_content_length
+    if len(content) < cfg.min_content_length:
+        return False, f"content too short ({len(content)} < {cfg.min_content_length})"
+
+    # has_substance: not just punctuation/whitespace/numbers
+    if not _has_letter(content):
+        return False, "content has no substance (only punctuation/whitespace/numbers)"
+
+    # not_duplicate_of_input: echo guard
+    if input_message is not None and content.strip() == input_message.strip():
+        return False, "content is identical to input message (echo guard)"
+
+    return True, ""
+
+
 class MemoryStore:
     """长记忆存储基类。"""
 
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        *,
+        governance_config: MemoryGovernanceConfig | None = None,
+    ) -> None:
         self._metrics = get_memory_metrics()
+        self._governance_config = governance_config or MemoryGovernanceConfig()
 
     async def add(self, record: MemoryRecord) -> str:
         raise NotImplementedError
@@ -112,15 +203,35 @@ class MemoryStore:
 # 进程内实现
 # --------------------------------------------------------------------- #
 
+
 class InMemoryMemoryStore(MemoryStore):
-    def __init__(self) -> None:
-        super().__init__()
+    def __init__(self, *, governance_config: MemoryGovernanceConfig | None = None) -> None:
+        super().__init__(governance_config=governance_config)
         self._lock = threading.RLock()
         # _records[(tenant_id, scope, scope_id)] = list[MemoryRecord]
         self._records: dict[tuple[str, str, str], list[MemoryRecord]] = {}
         self._by_id: dict[str, MemoryRecord] = {}
 
-    async def add(self, record: MemoryRecord) -> str:
+    async def add(
+        self,
+        record: MemoryRecord,
+        *,
+        input_message: str | None = None,
+        governance_config: MemoryGovernanceConfig | None = None,
+    ) -> str:
+        passed, reason = quality_filter(
+            record,
+            config=governance_config or self._governance_config,
+            input_message=input_message,
+        )
+        if not passed:
+            logger.warning(
+                "quality_filter rejected memory %s: %s",
+                record.memory_id,
+                reason,
+            )
+            self._metrics.record_quality_rejected(tenant_id=record.tenant_id, scope=record.scope)
+            return record.memory_id  # still return the id, but don't store
         with self._lock:
             key = (record.tenant_id, record.scope, record.scope_id)
             self._records.setdefault(key, []).append(record)
@@ -129,12 +240,15 @@ class InMemoryMemoryStore(MemoryStore):
         return record.memory_id
 
     async def get(self, memory_id: str) -> MemoryRecord | None:
+        """Get a memory record and auto-update access tracking."""
         with self._lock:
             r = self._by_id.get(memory_id)
             if r is None:
                 return None
             if r.is_expired():
                 return None
+            r.access_count += 1
+            r.last_accessed_at = time.time()
             return r
 
     async def search(
@@ -174,13 +288,19 @@ class InMemoryMemoryStore(MemoryStore):
                         hits = sum(1 for t in q_tokens if t in content_lower)
                         score = hits / len(q_tokens)
                 scored.append((score, r))
+        # Apply weighted scoring before sorting (semantic search only)
+        if query_embedding is not None:
+            scored = _apply_weighted_score(scored)
         scored.sort(key=lambda x: x[0], reverse=True)
         results = [r for _s, r in scored[:top_k] if _s > 0]
+        # Auto-update access tracking for matched records
+        now = _time.time()
+        for r in results:
+            r.access_count += 1
+            r.last_accessed_at = now
         latency_ms = (_time.perf_counter() - start) * 1000
         self._metrics.record_search(tenant_id=tenant_id, scope=scope)
-        self._metrics.record_search_latency(
-            tenant_id=tenant_id, scope=scope, latency_ms=latency_ms
-        )
+        self._metrics.record_search_latency(tenant_id=tenant_id, scope=scope, latency_ms=latency_ms)
         return results
 
     async def delete(self, memory_id: str) -> bool:
@@ -210,6 +330,7 @@ class InMemoryMemoryStore(MemoryStore):
 # --------------------------------------------------------------------- #
 # Postgres 实现
 # --------------------------------------------------------------------- #
+
 
 class PostgresMemoryStore(MemoryStore):
     """Postgres 持久化存储。
@@ -242,14 +363,19 @@ class PostgresMemoryStore(MemoryStore):
         embedding JSONB,
         metadata JSONB,
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-        expires_at TIMESTAMPTZ
+        expires_at TIMESTAMPTZ,
+        access_count INTEGER DEFAULT 0,
+        last_accessed_at DOUBLE PRECISION,
+        weight DOUBLE PRECISION DEFAULT 1.0
     );
     CREATE INDEX IF NOT EXISTS idx_mem_scope
         ON agent_memories (tenant_id, scope, scope_id);
     """
 
-    def __init__(self, database_url: str) -> None:
-        super().__init__()
+    def __init__(
+        self, database_url: str, *, governance_config: MemoryGovernanceConfig | None = None
+    ) -> None:
+        super().__init__(governance_config=governance_config)
         self._url = database_url
         self._init_schema()
 
@@ -295,9 +421,7 @@ class PostgresMemoryStore(MemoryStore):
         expires_at = None
         if expires_raw is not None:
             expires_at = (
-                expires_raw.timestamp()
-                if hasattr(expires_raw, "timestamp")
-                else float(expires_raw)
+                expires_raw.timestamp() if hasattr(expires_raw, "timestamp") else float(expires_raw)
             )
         return MemoryRecord(
             memory_id=str(row["memory_id"]),
@@ -310,17 +434,40 @@ class PostgresMemoryStore(MemoryStore):
             metadata=meta if isinstance(meta, dict) else {},
             created_at=created_at,
             expires_at=expires_at,
+            access_count=int(row.get("access_count", 0)),
+            last_accessed_at=row.get("last_accessed_at"),
+            weight=float(row.get("weight", 1.0)),
         )
 
-    async def add(self, record: MemoryRecord) -> str:
+    async def add(
+        self,
+        record: MemoryRecord,
+        *,
+        input_message: str | None = None,
+        governance_config: MemoryGovernanceConfig | None = None,
+    ) -> str:
+        passed, reason = quality_filter(
+            record,
+            config=governance_config or self._governance_config,
+            input_message=input_message,
+        )
+        if not passed:
+            logger.warning(
+                "quality_filter rejected memory %s: %s",
+                record.memory_id,
+                reason,
+            )
+            self._metrics.record_quality_rejected(tenant_id=record.tenant_id, scope=record.scope)
+            return record.memory_id
         try:
             with self._connect() as conn:
                 conn.execute(
                     """
                     INSERT INTO agent_memories
                         (memory_id, tenant_id, scope, scope_id, content, summary,
-                         embedding, metadata, created_at, expires_at)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                         embedding, metadata, created_at, expires_at,
+                         access_count, last_accessed_at, weight)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                     """,
                     (
                         record.memory_id,
@@ -333,6 +480,9 @@ class PostgresMemoryStore(MemoryStore):
                         json.dumps(record.metadata),
                         record.created_at,
                         record.expires_at,
+                        record.access_count,
+                        record.last_accessed_at,
+                        record.weight,
                     ),
                 )
                 conn.commit()
@@ -340,12 +490,11 @@ class PostgresMemoryStore(MemoryStore):
             return record.memory_id
         except Exception as e:
             logger.error("memory add failed: %s", e)
-            self._metrics.record_store_error(
-                tenant_id=record.tenant_id, scope=record.scope
-            )
+            self._metrics.record_store_error(tenant_id=record.tenant_id, scope=record.scope)
             raise
 
     async def get(self, memory_id: str) -> MemoryRecord | None:
+        """Get a memory record and auto-update access tracking."""
         try:
             with self._connect() as conn:
                 row = conn.execute(
@@ -357,6 +506,20 @@ class PostgresMemoryStore(MemoryStore):
             r = self._row_to_record(row)
             if r.is_expired():
                 return None
+            # Auto-update access tracking in DB
+            with self._connect() as conn:
+                conn.execute(
+                    """
+                    UPDATE agent_memories
+                    SET access_count = access_count + 1,
+                        last_accessed_at = %s
+                    WHERE memory_id = %s
+                    """,
+                    (time.time(), memory_id),
+                )
+                conn.commit()
+            r.access_count += 1
+            r.last_accessed_at = time.time()
             return r
         except Exception as e:
             logger.error("memory get failed: %s", e)
@@ -411,13 +574,36 @@ class PostgresMemoryStore(MemoryStore):
                         hits = sum(1 for t in q_tokens if t in content_lower)
                         score = hits / len(q_tokens)
                 scored.append((score, r))
+        # Apply weighted scoring before sorting (semantic search only)
+        if query_embedding is not None:
+            scored = _apply_weighted_score(scored)
         scored.sort(key=lambda x: x[0], reverse=True)
         results = [r for _s, r in scored[:top_k] if _s > 0]
+        # Auto-update access tracking for matched records
+        if results:
+            now = _time.time()
+            matched_ids = [(now, r.memory_id) for r in results]
+            try:
+                with self._connect() as conn:
+                    for ts, mid in matched_ids:
+                        conn.execute(
+                            """
+                            UPDATE agent_memories
+                            SET access_count = access_count + 1,
+                                last_accessed_at = %s
+                            WHERE memory_id = %s
+                            """,
+                            (ts, mid),
+                        )
+                    conn.commit()
+            except Exception as e:
+                logger.error("memory search access tracking failed: %s", e)
+            for r in results:
+                r.access_count += 1
+                r.last_accessed_at = now
         latency_ms = (_time.perf_counter() - start) * 1000
         self._metrics.record_search(tenant_id=tenant_id, scope=scope)
-        self._metrics.record_search_latency(
-            tenant_id=tenant_id, scope=scope, latency_ms=latency_ms
-        )
+        self._metrics.record_search_latency(tenant_id=tenant_id, scope=scope, latency_ms=latency_ms)
         return results
 
     async def delete(self, memory_id: str) -> bool:
@@ -485,9 +671,7 @@ def init_memory_store(
                 logger.info("memory store backend=postgres")
                 return _global_store
             except Exception as e:
-                logger.warning(
-                    "postgres 不可达，回退进程内 memory store: %s", e
-                )
+                logger.warning("postgres 不可达，回退进程内 memory store: %s", e)
         _global_store = InMemoryMemoryStore()
         logger.info("memory store backend=memory")
         return _global_store

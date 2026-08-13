@@ -7,6 +7,7 @@
 - backend 自动选择
 - cosine similarity 计算正确
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -43,7 +44,7 @@ def _make_plan(goal: str = "test goal") -> AgentPlan:
 def _make_record(
     goal: str = "查询销售数据",
     outcome: str = "success",
-    lessons: str = "经验 P1",
+    lessons: str = "experience lessons learned here",
     embedding: list[float] | None = None,
 ) -> ExperienceRecord:
     return build_experience_record(
@@ -109,8 +110,12 @@ class TestInMemoryEmbeddingRetrieval(unittest.TestCase):
         # query embedding [1, 0]
         # record A embedding [1, 0] → cosine 1.0（最相似）
         # record B embedding [0, 1] → cosine 0.0（不相似）
-        r_a = _make_record(goal="task A", lessons="A", embedding=[1.0, 0.0])
-        r_b = _make_record(goal="task B", lessons="B", embedding=[0.0, 1.0])
+        r_a = _make_record(
+            goal="task A", lessons="experience lessons learned A", embedding=[1.0, 0.0]
+        )
+        r_b = _make_record(
+            goal="task B", lessons="experience lessons learned B", embedding=[0.0, 1.0]
+        )
         _run_async(store.store(r_a))
         _run_async(store.store(r_b))
 
@@ -129,7 +134,7 @@ class TestInMemoryEmbeddingRetrieval(unittest.TestCase):
     def test_retrieve_similar_without_embedding_falls_back_to_hash(self) -> None:
         """无 embedding 时降级到 task_signature 精确匹配。"""
         store = InMemoryExperienceStore()
-        r = _make_record(goal="unique task", lessons="L")
+        r = _make_record(goal="unique task", lessons="unique lesson content")
         _run_async(store.store(r))
 
         sig = compute_task_signature("unique task")
@@ -140,16 +145,16 @@ class TestInMemoryEmbeddingRetrieval(unittest.TestCase):
     def test_retrieve_similar_embedding_filters_out_no_embedding_records(self) -> None:
         """有 embedding 检索时跳过无 embedding 的 record。"""
         store = InMemoryExperienceStore()
-        r_with = _make_record(goal="with emb", lessons="L1", embedding=[1.0, 0.0])
-        r_without = _make_record(goal="without emb", lessons="L2", embedding=None)
+        r_with = _make_record(goal="with emb", lessons="some lesson with emb", embedding=[1.0, 0.0])
+        r_without = _make_record(
+            goal="without emb", lessons="some lesson without emb", embedding=None
+        )
         _run_async(store.store(r_with))
         _run_async(store.store(r_without))
 
         # 用不同 signature，确保靠 embedding 而非 signature 匹配
         sig = compute_task_signature("different signature")
-        results = _run_async(
-            store.retrieve_similar(sig, task_embedding=[1.0, 0.0], top_k=5)
-        )
+        results = _run_async(store.retrieve_similar(sig, task_embedding=[1.0, 0.0], top_k=5))
         # 只应返回有 embedding 的 r_with
         ids = [r.experience_id for r in results]
         self.assertIn(r_with.experience_id, ids)
@@ -194,16 +199,18 @@ class TestPostgresExperienceStore(unittest.TestCase):
         with patch("psycopg.connect", return_value=conn):
             store = PostgresExperienceStore("postgresql://mock")
 
-        record = _make_record(goal="test", lessons="L", embedding=[1.0, 0.0])
+        record = _make_record(
+            goal="test", lessons="some detailed lessons here longer", embedding=[1.0, 0.0]
+        )
         _run_async(store.store(record))
 
         # 验证最后一次 execute 是 INSERT
         last_call = cursor.execute.call_args_list[-1]
         sql = last_call.args[0]
         self.assertIn("INSERT INTO experiences", sql)
-        # 验证参数有 10 个字段
+        # 验证参数有 13 个字段（含 governance 字段）
         params = last_call.args[1]
-        self.assertEqual(len(params), 10)
+        self.assertEqual(len(params), 13)
         self.assertEqual(params[0], record.experience_id)
         self.assertEqual(params[3], record.goal)
         self.assertEqual(params[6], record.outcome)
@@ -214,7 +221,9 @@ class TestPostgresExperienceStore(unittest.TestCase):
         with patch("psycopg.connect", return_value=conn):
             store = PostgresExperienceStore("postgresql://mock")
 
-        record = _make_record(goal="test", lessons="L", embedding=None)
+        record = _make_record(
+            goal="test", lessons="some detailed lessons here longer", embedding=None
+        )
         _run_async(store.store(record))
 
         last_call = cursor.execute.call_args_list[-1]
@@ -317,6 +326,7 @@ class TestComputeTaskEmbedding(unittest.TestCase):
 
     def test_returns_embedding_when_service_available(self) -> None:
         """service 可用时返回 embedding list。"""
+
         async def _mock_embed_one(*args, **kwargs):
             return [0.1, 0.2, 0.3]
 

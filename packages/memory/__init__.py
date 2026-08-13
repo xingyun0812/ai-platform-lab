@@ -41,6 +41,7 @@ import uuid
 from dataclasses import asdict, dataclass, field
 from typing import Any
 
+from packages.memory.config import MemoryGovernanceConfig
 from packages.memory.metrics import (
     MemoryMetrics,
     get_memory_metrics,
@@ -52,10 +53,12 @@ from packages.memory.store import (
     PostgresMemoryStore,
     get_memory_store,
     init_memory_store,
+    quality_filter,
 )
 
 __all__ = [
     "InMemoryMemoryStore",
+    "MemoryGovernanceConfig",
     "MemoryMetrics",
     "MemoryRecord",
     "MemoryStore",
@@ -63,4 +66,5 @@ __all__ = [
     "get_memory_metrics",
     "get_memory_store",
     "init_memory_store",
+    "quality_filter",
 ]

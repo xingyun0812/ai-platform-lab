@@ -39,8 +39,16 @@ async def _call_llm(
     user: str,
     model: str | None = None,
     temperature: float = 0.3,
+    *,
+    counter: list[int] | None = None,
 ) -> str:
-    """调用 LLM，返回文本响应。"""
+    """调用 LLM，返回文本响应。
+
+    Args:
+        counter: 可选计数器列表（长度为 1），每次真实 LLM 调用后自增。
+                 调用方传入 [llm_call_count] 即可通过 counter[0] 拿到最新值。
+                 注意 Python 闭包传 int 不会同步，所以用 list 包装。
+    """
     from packages.platform import forward_with_model_router
 
     payload: dict[str, Any] = {
@@ -52,6 +60,8 @@ async def _call_llm(
         "temperature": temperature,
     }
     route = await forward_with_model_router(payload)
+    if counter is not None:
+        counter[0] += 1
     if route.status != 200 or not route.body:
         return ""
     choices = route.body.get("choices") or []
@@ -64,6 +74,8 @@ async def generate(
     prompt: str,
     model: str | None,
     temperature: float,
+    *,
+    counter: list[int] | None = None,
 ) -> str:
     """初始输出生成。"""
     return await _call_llm(
@@ -71,6 +83,7 @@ async def generate(
         user=prompt,
         model=model,
         temperature=temperature,
+        counter=counter,
     )
 
 
@@ -80,6 +93,8 @@ async def feedback(
     model: str | None,
     dimension: str | None,
     temperature: float,
+    *,
+    counter: list[int] | None = None,
 ) -> tuple[str, str | None]:
     """LLM 驱动的自我反馈。
 
@@ -104,6 +119,7 @@ async def feedback(
         user=user_msg,
         model=model,
         temperature=temperature,
+        counter=counter,
     )
     return result, dimension
 
@@ -114,6 +130,8 @@ async def refine(
     feedback_text: str,
     model: str | None,
     temperature: float,
+    *,
+    counter: list[int] | None = None,
 ) -> str:
     """基于反馈修正输出。"""
     user_msg = (
@@ -127,6 +145,7 @@ async def refine(
         user=user_msg,
         model=model,
         temperature=temperature,
+        counter=counter,
     )
 
 
@@ -139,6 +158,8 @@ async def convergence_check(
     prompt: str,  # kept for future LLM-judge context
     model: str | None,
     temperature: float,
+    *,
+    counter: list[int] | None = None,
 ) -> tuple[bool, str]:
     """判断是否收敛。
 
@@ -162,6 +183,18 @@ async def convergence_check(
         return False, "unknown_strategy"
 
 
+def _cosine_similarity(a: list[float], b: list[float]) -> float:
+    """余弦相似度。"""
+    import math
+
+    dot = sum(x * y for x, y in zip(a, b, strict=True))
+    na = math.sqrt(sum(x * x for x in a))
+    nb = math.sqrt(sum(y * y for y in b))
+    if na == 0 or nb == 0:
+        return 0.0
+    return dot / (na * nb)
+
+
 async def _check_similarity(
     current: str,
     previous: str,
@@ -176,10 +209,11 @@ async def _check_similarity(
         return False, "similarity_no_previous"
 
     try:
-        from packages.agent.tools.embedding import compute_similarity
+        from packages.rag.embeddings import embed_texts
 
-        sim = await compute_similarity(current, previous)
-    except (ImportError, Exception):
+        vectors = await embed_texts([current, previous])
+        sim = _cosine_similarity(vectors[0], vectors[1])
+    except Exception:
         # Fallback: exact match
         sim = 1.0 if current.strip() == previous.strip() else 0.0
 
@@ -192,8 +226,13 @@ async def _check_llm_judged(
     latest_feedback: str,
     model: str | None,
     temperature: float,
+    *,
+    counter: list[int] | None = None,
 ) -> tuple[bool, str]:
-    """LLM 判断是否收敛。"""
+    """LLM 判断是否收敛。
+
+    Note: 当 feedback 为空时直接返回收敛，不产生 LLM 调用（_call_llm 不会被调用）。
+    """
     if not latest_feedback.strip():
         return True, "llm_judged"
 
@@ -202,6 +241,7 @@ async def _check_llm_judged(
         user=f"Latest feedback:\n{latest_feedback}",
         model=model,
         temperature=temperature,
+        counter=counter,
     )
 
     if "CONVERGED" in result.strip().upper():
@@ -229,7 +269,7 @@ async def run_self_refine(
     """
     cfg = config or SelfRefineConfig()
     start = time.time()
-    llm_call_count = 0
+    counter: list[int] = [0]
     trace: list[FeedbackRound] = []
     current_output = ""
     iteration = 0
@@ -243,8 +283,8 @@ async def run_self_refine(
             prompt=prompt,
             model=generator_model,
             temperature=cfg.temperature,
+            counter=counter,
         )
-        llm_call_count += 1
         elapsed = (time.time() - start) * 1000
         return SelfRefineResult(
             prompt=prompt,
@@ -255,7 +295,7 @@ async def run_self_refine(
             convergence_reason="disabled",
             trace=[],
             execution_time_ms=elapsed,
-            total_llm_calls=llm_call_count,
+            total_llm_calls=counter[0],
             success=True,
         )
 
@@ -265,8 +305,8 @@ async def run_self_refine(
             prompt=prompt,
             model=generator_model,
             temperature=cfg.temperature,
+            counter=counter,
         )
-        llm_call_count += 1
 
         if not current_output.strip():
             elapsed = (time.time() - start) * 1000
@@ -279,7 +319,7 @@ async def run_self_refine(
                 convergence_reason="empty_generation",
                 trace=[],
                 execution_time_ms=elapsed,
-                total_llm_calls=1,
+                total_llm_calls=counter[0],
                 error="Generator returned empty output",
                 success=False,
             )
@@ -298,11 +338,11 @@ async def run_self_refine(
                     convergence_reason="timeout",
                     trace=trace,
                     execution_time_ms=elapsed,
-                    total_llm_calls=llm_call_count,
+                    total_llm_calls=counter[0],
                     success=True,
                 )
 
-            if llm_call_count >= cfg.max_total_llm_calls:
+            if counter[0] >= cfg.max_total_llm_calls:
                 break
 
             iteration += 1
@@ -329,8 +369,8 @@ async def run_self_refine(
                         model=feedback_model,
                         dimension=dim,
                         temperature=cfg.temperature,
+                        counter=counter,
                     )
-                    llm_call_count += 1
                     fb_error = None
                     break
                 except Exception as exc:
@@ -368,7 +408,7 @@ async def run_self_refine(
                     convergence_reason="no_improvement_needed",
                     trace=trace,
                     execution_time_ms=elapsed,
-                    total_llm_calls=llm_call_count,
+                    total_llm_calls=counter[0],
                     success=True,
                 )
 
@@ -382,8 +422,8 @@ async def run_self_refine(
                         feedback_text=fb_text,
                         model=generator_model,
                         temperature=cfg.temperature,
+                        counter=counter,
                     )
-                    llm_call_count += 1
                     refine_error = None
                     break
                 except Exception as exc:
@@ -408,7 +448,7 @@ async def run_self_refine(
             ))
 
             # W4: 收敛检查
-            if llm_call_count >= cfg.max_total_llm_calls:
+            if counter[0] >= cfg.max_total_llm_calls:
                 current_output = new_output
                 break
 
@@ -421,10 +461,9 @@ async def run_self_refine(
                 prompt=prompt,
                 model=feedback_model,
                 temperature=cfg.temperature,
+                counter=counter,
             )
-            # convergence_check may call LLM for llm_judged/hybrid
-            if reason == "llm_judged":
-                llm_call_count += 1
+            # counter is now auto-incremented inside _call_llm, no manual +1 needed
 
             current_output = new_output
 
@@ -439,7 +478,7 @@ async def run_self_refine(
                     convergence_reason=reason,
                     trace=trace,
                     execution_time_ms=elapsed,
-                    total_llm_calls=llm_call_count,
+                    total_llm_calls=counter[0],
                     success=True,
                 )
 
@@ -447,7 +486,7 @@ async def run_self_refine(
         elapsed = (time.time() - start) * 1000
         reason = (
             "max_calls"
-            if llm_call_count >= cfg.max_total_llm_calls
+            if counter[0] >= cfg.max_total_llm_calls
             else "max_iterations"
         )
         return SelfRefineResult(
@@ -459,7 +498,7 @@ async def run_self_refine(
             convergence_reason=reason,
             trace=trace,
             execution_time_ms=elapsed,
-            total_llm_calls=llm_call_count,
+            total_llm_calls=counter[0],
             success=True,
         )
 
@@ -475,7 +514,7 @@ async def run_self_refine(
             convergence_reason="error",
             trace=trace,
             execution_time_ms=elapsed,
-            total_llm_calls=llm_call_count,
+            total_llm_calls=counter[0],
             error=str(exc),
             success=False,
         )

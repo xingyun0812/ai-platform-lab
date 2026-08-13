@@ -17,6 +17,7 @@ sys.path.insert(0, str(REPO_ROOT))
 
 from packages.memory import (  # noqa: E402
     InMemoryMemoryStore,
+    MemoryGovernanceConfig,
     MemoryRecord,
     get_memory_metrics,
 )
@@ -31,6 +32,11 @@ from packages.memory.store import (  # noqa: E402
 def _setup():
     reset_metrics_for_tests()
     reset_memory_store_for_tests()
+
+
+def _make_store() -> InMemoryMemoryStore:
+    """Create a store with permissive governance config for testing."""
+    return InMemoryMemoryStore(governance_config=MemoryGovernanceConfig(min_content_length=1))
 
 
 def test_cosine_similarity():
@@ -70,7 +76,7 @@ def test_record_expiry():
 
 def test_inmemory_add_get():
     _setup()
-    store = InMemoryMemoryStore()
+    store = _make_store()
 
     async def run():
         r = MemoryRecord(
@@ -95,7 +101,7 @@ def test_inmemory_add_get():
 
 def test_inmemory_search_keyword():
     _setup()
-    store = InMemoryMemoryStore()
+    store = _make_store()
 
     async def run():
         await store.add(
@@ -152,7 +158,7 @@ def test_inmemory_search_keyword():
 
 def test_inmemory_search_semantic():
     _setup()
-    store = InMemoryMemoryStore()
+    store = _make_store()
 
     async def run():
         await store.add(
@@ -192,7 +198,7 @@ def test_inmemory_search_semantic():
 
 def test_inmemory_scope_isolation():
     _setup()
-    store = InMemoryMemoryStore()
+    store = _make_store()
 
     async def run():
         await store.add(
@@ -249,7 +255,7 @@ def test_inmemory_scope_isolation():
 
 def test_inmemory_tenant_isolation():
     _setup()
-    store = InMemoryMemoryStore()
+    store = _make_store()
 
     async def run():
         await store.add(
@@ -276,7 +282,7 @@ def test_inmemory_tenant_isolation():
 
 def test_inmemory_delete():
     _setup()
-    store = InMemoryMemoryStore()
+    store = _make_store()
 
     async def run():
         await store.add(
@@ -300,7 +306,7 @@ def test_inmemory_delete():
 
 def test_inmemory_list_by_scope():
     _setup()
-    store = InMemoryMemoryStore()
+    store = _make_store()
 
     async def run():
         for i in range(5):
@@ -313,14 +319,10 @@ def test_inmemory_list_by_scope():
                     content=f"记忆 {i}",
                 )
             )
-        records = await store.list_by_scope(
-            tenant_id="t1", scope="user", scope_id="u1", limit=10
-        )
+        records = await store.list_by_scope(tenant_id="t1", scope="user", scope_id="u1", limit=10)
         assert len(records) == 5
         # limit
-        records = await store.list_by_scope(
-            tenant_id="t1", scope="user", scope_id="u1", limit=2
-        )
+        records = await store.list_by_scope(tenant_id="t1", scope="user", scope_id="u1", limit=2)
         assert len(records) == 2
 
     asyncio.run(run())
@@ -329,7 +331,7 @@ def test_inmemory_list_by_scope():
 
 def test_inmemory_expired_filtered():
     _setup()
-    store = InMemoryMemoryStore()
+    store = _make_store()
 
     async def run():
         await store.add(
@@ -371,7 +373,7 @@ def test_inmemory_expired_filtered():
 
 def test_metrics_recorded():
     _setup()
-    store = InMemoryMemoryStore()
+    store = _make_store()
 
     async def run():
         await store.add(

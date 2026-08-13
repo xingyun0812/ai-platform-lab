@@ -1,6 +1,6 @@
 # Phase W — Self-Refine（自我修正推理）
 
-> **状态**：🔄 实现中（Phase W · {{CURRENT_DATE}}）
+> **状态**：✅ **已交付**（Phase W · 2026-08-12）
 > **Issue**：[#204](https://github.com/xingyun0812/ai-platform-lab/issues/204)
 > **ADR**：[0008-self-refine.md](./adr/0008-self-refine.md)
 > **门禁**：`python eval/self_refine_quality_gate.py run && gate`
@@ -26,6 +26,60 @@ Self-Refine（Madaan et al., 2023）是一种单 Agent 自我迭代推理模式�
 | **Self-Refine** | **单 Agent 自我迭代修正** | **Phase W** |
 
 ## 核心设计
+
+### 全流程架构
+
+```
+User Prompt
+    │
+    ▼
+┌──────────────────────────────────────────────────────┐
+│         POST /v1/agent/self-refine                    │
+│         apps/gateway/agent/routes.py                  │
+│  (租户校验 → 限流 → 配额 → API Key → 解析配置)        │
+└──────────────────────┬───────────────────────────────┘
+                       │
+                       ▼
+┌──────────────────────────────────────────────────────┐
+│              run_self_refine(prompt, config)           │
+│              packages/agent/self_refine/               │
+│                                                        │
+│   ┌─────────┐    ┌──────────┐    ┌─────────┐         │
+│   │generate │───▶│feedback  │───▶│ refine  │──┐      │
+│   └─────────┘    └──────────┘    └─────────┘  │      │
+│       ▲                                       │      │
+│       │         ┌────────────────┐            │      │
+│       └─────────│convergence_chk│◀────────────┘      │
+│                 └────────────────┘                   │
+│                         │                            │
+│                  ┌──────┴──────┐                     │
+│                  │  converged? │                     │
+│                  └──────┬──────┘                     │
+│                    Yes  │  No                        │
+│                    ┌────┘  └─────▶ next iteration    │
+│                    ▼                                 │
+│              return SelfRefineResult                 │
+└──────────────────────────────────────────────────────┘
+```
+
+### 单次迭代的成本
+
+每轮迭代最多消耗 **3 ~ 4 次 LLM 调用**：
+
+```
+ generate(prompt)           → 初始输出          [1 LLM call]
+      │
+ feedback(prompt, output)   → 自我反馈          [1 LLM call]
+      │ (失败 → 重试 1 次 → 降级空反馈)
+ refine(prompt, output, fb) → 修正输出          [1 LLM call]
+      │ (失败 → 重试 1 次 → 保留上一轮)
+ convergence_check()        → 判断是否收敛      [0~1 LLM call]
+      ├─ similarity 策略:          0 次
+      ├─ llm_judged 策略:          1 次
+      └─ hybrid 策略:              0~1 次
+```
+
+默认 `max_iterations=5` + `max_total_llm_calls=15` 双重兜底。
 
 ### 配置参数（SelfRefineConfig）
 
@@ -85,16 +139,57 @@ Authorization: Bearer <token>
 }
 ```
 
-响应包含迭代轨迹（每轮的 feedback + refine 结果）。
+响应包含迭代轨迹（每轮的 feedback + refine 结果）：
+
+```json
+{
+  "tenant_id": "admin",
+  "session_id": "sr-1",
+  "model": "gpt-4o",
+  "final_message": "def binary_search(arr, target):\n    left, right = 0, len(arr) - 1\n    ...",
+  "self_refine_result": {
+    "iterations_completed": 2,
+    "converged": true,
+    "convergence_reason": "no_improvement_needed",
+    "total_llm_calls": 7,
+    "execution_time_ms": 4520.5,
+    "trace": [
+      {
+        "iteration": 1,
+        "feedback": "缺少边界条件检查...",
+        "feedback_dimension": "correctness",
+        "output_after_refine": "def binary_search(arr, target):\n    if not arr: return -1\n    ..."
+      },
+      {
+        "iteration": 2,
+        "feedback": "NO_IMPROVEMENT_NEEDED",
+        "feedback_dimension": "clarity"
+      }
+    ]
+  }
+}
+```
 
 ## 文件结构
 
 ```
+# 核心引擎
 packages/agent/self_refine/
-├── __init__.py        # 公开 API
-├── config.py          # SelfRefineConfig dataclass
-├── models.py          # FeedbackRound / SelfRefineResult
-└── orchestrator.py    # 核心循环编排
+├── __init__.py        # 公开 API: run_self_refine, SelfRefineConfig, SelfRefineResult
+├── config.py          # SelfRefineConfig dataclass + 参数校验
+├── models.py          # FeedbackRound / SelfRefineResult dataclass
+└── orchestrator.py    # 核心循环: generate → feedback → refine → convergence_check
+
+# API 层（合并到现有文件，不独立）
+apps/gateway/agent/routes.py            # POST /v1/agent/self-refine（第 500 行）
+packages/contracts/agent_schemas.py     # Pydantic 版 SelfRefineConfig / Result
+
+# 测试与质量
+tests/test_self_refine.py               # 23 个单元测试
+eval/self_refine_quality_gate.py        # 质量门禁（30 题 GSM8K 简化集）
+
+# 文档
+docs/adr/0008-self-refine.md            # ADR
 ```
 
 ## 已知限制

@@ -14,6 +14,7 @@ class MemoryMetrics:
         self._cache_hits: defaultdict[tuple[str, str], int] = defaultdict(int)
         self._cache_misses: defaultdict[tuple[str, str], int] = defaultdict(int)
         self._store_errors: defaultdict[tuple[str, str], int] = defaultdict(int)
+        self._quality_rejected: defaultdict[tuple[str, str], int] = defaultdict(int)
         self._search_latency_ms: defaultdict[tuple[str, str], list[float]] = defaultdict(list)
 
     def record_add(self, *, tenant_id: str, scope: str) -> None:
@@ -41,9 +42,12 @@ class MemoryMetrics:
         with self._lock:
             self._store_errors[key] += 1
 
-    def record_search_latency(
-        self, *, tenant_id: str, scope: str, latency_ms: float
-    ) -> None:
+    def record_quality_rejected(self, *, tenant_id: str, scope: str) -> None:
+        key = (tenant_id or "unknown", scope or "unknown")
+        with self._lock:
+            self._quality_rejected[key] += 1
+
+    def record_search_latency(self, *, tenant_id: str, scope: str, latency_ms: float) -> None:
         key = (tenant_id or "unknown", scope or "unknown")
         with self._lock:
             bucket = self._search_latency_ms[key]
@@ -66,6 +70,7 @@ class MemoryMetrics:
             cache_hits = dict(self._cache_hits)
             cache_misses = dict(self._cache_misses)
             errors = dict(self._store_errors)
+            quality_rejected = dict(self._quality_rejected)
             latencies = {k: list(v) for k, v in self._search_latency_ms.items()}
         lines: list[str] = []
         lines.append("# HELP memory_adds_total Memory records added by tenant/scope")
@@ -88,6 +93,10 @@ class MemoryMetrics:
         lines.append("# TYPE memory_store_errors_total counter")
         for (t, s), c in sorted(errors.items()):
             lines.append(f'memory_store_errors_total{{tenant_id="{t}",scope="{s}"}} {c}')
+        lines.append("# HELP memory_quality_rejected_total Memory quality filter rejections")
+        lines.append("# TYPE memory_quality_rejected_total counter")
+        for (t, s), c in sorted(quality_rejected.items()):
+            lines.append(f'memory_quality_rejected_total{{tenant_id="{t}",scope="{s}"}} {c}')
         lines.append("# HELP memory_search_latency_ms_p95 P95 search latency")
         lines.append("# TYPE memory_search_latency_ms_p95 gauge")
         for (t, s), samples in sorted(latencies.items()):

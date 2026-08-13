@@ -1,4 +1,41 @@
+from packages.agent.experience_store import (
+    ExperienceMetrics,
+    ExperienceRecord,
+    InMemoryExperienceStore,
+    PostgresExperienceStore,
+    build_experience_record,
+    compute_task_signature,
+    dedup_filter,
+    get_experience_metrics,
+    get_experience_store,
+    quality_filter,
+    rerank_experiences,
+    reset_experience_metrics_for_tests,
+    reset_experience_store_for_tests,
+    retrieve_similar_experiences,
+    store_experience,
+)
 from packages.agent.registry import ToolRegistry, get_tool_registry
 from packages.agent.runner import AgentRunError, run_agent
 
-__all__ = ["AgentRunError", "ToolRegistry", "get_tool_registry", "run_agent"]
+__all__ = [
+    "AgentRunError",
+    "ExperienceMetrics",
+    "ExperienceRecord",
+    "InMemoryExperienceStore",
+    "PostgresExperienceStore",
+    "ToolRegistry",
+    "build_experience_record",
+    "compute_task_signature",
+    "dedup_filter",
+    "get_experience_metrics",
+    "get_experience_store",
+    "get_tool_registry",
+    "quality_filter",
+    "rerank_experiences",
+    "reset_experience_metrics_for_tests",
+    "reset_experience_store_for_tests",
+    "retrieve_similar_experiences",
+    "run_agent",
+    "store_experience",
+]

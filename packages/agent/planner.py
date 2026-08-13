@@ -284,14 +284,25 @@ async def generate_plan(
         from packages.agent.experience_store import (
             compute_task_embedding,
             compute_task_signature,
+            rerank_experiences,
             retrieve_similar_experiences,
         )
+        from packages.memory.config import MemoryGovernanceConfig
+
+        mg_cfg = MemoryGovernanceConfig()
+        rerank_enabled = mg_cfg.rerank_enabled
 
         sig = compute_task_signature(goal)
         # 尝试计算 embedding（服务不可用时返回 None，降级到 hash 精确匹配）
         emb = await compute_task_embedding(goal)
         similar = await retrieve_similar_experiences(sig, task_embedding=emb, top_k=2)
         if similar:
+            # 3b: Rerank — only pass rerank-passed experiences to the prompt block
+            if rerank_enabled:
+                try:
+                    similar = await rerank_experiences(goal, similar, max_relevant=2)
+                except Exception as exc:
+                    logger.warning("rerank_experiences failed, using all candidates: %s", exc)
             lessons_lines = [
                 f"- {e.lessons}" for e in similar if e.outcome == "success" and e.lessons
             ]
@@ -311,7 +322,7 @@ async def generate_plan(
         try:
             from packages.agent.self_evolve import format_approved_strategy_context
 
-            strategy_ctx = format_approved_strategy_context(tenant_id)
+            strategy_ctx = format_approved_strategy_context(tenant_id, goal=goal)
             if strategy_ctx:
                 context = (context or "") + f"\n\n【已审批策略】\n{strategy_ctx}"
                 logger.debug("injecting approved strategy patch tenant=%s", tenant_id)
