@@ -77,3 +77,47 @@ Research endpoint truncates to 500 chars (`result.report[:500]`). Self-Refine re
 1. Apply fixes for F1, F3, F4, F5 (quick route/plumbing fixes)
 2. Address F2 by wiring to existing embedding service or documenting the limitation
 3. F6-F12 can be deferred to next iteration
+
+---
+
+## Phase R-5: Issues #209 #210 — Codex Review
+
+**reviewed_at:** 2026-08-17T14:00:00+08:00
+
+### Summary
+
+The cleanup script provides useful utility for memory governance but has correctness bugs that would cause runtime failures, particularly around column references and type comparisons. Test coverage is reasonable but doesn't exercise actual SQL paths.
+
+### Strengths
+- Well-structured CLI with argparse, clear flag names, sensible defaults
+- JSON report output format consistent across all modes
+- Unit tests use proper mocking patterns (MonkeyPatch + MockCursor/MockConn)
+- Archive table DDL uses ON CONFLICT DO NOTHING for idempotency
+- Dry-run mode supported on all operations
+
+### Findings
+
+| ID | Severity | Description |
+|----|----------|------------|
+| G1 | HIGH | `_purge_expired` references `expires_at` on `experiences` table — no such column. Runtime crash. |
+| G2 | HIGH | `_delete_low_weight` uses `created_at < %s::abstime::double precision` — invalid Postgres TIMESTAMPTZ comparison. |
+| G3 | MEDIUM | `_purge_expired` for `agent_memories` compares TIMESTAMPTZ with raw float — no implicit operator. |
+| G4 | MEDIUM | Archive INSERT+DELETE not wrapped in single transaction (data integrity risk). |
+| G5 | MEDIUM | Per-row INSERT in archive loop; should use INSERT INTO ... SELECT. |
+| G6 | MEDIUM | `_archive_high_value` only handles agent_memories, not experiences. |
+| G7 | MEDIUM | Dry-run returns zeroed counts without connecting to DB (misleading). |
+| G8 | LOW | F-string SQL table names should use psycopg.sql.Identifier(). |
+| G9 | LOW | No index on (weight, created_at) for cleanup queries. |
+| G10 | LOW | Docker cron label is metadata-only — no actual scheduling mechanism wired. |
+
+### Risk Assessment
+
+**HIGH.** Two hard runtime bugs (G1, G2) would crash the script on any non-trivial invocation.
+
+### Recommendations
+
+1. **Fix G1**: Remove `expires_at` clause for experiences table, or add column to experiences DDL.
+2. **Fix G2+G3**: Use `created_at < to_timestamp(%s)` or `EXTRACT(EPOCH FROM created_at) < %s`.
+3. **Fix G4**: Wrap archive INSERT+DELETE in single transaction.
+4. **Fix G5**: Replace per-row INSERT loop with INSERT INTO ... SELECT.
+5. **Fix G7**: Connect to DB in dry-run mode to report real candidate counts.

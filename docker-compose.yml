@@ -164,6 +164,23 @@ services:
       prometheus:
         condition: service_started
 
+  # Phase R-5: Memory Governance — 定时记忆库清理
+  # 默认注释；需要时取消注释并运行：
+  #   docker compose --profile cleanup up -d cleanup-cron
+  cleanup-cron:
+    profiles: ["cleanup"]
+    build: .
+    command: >
+      sh -c "python scripts/cleanup_memory.py --purge-expired --archive --delete-low-weight"
+    environment:
+      - DATABASE_URL=postgres://aiplatform:aiplatform@postgres:5432/ai_platform_lab
+    depends_on:
+      postgres:
+        condition: service_started
+    restart: "no"
+    labels:
+      cron.schedule: "0 3 * * *"
+
 volumes:
   postgres_data: {}
   qdrant_storage: {}
