@@ -21,7 +21,15 @@ from pydantic import BaseModel, Field
 from apps.gateway.http_utils import json_error, resolve_tenant
 from apps.gateway.tenants import TenantRecord, load_tenants
 from packages.auth.rbac import can_patch_tenant_limits
-from packages.memory import MemoryRecord, MemoryStore, get_memory_store
+from packages.memory import (
+    ArchivedRecord,
+    MemoryGovernanceConfig,
+    MemoryRecord,
+    MemoryStore,
+    get_archive_store,
+    get_memory_store,
+)
+from packages.memory.governance.purge import get_governance_stats, run_purge
 
 router = APIRouter(prefix="/internal/memory", tags=["memory"])
 
@@ -97,9 +105,7 @@ async def create_memory(
 
     from packages.memory.store import _gen_id
 
-    expires_at = (
-        _time.time() + body.ttl_seconds if body.ttl_seconds > 0 else None
-    )
+    expires_at = _time.time() + body.ttl_seconds if body.ttl_seconds > 0 else None
     record = MemoryRecord(
         memory_id=_gen_id(),
         tenant_id=tenant.tenant_id,
@@ -224,3 +230,121 @@ async def delete_memory(
         return json_error(403, "FORBIDDEN", "跨租户删除禁止")
     deleted = await store.delete(memory_id)
     return JSONResponse({"memory_id": memory_id, "deleted": deleted})
+
+
+# ------------------------------------------------------------------------- #
+# Governance endpoints
+# ------------------------------------------------------------------------- #
+
+
+@router.post("/governance/run")
+async def governance_run(
+    x_tenant_id: Annotated[str | None, Header(alias="X-Tenant-Id")] = None,
+    authorization: Annotated[str | None, Header()] = None,
+) -> JSONResponse:
+    """Trigger one-shot governance purge run."""
+    tenant = _resolve(x_tenant_id, authorization)
+    if isinstance(tenant, JSONResponse):
+        return tenant
+    err = _require_admin(tenant)
+    if err is not None:
+        return err
+    store = _store()
+    if isinstance(store, JSONResponse):
+        return store
+
+    config = MemoryGovernanceConfig()
+    archive_store = get_archive_store() if config.archive_enabled else None
+    import time as _time
+
+    t0 = _time.perf_counter()
+    report = await run_purge(store, archive_store, config)
+    elapsed = _time.perf_counter() - t0
+
+    return JSONResponse(
+        {
+            "report": {
+                "expired_deleted": report.expired_deleted,
+                "low_weight_archived": report.low_weight_archived,
+                "low_weight_deleted": report.low_weight_deleted,
+                "zero_access_archived": report.zero_access_archived,
+                "zero_access_deleted": report.zero_access_deleted,
+                "orphaned_deleted": report.orphaned_deleted,
+                "archived": report.archived,
+                "errors": report.errors,
+            },
+            "duration_seconds": round(elapsed, 3),
+        }
+    )
+
+
+@router.get("/governance/stats")
+async def governance_stats(
+    x_tenant_id: Annotated[str | None, Header(alias="X-Tenant-Id")] = None,
+    authorization: Annotated[str | None, Header()] = None,
+) -> JSONResponse:
+    """Memory library health stats."""
+    tenant = _resolve(x_tenant_id, authorization)
+    if isinstance(tenant, JSONResponse):
+        return tenant
+    err = _require_admin(tenant)
+    if err is not None:
+        return err
+    store = _store()
+    if isinstance(store, JSONResponse):
+        return store
+
+    stats = get_governance_stats(store)
+    return JSONResponse(stats)
+
+
+@router.get("/archive/list")
+async def archive_list(
+    scope: str = "user",
+    scope_id: str = "",
+    limit: int = 100,
+    x_tenant_id: Annotated[str | None, Header(alias="X-Tenant-Id")] = None,
+    authorization: Annotated[str | None, Header()] = None,
+) -> JSONResponse:
+    """List archived records."""
+    tenant = _resolve(x_tenant_id, authorization)
+    if isinstance(tenant, JSONResponse):
+        return tenant
+    err = _require_admin(tenant)
+    if err is not None:
+        return err
+
+    archive_store = get_archive_store()
+    if archive_store is None:
+        return json_error(503, "ARCHIVE_STORE_DISABLED", "archive store not initialized")
+
+    records = await archive_store.list_archived(
+        tenant_id=tenant.tenant_id,
+        scope=scope,
+        scope_id=scope_id,
+        limit=limit,
+    )
+    return JSONResponse(
+        {
+            "archived_records": [_archived_payload(r) for r in records],
+            "count": len(records),
+        }
+    )
+
+
+def _archived_payload(r: ArchivedRecord) -> dict[str, Any]:
+    return {
+        "archive_id": r.archive_id,
+        "memory_id": r.memory_id,
+        "tenant_id": r.tenant_id,
+        "scope": r.scope,
+        "scope_id": r.scope_id,
+        "content": r.content,
+        "summary": r.summary,
+        "metadata": r.metadata,
+        "created_at": r.created_at,
+        "archived_at": r.archived_at,
+        "purge_reason": r.purge_reason,
+        "original_weight": r.original_weight,
+        "access_count": r.access_count,
+    }

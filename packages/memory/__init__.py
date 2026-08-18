@@ -41,6 +41,15 @@ import uuid
 from dataclasses import asdict, dataclass, field
 from typing import Any
 
+from packages.memory.archive import (
+    ArchivedRecord,
+    ArchiveStore,
+    InMemoryArchiveStore,
+    PostgresArchiveStore,
+    get_archive_store,
+    init_archive_store,
+    reset_archive_store_for_tests,
+)
 from packages.memory.config import MemoryGovernanceConfig
 from packages.memory.metrics import (
     MemoryMetrics,
@@ -57,14 +66,21 @@ from packages.memory.store import (
 )
 
 __all__ = [
+    "ArchiveStore",
+    "ArchivedRecord",
+    "get_archive_store",
+    "get_memory_metrics",
+    "get_memory_store",
+    "init_archive_store",
+    "init_memory_store",
+    "InMemoryArchiveStore",
     "InMemoryMemoryStore",
     "MemoryGovernanceConfig",
     "MemoryMetrics",
     "MemoryRecord",
     "MemoryStore",
+    "PostgresArchiveStore",
     "PostgresMemoryStore",
-    "get_memory_metrics",
-    "get_memory_store",
-    "init_memory_store",
     "quality_filter",
+    "reset_archive_store_for_tests",
 ]
