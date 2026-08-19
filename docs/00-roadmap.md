@@ -397,6 +397,46 @@
 
 ---
 
+## Phase X — Memory Governance（记忆治理 ✅）
+
+> **状态**：✅ **已交付**（Phase X · 2026-08-19）
+> **PRD**：[02-phase-x-memory-governance.md](./02-phase-x-memory-governance.md)
+> **Tag**：`phase-x-memory-governance`
+> **门禁**：`python -m pytest tests/test_memory_dedup.py tests/test_memory_weight.py tests/test_memory_purge.py tests/test_memory_governance_worker.py tests/test_memory_routes_governance.py tests/test_memory_governance_config.py tests/test_memory_verify.py -q && python eval/governance_smoke.py`
+
+| Issue | 内容 | 状态 |
+|-------|------|------|
+| [#215](https://github.com/xingyun0812/ai-platform-lab/issues/215) | PRD 文档 + Issue 分解 | ✅ |
+| [#216](https://github.com/xingyun0812/ai-platform-lab/issues/216) | X1 — Config + Metrics Scaffold | ✅ |
+| [#217](https://github.com/xingyun0812/ai-platform-lab/issues/217) | X2 — L2 Semantic Dedup（写入时语义去重） | ✅ |
+| [#218](https://github.com/xingyun0812/ai-platform-lab/issues/218) | X3 — L5 Weighted Scoring（搜索权重排序） | ✅ |
+| [#220](https://github.com/xingyun0812/ai-platform-lab/issues/220) | X4 — L4 Recall Verification + Feedback API | ✅ |
+| [#219](https://github.com/xingyun0812/ai-platform-lab/issues/219) | X5 — L3 Background Governance Worker | ✅ |
+| [#221](https://github.com/xingyun0812/ai-platform-lab/issues/221) | X6 — Governance Smoke + E2E Acceptance | ✅ |
+
+**前置**：Phase F #31（长记忆持久化）· Phase I #43（PII，软依赖）
+
+**五层治理管线**：
+```
+写入链路:  数据 → L1 准入过滤 → L2 语义去重 → [存储]
+检索链路:  [查询] → L3 召回 → L4 召回校验 → L5 权重排序 → 结果
+后台作业:  [定时] → 过期清理 + 归档
+```
+
+**关键设计决策**：
+- 混合执行模式：L1+L2 同步内联，L3+L5 读时计算，L4 后台 worker
+- 读时计算权重：不持久化 weight，从 access_count / last_accessed_at / feedback_bonus 实时算
+- 召回校验只验 top-1：LLM judge 判断相关性，不相关则降级
+- Archive 先归档再删除：purge 前写入 memory_archive 表，可追溯
+
+**已知限制**：
+- 离线全库重去重未做（当前仅写入时对比最近 20 条）
+- 跨 scope 去重未做
+- 可视化治理面板未做（需 Console V2 集成）
+- 治理指标无独立 Grafana 面板（Prometheus 文本可用，需配置）
+
+---
+
 ## 已知限制（面试时主动说）
 
 > **说明**：Phase A～K 已交付大量能力（MCP、HITL、Multi-Agent、语义缓存、PII、Console V2 等），本节区分 **「已有但 opt-in / 实验级」** 与 **「仍缺或仍为 stub」**，避免与 README 矛盾。Phase L 目标是把 stub 做深，见 [phase-l-engineering-depth.md](./02-phase-l-00-engineering-depth.md)。
