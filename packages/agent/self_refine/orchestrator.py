@@ -1,9 +1,15 @@
+"""Self-Refine（Madaan et al., 2023）引擎。
+
+收敛检测已抽取到 packages/agent/guardrails/convergence.py 共享组件。
+"""
+
 from __future__ import annotations
 
 import logging
 import time
 from typing import Any
 
+from packages.agent.guardrails.convergence import check_convergence
 from packages.agent.self_refine.config import SelfRefineConfig
 from packages.agent.self_refine.models import FeedbackRound, SelfRefineResult
 
@@ -27,11 +33,17 @@ _REFINE_SYSTEM = (
     "Keep what works, fix what doesn't. Return only the revised output."
 )
 
-_CONVERGENCE_JUDGE_SYSTEM = (
-    "You are a convergence judge. Determine if the latest feedback identifies "
-    "any new, actionable improvements beyond what was already addressed.\n"
-    "Respond with exactly: CONVERGED or NOT_CONVERGED"
-)
+
+def _cosine_similarity(a: list[float], b: list[float]) -> float:
+    """余弦相似度（保留向后兼容）。"""
+    import math
+
+    dot = sum(x * y for x, y in zip(a, b, strict=True))
+    na = math.sqrt(sum(x * x for x in a))
+    nb = math.sqrt(sum(y * y for y in b))
+    if na == 0 or nb == 0:
+        return 0.0
+    return dot / (na * nb)
 
 
 async def _call_llm(
@@ -42,13 +54,7 @@ async def _call_llm(
     *,
     counter: list[int] | None = None,
 ) -> str:
-    """调用 LLM，返回文本响应。
-
-    Args:
-        counter: 可选计数器列表（长度为 1），每次真实 LLM 调用后自增。
-                 调用方传入 [llm_call_count] 即可通过 counter[0] 拿到最新值。
-                 注意 Python 闭包传 int 不会同步，所以用 list 包装。
-    """
+    """调用 LLM，返回文本响应。"""
     from packages.platform import forward_with_model_router
 
     payload: dict[str, Any] = {
@@ -96,11 +102,7 @@ async def feedback(
     *,
     counter: list[int] | None = None,
 ) -> tuple[str, str | None]:
-    """LLM 驱动的自我反馈。
-
-    Returns:
-        (feedback_text, dimension_or_None)
-    """
+    """LLM 驱动的自我反馈。"""
     if dimension:
         system = _CORRECTNESS_FEEDBACK_SYSTEM
         user_msg = (
@@ -109,10 +111,7 @@ async def feedback(
         )
     else:
         system = _FREE_FEEDBACK_SYSTEM
-        user_msg = (
-            f"Original request:\n{prompt}\n\n"
-            f"Current output:\n{current_output}"
-        )
+        user_msg = f"Original request:\n{prompt}\n\nCurrent output:\n{current_output}"
 
     result = await _call_llm(
         system=system,
@@ -155,98 +154,22 @@ async def convergence_check(
     current_output: str,
     previous_output: str,
     latest_feedback: str,
-    prompt: str,  # kept for future LLM-judge context
+    prompt: str,
     model: str | None,
     temperature: float,
     *,
     counter: list[int] | None = None,
 ) -> tuple[bool, str]:
-    """判断是否收敛。
-
-    Returns:
-        (converged, reason)
-    """
-    if strategy == "similarity":
-        return await _check_similarity(current_output, previous_output, threshold)
-    elif strategy == "llm_judged":
-        return await _check_llm_judged(latest_feedback, model, temperature)
-    elif strategy == "hybrid":
-        # sequential AND: similarity quick check first
-        sim_converged, sim_reason = await _check_similarity(
-            current_output, previous_output, threshold
-        )
-        if sim_converged:
-            return True, sim_reason
-        # LLM judge to confirm
-        return await _check_llm_judged(latest_feedback, model, temperature)
-    else:
-        return False, "unknown_strategy"
-
-
-def _cosine_similarity(a: list[float], b: list[float]) -> float:
-    """余弦相似度。"""
-    import math
-
-    dot = sum(x * y for x, y in zip(a, b, strict=True))
-    na = math.sqrt(sum(x * x for x in a))
-    nb = math.sqrt(sum(y * y for y in b))
-    if na == 0 or nb == 0:
-        return 0.0
-    return dot / (na * nb)
-
-
-async def _check_similarity(
-    current: str,
-    previous: str,
-    threshold: float,
-) -> tuple[bool, str]:
-    """基于语义相似度判断收敛。
-
-    如果相似度 >= threshold 则认为收敛。
-    当 embedding 服务不可用时，回退到字符串精确匹配。
-    """
-    if not previous:
-        return False, "similarity_no_previous"
-
-    try:
-        from packages.rag.embeddings import embed_texts
-
-        vectors = await embed_texts([current, previous])
-        sim = _cosine_similarity(vectors[0], vectors[1])
-    except Exception:
-        # Fallback: exact match
-        sim = 1.0 if current.strip() == previous.strip() else 0.0
-
-    if sim >= threshold:
-        return True, "similarity"
-    return False, "similarity"
-
-
-async def _check_llm_judged(
-    latest_feedback: str,
-    model: str | None,
-    temperature: float,
-    *,
-    counter: list[int] | None = None,
-) -> tuple[bool, str]:
-    """LLM 判断是否收敛。
-
-    Note: 当 feedback 为空时直接返回收敛，不产生 LLM 调用（_call_llm 不会被调用）。
-    """
-    if not latest_feedback.strip():
-        return True, "llm_judged"
-
-    result = await _call_llm(
-        system=_CONVERGENCE_JUDGE_SYSTEM,
-        user=f"Latest feedback:\n{latest_feedback}",
+    """判断是否收敛（委托到共享组件，保持向后兼容）。"""
+    return await check_convergence(
+        strategy=strategy,
+        current_output=current_output,
+        previous_output=previous_output,
+        latest_feedback=latest_feedback,
+        threshold=threshold,
         model=model,
-        temperature=temperature,
         counter=counter,
     )
-
-    if "CONVERGED" in result.strip().upper():
-        return True, "llm_judged"
-    return False, "llm_judged"
 
 
 async def run_self_refine(
@@ -254,19 +177,7 @@ async def run_self_refine(
     config: SelfRefineConfig | None = None,
     model: str | None = None,
 ) -> SelfRefineResult:
-    """运行 Self-Refine 全流程。
-
-    与 self_evolve.py（跨 session 经验积累 + 策略补丁）不同，
-    Self-Refine 是单次请求内的迭代修正，不涉及持久化。
-
-    Args:
-        prompt: 用户 prompt。
-        config: Self-Refine 配置。缺省使用默认值。
-        model: 模型名。缺省使用 generator_model 或 settings 默认。
-
-    Returns:
-        SelfRefineResult 包含最终输出、迭代轨迹、统计信息。
-    """
+    """运行 Self-Refine 全流程。"""
     cfg = config or SelfRefineConfig()
     start = time.time()
     counter: list[int] = [0]
@@ -278,7 +189,6 @@ async def run_self_refine(
     feedback_model = cfg.feedback_model or generator_model
 
     if not cfg.enabled:
-        # bypass: single-shot without iteration
         current_output = await generate(
             prompt=prompt,
             model=generator_model,
@@ -300,7 +210,6 @@ async def run_self_refine(
         )
 
     try:
-        # W1: 初始生成
         current_output = await generate(
             prompt=prompt,
             model=generator_model,
@@ -347,21 +256,16 @@ async def run_self_refine(
 
             iteration += 1
             round_start = time.time()
-            new_output = current_output  # default: keep current if refine fails
+            new_output = current_output
 
-            # 确定本轮反馈维度
             dimensions = cfg.feedback_dimensions
-            dim = (
-                dimensions[(iteration - 1) % len(dimensions)]
-                if dimensions else None
-            )
+            dim = dimensions[(iteration - 1) % len(dimensions)] if dimensions else None
 
-            # W2: 自我反馈（带重试）
             fb_text: str = ""
             fb_dim: str | None = dim
             fb_error: str | None = None
 
-            for attempt in range(2):  # retry-1
+            for attempt in range(2):
                 try:
                     fb_text, fb_dim = await feedback(
                         prompt=prompt,
@@ -375,29 +279,25 @@ async def run_self_refine(
                     break
                 except Exception as exc:
                     fb_error = str(exc)
-                    logger.warning(
-                        "feedback attempt %d failed: %s", attempt + 1, exc
-                    )
+                    logger.warning("feedback attempt %d failed: %s", attempt + 1, exc)
                     if attempt == 0:
                         continue
-                    # Degrade: empty feedback, don't break the request
                     fb_text = ""
                     fb_dim = dim
 
-            # 空反馈 = 已最优，直接收敛
-            is_no_improvement = (
-                "NO_IMPROVEMENT_NEEDED" in (fb_text or "").strip().upper()
-            )
+            is_no_improvement = "NO_IMPROVEMENT_NEEDED" in (fb_text or "").strip().upper()
             if is_no_improvement or not fb_text.strip():
                 round_elapsed = (time.time() - round_start) * 1000
-                trace.append(FeedbackRound(
-                    iteration=iteration,
-                    feedback=fb_text,
-                    feedback_dimension=fb_dim,
-                    feedback_error=fb_error,
-                    output_after_refine=current_output,
-                    elapsed_ms=round_elapsed,
-                ))
+                trace.append(
+                    FeedbackRound(
+                        iteration=iteration,
+                        feedback=fb_text,
+                        feedback_dimension=fb_dim,
+                        feedback_error=fb_error,
+                        output_after_refine=current_output,
+                        elapsed_ms=round_elapsed,
+                    )
+                )
                 elapsed = (time.time() - start) * 1000
                 return SelfRefineResult(
                     prompt=prompt,
@@ -412,7 +312,6 @@ async def run_self_refine(
                     success=True,
                 )
 
-            # W3: 自我修正（带重试）
             refine_error: str | None = None
             for attempt in range(2):
                 try:
@@ -428,42 +327,37 @@ async def run_self_refine(
                     break
                 except Exception as exc:
                     refine_error = str(exc)
-                    logger.warning(
-                        "refine attempt %d failed: %s", attempt + 1, exc
-                    )
+                    logger.warning("refine attempt %d failed: %s", attempt + 1, exc)
                     if attempt == 0:
                         continue
-                    # Keep previous output
                     new_output = current_output
 
             round_elapsed = (time.time() - round_start) * 1000
-            trace.append(FeedbackRound(
-                iteration=iteration,
-                feedback=fb_text,
-                feedback_dimension=fb_dim,
-                feedback_error=fb_error,
-                refine_error=refine_error,
-                output_after_refine=new_output,
-                elapsed_ms=round_elapsed,
-            ))
+            trace.append(
+                FeedbackRound(
+                    iteration=iteration,
+                    feedback=fb_text,
+                    feedback_dimension=fb_dim,
+                    feedback_error=fb_error,
+                    refine_error=refine_error,
+                    output_after_refine=new_output,
+                    elapsed_ms=round_elapsed,
+                )
+            )
 
-            # W4: 收敛检查
             if counter[0] >= cfg.max_total_llm_calls:
                 current_output = new_output
                 break
 
-            converged, reason = await convergence_check(
+            converged, reason = await check_convergence(
                 strategy=cfg.convergence_strategy,
                 threshold=cfg.convergence_threshold,
                 current_output=new_output,
                 previous_output=current_output,
                 latest_feedback=fb_text,
-                prompt=prompt,
                 model=feedback_model,
-                temperature=cfg.temperature,
                 counter=counter,
             )
-            # counter is now auto-incremented inside _call_llm, no manual +1 needed
 
             current_output = new_output
 
@@ -482,13 +376,8 @@ async def run_self_refine(
                     success=True,
                 )
 
-        # Exited loop: max_iterations or max calls
         elapsed = (time.time() - start) * 1000
-        reason = (
-            "max_calls"
-            if counter[0] >= cfg.max_total_llm_calls
-            else "max_iterations"
-        )
+        reason = "max_calls" if counter[0] >= cfg.max_total_llm_calls else "max_iterations"
         return SelfRefineResult(
             prompt=prompt,
             final_output=current_output,
