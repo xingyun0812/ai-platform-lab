@@ -35,8 +35,10 @@ def _setup():
 
 
 def _make_store() -> InMemoryMemoryStore:
-    """Create a store with permissive governance config for testing."""
-    return InMemoryMemoryStore(governance_config=MemoryGovernanceConfig(min_content_length=1))
+    """Create a store with permissive governance config for testing (classifier disabled)."""
+    return InMemoryMemoryStore(
+        governance_config=MemoryGovernanceConfig(min_content_length=1, classifier_enabled=False)
+    )
 
 
 def test_cosine_similarity():

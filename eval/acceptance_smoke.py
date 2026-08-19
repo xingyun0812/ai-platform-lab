@@ -1868,11 +1868,180 @@ async def run_checks(*, with_llm: bool) -> list[Check]:
     return out
 
 
+def run_governance_checks() -> list[Check]:
+    """Phase X — Memory Governance 治理子系统完整性检验。
+
+    不依赖 LLM Key，仅验证模块结构、dataclass 和常量正确性。
+    """
+    out: list[Check] = []
+
+    # 1. MemoryGovernanceConfig 结构完整性
+    try:
+        from packages.memory.config import MemoryGovernanceConfig
+
+        cfg = MemoryGovernanceConfig()
+        fields = {
+            "quality_filter_enabled", "min_content_length",
+            "dedup_enabled", "dedup_skip_threshold", "dedup_merge_threshold",
+            "dedup_candidate_count", "dedup_merge_with_llm",
+            "verify_enabled", "verify_model", "verify_confidence_threshold",
+            "verify_demote_threshold",
+            "weight_decay_enabled", "decay_lambda",
+            "recency_weight", "frequency_weight", "relevance_weight", "feedback_weight",
+            "purge_enabled", "purge_min_weight", "purge_zero_access_days",
+            "purge_low_weight_days",
+            "archive_enabled", "archive_retention_days", "governance_cron",
+        }
+        existing = {f for f in dir(cfg) if not f.startswith("_")}
+        missing = fields - existing
+        cfg_ok = len(missing) == 0
+        out.append(
+            Check(
+                "PX",
+                "MemoryGovernanceConfig 字段完整",
+                cfg_ok,
+                f"missing={sorted(missing) if missing else 'none'}",
+            )
+        )
+    except Exception as e:
+        out.append(Check("PX", "MemoryGovernanceConfig 字段完整", False, str(e)))
+
+    # 2. Dedup 模块存在
+    try:
+        from packages.memory.governance.dedup import DedupResult, check_dedup
+
+        dedup_ok = hasattr(DedupResult, "action") and callable(check_dedup)
+        out.append(
+            Check("PX", "Dedup 模块可导入", dedup_ok, "check_dedup function available")
+        )
+    except Exception as e:
+        out.append(Check("PX", "Dedup 模块可导入", False, str(e)))
+
+    # 3. Weight 模块存在
+    try:
+        from packages.memory.governance.weight import compute_weight, ScopeStats
+
+        weight_ok = callable(compute_weight) and hasattr(ScopeStats, "max_access_count")
+        out.append(
+            Check("PX", "Weight 模块可导入", weight_ok, "compute_weight function available")
+        )
+    except Exception as e:
+        out.append(Check("PX", "Weight 模块可导入", False, str(e)))
+
+    # 4. Verify 模块存在
+    try:
+        from packages.memory.governance.verify import Verdict, verify_top_k_sync
+
+        verify_ok = hasattr(Verdict, "relevant") and callable(verify_top_k_sync)
+        out.append(
+            Check("PX", "Verify 模块可导入", verify_ok, "verify_top_k_sync function available")
+        )
+    except Exception as e:
+        out.append(Check("PX", "Verify 模块可导入", False, str(e)))
+
+    # 5. Purge + Archive 模块存在
+    try:
+        from packages.memory.governance.purge import PurgeReport, run_purge
+        from packages.memory.archive import ArchivedRecord, InMemoryArchiveStore
+
+        purge_ok = hasattr(PurgeReport, "expired_deleted") and callable(run_purge)
+        archive_ok = hasattr(ArchivedRecord, "purge_reason")
+        out.append(
+            Check("PX", "Purge 模块可导入", purge_ok, "run_purge function available")
+        )
+        out.append(
+            Check("PX", "Archive 模块可导入", archive_ok, "ArchivedRecord dataclass ready")
+        )
+    except Exception as e:
+        out.append(Check("PX", "Purge/Archive 模块可导入", False, str(e)))
+
+    # 6. Governance Worker CLI 存在性
+    try:
+        from packages.memory.governance_worker import main as gov_worker_main
+
+        worker_ok = callable(gov_worker_main)
+        out.append(
+            Check("PX", "Governance Worker CLI 存在", worker_ok, "governance_worker main() callable")
+        )
+    except Exception as e:
+        out.append(Check("PX", "Governance Worker CLI 存在", False, str(e)))
+
+    # 7. Governance REST API 路由存在性
+    try:
+        from apps.gateway.memory_routes import router
+
+        routes = [r.path for r in router.routes]
+        gov_routes = [r for r in routes if "governance" in r or "archive" in r]
+        has_gov_route = len(gov_routes) >= 3
+        has_feedback_route = any("feedback" in r for r in routes)
+        out.append(
+            Check(
+                "PX",
+                "Governance REST API 路由",
+                has_gov_route,
+                f"routes={gov_routes}",
+            )
+        )
+        out.append(
+            Check(
+                "PX",
+                "Feedback API 路由存在",
+                has_feedback_route,
+                f"feedback route present" if has_feedback_route else "missing",
+            )
+        )
+    except Exception as e:
+        out.append(Check("PX", "Governance REST API 路由", False, str(e)))
+
+    # 8. 治理 Metrics 指标存在性
+    try:
+        from packages.memory.metrics import get_memory_metrics, reset_metrics_for_tests
+
+        reset_metrics_for_tests()
+        m = get_memory_metrics()
+        # 写入测试数据
+        m.record_dedup_skipped(tenant_id="t1", scope="user")
+        m.record_dedup_merged(tenant_id="t1", scope="user")
+        m.record_verify_check(tenant_id="t1", scope="user")
+        m.record_purge(reason="expired")
+        m.record_archive()
+        m.record_governance_run(duration_seconds=1.0)
+        m.record_library_total(tenant_id="t1", scope="user", count=42)
+
+        prom = m.prometheus_text()
+        gov_metrics = [
+            "memory_dedup_skipped_total",
+            "memory_dedup_merged_total",
+            "memory_verify_check_total",
+            "memory_verify_demoted_total",
+            "governance_purge_total",
+            "governance_archived_total",
+            "governance_runtime_seconds",
+            "memory_library_total",
+        ]
+        missing_metrics = [m for m in gov_metrics if m not in prom]
+        metrics_ok = len(missing_metrics) == 0
+        out.append(
+            Check(
+                "PX",
+                "治理 Metrics 指标完整",
+                metrics_ok,
+                f"missing={missing_metrics if missing_metrics else 'none'}",
+            )
+        )
+        reset_metrics_for_tests()
+    except Exception as e:
+        out.append(Check("PX", "治理 Metrics 指标完整", False, str(e)))
+
+    return out
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--with-llm", action="store_true", help="已配置 LLM_API_KEY 时跑全量")
     parser.add_argument("--agent-vertical", action="store_true", help="Phase L #59 Agent Vertical smoke")
     parser.add_argument("--platform-demo", action="store_true", help="Phase L #62 platform_demo.sh --no-llm + feedback mock")
+    parser.add_argument("--governance", action="store_true", help="Phase X Memory Governance smoke")
     args = parser.parse_args()
     _ensure_platform_wired()
     checks = asyncio.run(run_checks(with_llm=args.with_llm))
@@ -1925,6 +2094,12 @@ def main() -> None:
             checks.append(Check("L62", "feedback_loop_demo --mock", ok, proc.stdout[-80:] if proc.stdout else ""))
         except Exception as e:
             checks.append(Check("L62", "feedback_loop_demo --mock", False, str(e)))
+
+    # Phase X — Governance smoke
+    if args.governance:
+        gov_checks = run_governance_checks()
+        for c in gov_checks:
+            checks.append(c)
 
     # load_smoke healthz
     try:

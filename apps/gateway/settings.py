@@ -311,6 +311,85 @@ class Settings(BaseSettings):
         description="检索返回 top_k 条",
     )
 
+    # Phase X — Memory Governance
+    memory_governance_enabled: bool = Field(
+        default=True,
+        validation_alias="MEMORY_GOVERNANCE_ENABLED",
+        description="Governance master switch",
+    )
+    memory_governance_cron: str = Field(
+        default="0 3 * * *",
+        validation_alias="MEMORY_GOVERNANCE_CRON",
+        description="Governance worker cron schedule",
+    )
+    memory_governance_dedup_enabled: bool = Field(
+        default=True,
+        validation_alias="MEMORY_GOVERNANCE_DEDUP_ENABLED",
+        description="L2 semantic dedup switch",
+    )
+    memory_governance_dedup_skip: float = Field(
+        default=0.92,
+        validation_alias="MEMORY_GOVERNANCE_DEDUP_SKIP",
+        description="Dedup skip threshold (cosine similarity)",
+    )
+    memory_governance_dedup_merge: float = Field(
+        default=0.85,
+        validation_alias="MEMORY_GOVERNANCE_DEDUP_MERGE",
+        description="Dedup merge threshold (cosine similarity)",
+    )
+    memory_governance_decay_lambda: float = Field(
+        default=0.1,
+        validation_alias="MEMORY_GOVERNANCE_DECAY_LAMBDA",
+        description="Daily exponential decay rate for weight recency",
+    )
+    memory_governance_verify_enabled: bool = Field(
+        default=True,
+        validation_alias="MEMORY_GOVERNANCE_VERIFY_ENABLED",
+        description="L4 recall verification switch",
+    )
+    memory_governance_verify_model: str | None = Field(
+        default=None,
+        validation_alias="MEMORY_GOVERNANCE_VERIFY_MODEL",
+        description="Verification model; None = use default_model",
+    )
+    memory_governance_purge_enabled: bool = Field(
+        default=True,
+        validation_alias="MEMORY_GOVERNANCE_PURGE_ENABLED",
+        description="L3 purge switch",
+    )
+    memory_governance_purge_min_weight: float = Field(
+        default=0.1,
+        validation_alias="MEMORY_GOVERNANCE_PURGE_MIN_WEIGHT",
+        description="Minimum weight threshold before purge",
+    )
+    memory_archive_enabled: bool = Field(
+        default=True,
+        validation_alias="MEMORY_ARCHIVE_ENABLED",
+        description="Archive before purge switch",
+    )
+    memory_archive_retention_days: int = Field(
+        default=365,
+        validation_alias="MEMORY_ARCHIVE_RETENTION_DAYS",
+        description="Archive retention period in days",
+    )
+
+    # Phase X.5 — Memory Classifier
+    memory_classifier_enabled: bool = Field(
+        default=True,
+        validation_alias="MEMORY_CLASSIFIER_ENABLED",
+        description="Classifier switch for memory classification",
+    )
+    memory_classifier_model: str | None = Field(
+        default=None,
+        validation_alias="MEMORY_CLASSIFIER_MODEL",
+        description="Classifier LLM model; None = use default_model",
+    )
+    memory_classifier_timeout_ms: int = Field(
+        default=200,
+        validation_alias="MEMORY_CLASSIFIER_TIMEOUT_MS",
+        description="Classifier LLM call timeout in milliseconds",
+    )
+
     # Phase F — 上下文压缩 (#33)
     context_llm_summary_enabled: bool = Field(
         default=True,

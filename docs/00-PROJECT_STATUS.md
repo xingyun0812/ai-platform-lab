@@ -1,240 +1,304 @@
-、#、 、a、i、-、p、l、a、t、f、o、r、m、-、l、a、b、 、项、目、状、态、总、览、
-、
-、>、 、*、*、最、后、更、新、*、*、：、2、0、2、6、-、0、8、-、1、2、 、 、
-、>、 、*、*、当、前、状、态、*、*、：、P、h、a、s、e、 、A、～、W、 、已、交、付、 、·、 、t、a、g、s、：、`、p、h、a、s、e、-、o、-、a、g、e、n、t、-、j、d、2、`、、、`、p、h、a、s、e、-、p、-、m、u、l、t、i、m、o、d、a、l、`、、、`、p、h、a、s、e、-、n、-、p、y、p、i、-、s、d、k、`、、、`、p、h、a、s、e、-、q、-、a、d、v、a、n、c、e、d、-、p、l、a、n、n、i、n、g、`、、、`、p、h、a、s、e、-、r、-、a、g、e、n、t、-、h、a、r、n、e、s、s、`、、、`、p、h、a、s、e、-、s、-、t、r、e、e、-、o、f、-、t、h、o、u、g、h、t、s、`、、、`、p、h、a、s、e、-、t、-、m、u、l、t、i、-、a、g、e、n、t、-、d、e、b、a、t、e、`、、、`、p、h、a、s、e、-、u、-、d、e、e、p、-、r、e、s、e、a、r、c、h、`、、、`、p、h、a、s、e、-、v、-、c、o、m、p、u、t、e、r、-、u、s、e、`、 、 、
-、>、 、*、*、主、分、支、*、*、：、`、m、a、i、n、`、
-、
-、-、-、-、
-、
-、#、#、 、1、.、 、项、目、定、位、
-、
-、一、个、面、向、学、习、与、面、试、的、 、*、*、A、I、 、平、台、参、考、实、现、*、*、，、覆、盖、从、模、型、网、关、到、生、产、基、础、设、施、的、完、整、链、路、。、对、标、大、厂、 、A、I、 、平、台、架、构、，、按、 、P、h、a、s、e、 、渐、进、交、付、。、
-、
-、#、#、 、2、.、 、完、成、度、总、览、
-、
-、|、 、层、次、 、|、 、完、成、度、 、|、 、强、项、 、|、 、主、要、缺、口、 、|、
-、|、-、-、-、-、-、-、|、-、-、-、-、-、-、-、-、|、-、-、-、-、-、-、|、-、-、-、-、-、-、-、-、-、|、
-、|、 、模、型、服、务、层、 、|、 、~、9、8、%、 、|、 、G、a、t、e、w、a、y、、、路、由、、、熔、断、、、计、费、、、语、义、缓、存、、、*、*、多、模、态、 、E、m、b、e、d、d、i、n、g、*、*、 、|、 、真、 、C、L、I、P、 、本、地、推、理、 、|、
-、|、 、基、础、设、施、层、 、|、 、~、9、0、%、 、|、 、对、象、存、储、、、K、8、s、 、H、e、l、m、、、多、 、A、Z、、、G、P、U、 、调、度、 、|、 、跨、 、R、e、g、i、o、n、、、S、e、r、v、i、c、e、 、M、e、s、h、 、|、
-、|、 、能、力、中、台、 、|、 、~、9、0、%、 、|、 、R、A、G、、、P、r、o、m、p、t、 、版、本、化、+、A、/、B、、、长、记、忆、、、M、C、P、、、上、下、文、压、缩、 、|、 、—、 、|、
-、|、 、A、g、e、n、t、 、应、用、层、 、|、 、~、9、5、%、 、|、 、P、l、a、n、n、e、r、、、C、o、T、、、M、u、l、t、i、-、A、g、e、n、t、、、P、h、a、s、e、 、Q、 、全、链、路、、、*、*、P、h、a、s、e、 、S、 、T、o、T、 、高、级、推、理、*、*、 、|、 、C、o、n、s、o、l、e、 、P、l、a、n、 、审、批、 、U、I、 、|、
-、|、 、A、g、e、n、t、O、p、s、 、治、理、 、|、 、~、9、0、%、 、|、 、沙、箱、、、分、级、审、计、、、P、I、I、、、O、A、u、t、h、2、/、m、T、L、S、 、|、 、在、线、评、测、飞、轮、（、已、有、反、馈、飞、轮、）、 、|、
-、|、 、开、发、者、体、验、 、|、 、~、9、5、%、 、|、 、P、y、t、h、o、n、 、S、D、K、、、P、y、P、I、 、发、布、流、程、、、C、o、n、s、o、l、e、 、V、2、、、D、e、m、o、、、门、禁、 、|、 、T、S、 、S、D、K、 、·、 、l、i、v、e、 、全、链、手、验、表、 、|、
-、
-、#、#、 、3、.、 、P、h、a、s、e、 、完、成、历、史、线、
-、
-、`、`、`、
-、P、h、a、s、e、 、A、 、—、 、内、测、基、线、 、 、 、 、 、 、 、 、 、 、✅、 、t、a、g、:、 、p、h、a、s、e、-、a、-、i、n、t、e、r、n、a、l、-、b、e、t、a、
-、P、h、a、s、e、 、B、1、 、—、 、计、费、 、 、 、 、 、 、 、 、 、 、 、 、 、✅、 、t、a、g、:、 、p、h、a、s、e、-、b、1、-、b、i、l、l、i、n、g、
-、P、h、a、s、e、 、B、2、 、—、 、并、行、化、 、 、 、 、 、 、 、 、 、 、 、✅、 、t、a、g、:、 、p、h、a、s、e、-、b、2、-、p、a、r、a、l、l、e、l、
-、P、h、a、s、e、 、B、3、 、—、 、R、e、r、a、n、k、 、+、 、C、a、n、a、r、y、 、 、✅、 、t、a、g、:、 、p、h、a、s、e、-、b、3、-、r、e、r、a、n、k、-、c、a、n、a、r、y、
-、P、h、a、s、e、 、C、 、—、 、平、台、能、力、 、 、 、 、 、 、 、 、 、 、✅、 、t、a、g、:、 、p、h、a、s、e、-、c、-、p、l、a、t、f、o、r、m、
-、P、h、a、s、e、 、D、 、—、 、运、维、治、理、 、 、 、 、 、 、 、 、 、 、✅、 、t、a、g、:、 、p、h、a、s、e、-、d、-、o、p、s、
-、P、h、a、s、e、 、E、 、—、 、A、g、e、n、t、 、质、量、 、 、 、 、 、 、 、 、✅、 、(、无、单、独、 、t、a、g、，、已、合、并、)、
-、P、h、a、s、e、 、F、 、—、 、能、力、中、台、补、全、 、 、 、 、 、 、✅、 、t、a、g、:、 、p、h、a、s、e、-、f、-、c、a、p、a、b、i、l、i、t、i、e、s、 、 、 、 、 、←、 、今、日、
-、P、h、a、s、e、 、G、 、—、 、E、m、b、e、d、d、i、n、g、 、服、务、 、 、 、 、✅、 、t、a、g、:、 、p、h、a、s、e、-、g、-、e、m、b、e、d、d、i、n、g、 、 、 、 、 、 、 、 、 、 、←、 、今、日、
-、P、h、a、s、e、 、H、 、—、 、A、g、e、n、t、 、高、阶、能、力、 、 、 、 、✅、 、t、a、g、:、 、p、h、a、s、e、-、h、-、a、g、e、n、t、-、a、d、v、a、n、c、e、d、 、 、 、 、 、←、 、今、日、
-、P、h、a、s、e、 、I、 、—、 、安、全、合、规、 、 、 、 、 、 、 、 、 、 、✅、 、t、a、g、:、 、p、h、a、s、e、-、i、-、s、e、c、u、r、i、t、y、 、 、 、 、 、 、 、 、 、 、 、 、←、 、今、日、
-、P、h、a、s、e、 、J、 、—、 、开、发、者、体、验、 、 、 、 、 、 、 、 、✅、 、t、a、g、:、 、p、h、a、s、e、-、j、-、d、e、v、e、l、o、p、e、r、-、e、x、p、e、r、i、e、n、c、e、 、+、 、p、h、a、s、e、-、j、k、-、c、o、m、p、l、e、t、e、 、←、 、今、日、
-、P、h、a、s、e、 、K、 、—、 、生、产、基、础、设、施、 、 、 、 、 、 、✅、 、t、a、g、:、 、p、h、a、s、e、-、k、-、i、n、f、r、a、-、b、a、s、e、 、+、 、p、h、a、s、e、-、j、k、-、c、o、m、p、l、e、t、e、 、 、 、 、 、 、 、 、 、 、 、 、←、 、今、日、
-、P、h、a、s、e、 、L、 、—、 、工、程、深、度、与、面、试、叙、事、 、✅、 、t、a、g、:、 、p、h、a、s、e、-、l、-、e、n、g、i、n、e、e、r、i、n、g、-、d、e、p、t、h、 、 、 、 、 、 、 、 、 、 、 、 、 、 、 、 、 、 、 、 、 、 、←、 、2、0、2、6、-、0、6、-、2、3、
-、P、h、a、s、e、 、M、 、—、 、R、A、G、 、增、量、索、引、做、满、 、 、 、 、✅、 、t、a、g、:、 、p、h、a、s、e、-、m、-、i、n、c、r、e、m、e、n、t、a、l、-、i、n、d、e、x、 、 、 、 、 、 、 、 、 、 、 、 、 、 、 、 、 、 、 、 、 、 、←、 、2、0、2、6、-、0、6、-、2、3、
-、P、h、a、s、e、 、N、 、—、 、P、y、t、h、o、n、 、S、D、K、 、P、y、P、I、 、 、 、 、 、 、 、✅、 、t、a、g、:、 、p、h、a、s、e、-、n、-、p、y、p、i、-、s、d、k、
-、P、h、a、s、e、 、O、 、—、 、A、g、e、n、t、 、J、D、2、 、对、齐、 、 、 、 、 、 、 、 、✅、 、t、a、g、:、 、p、h、a、s、e、-、o、-、a、g、e、n、t、-、j、d、2、
-、P、h、a、s、e、 、P、 、—、 、多、模、态、 、E、m、b、e、d、d、i、n、g、 、 、 、 、 、 、✅、 、t、a、g、:、 、p、h、a、s、e、-、p、-、m、u、l、t、i、m、o、d、a、l、
-、P、h、a、s、e、 、Q、 、—、 、任、务、规、划、前、沿、对、齐、 、 、 、 、 、 、✅、 、已、交、付、（、#、1、1、6、～、#、1、2、1、）、；、c、l、o、s、u、r、e、：、路、由、挂、载、 、+、 、l、i、v、e、 、E、2、E、
-、P、h、a、s、e、 、R、 、—、 、A、g、e、n、t、 、H、a、r、n、e、s、s、 、前、沿、 、 、 、 、 、 、✅、 、t、a、g、:、 、p、h、a、s、e、-、r、-、a、g、e、n、t、-、h、a、r、n、e、s、s、（、R、1、 、自、进、化、 、+、 、R、2、 、长、程、 、+、 、R、3、 、能、力、探、测、 、+、 、R、4、 、门、禁、）、
-、P、h、a、s、e、 、S、 、—、 、T、r、e、e、 、o、f、 、T、h、o、u、g、h、t、s、 、 、 、 、✅、 、t、a、g、:、 、p、h、a、s、e、-、s、-、t、r、e、e、-、o、f、-、t、h、o、u、g、h、t、s、（、2、0、2、6、-、0、8、-、0、5、）、
-、P、h、a、s、e、 、T、 、—、 、M、u、l、t、i、-、A、g、e、n、t、 、D、e、b、a、t、e、 、 、✅、 、t、a、g、:、 、p、h、a、s、e、-、t、-、m、u、l、t、i、-、a、g、e、n、t、-、d、e、b、a、t、e、（、2、0、2、6、-、0、8、-、0、5、）、
-、P、h、a、s、e、 、U、 、—、 、D、e、e、p、 、R、e、s、e、a、r、c、h、 、 、 、 、 、✅、 、t、a、g、:、 、p、h、a、s、e、-、u、-、d、e、e、p、-、r、e、s、e、a、r、c、h、（、2、0、2、6、-、0、8、-、0、5、）、
-、P、h、a、s、e、 、V、 、—、 、C、o、m、p、u、t、e、r、 、U、s、e、 、 、 、 、 、 、✅、 、t、a、g、:、 、p、h、a、s、e、-、v、-、c、o、m、p、u、t、e、r、-、u、s、e、（、2、0、2、6、-、0、8、-、0、6、）、
-、`、`、`、
-、
-、#、#、 、4、.、 、代、码、规、模、
-、
-、|、 、指、标、 、|、 、数、量、 、|、
-、|、-、-、-、-、-、-、|、-、-、-、-、-、-、|、
-、|、 、*、*、累、计、单、测、*、*、 、|、 、*、*、6、1、6、*、*、（、`、p、y、t、e、s、t、`、 、全、量、）、 、|、
-、|、 、*、*、p、a、c、k、a、g、e、s、 、模、块、 、P、y、t、h、o、n、 、文、件、*、*、 、|、 、1、3、0、 、个、 、|、
-、|、 、*、*、R、E、S、T、 、路、由、文、件、*、*、 、|、 、2、0、 、个、 、|、
-、|、 、*、*、测、试、套、件、*、*、 、|、 、2、5、 、个、 、|、
-、|、 、*、*、P、h、a、s、e、 、设、计、文、档、*、*、 、|、 、6、0、+、 、篇、 、|、
-、|、 、*、*、离、线、门、禁、*、*、 、|、 、`、a、g、e、n、t、_、j、d、2、_、g、a、t、e、`、（、1、5、 、项、含、 、Q、6、）、、、`、m、u、l、t、i、m、o、d、a、l、_、e、m、b、e、d、d、i、n、g、_、g、a、t、e、`、、、`、p、l、a、n、_、q、u、a、l、i、t、y、_、g、a、t、e、`、 、|、
-、|、 、*、*、G、i、t、H、u、b、 、T、a、g、s、*、*、 、|、 、1、5、 、个、（、含、 、`、p、h、a、s、e、-、m、-、i、n、c、r、e、m、e、n、t、a、l、-、i、n、d、e、x、`、）、 、|、
-、|、 、*、*、G、i、t、H、u、b、 、I、s、s、u、e、s、*、*、 、|、 、8、 、个、（、全、部、关、闭、）、 、|、
-、
-、#、#、 、5、.、 、能、力、清、单、（、按、 、P、h、a、s、e、）、
-、
-、#、#、#、 、P、h、a、s、e、 、F、 、—、 、能、力、中、台、补、全、 、(、#、2、9、-、#、3、4、)、
-、
-、|、 、I、s、s、u、e、 、|、 、能、力、 、|、 、关、键、文、件、 、|、
-、|、-、-、-、-、-、-、-、|、-、-、-、-、-、-、|、-、-、-、-、-、-、-、-、-、|、
-、|、 、#、2、9、 、|、 、P、r、o、m、p、t、 、版、本、化、 、+、 、渲、染、 、|、 、`、p、a、c、k、a、g、e、s、/、p、r、o、m、p、t、/、`、 、|、
-、|、 、#、3、0、 、|、 、P、r、o、m、p、t、 、A、/、B、 、实、验、 、|、 、`、p、a、c、k、a、g、e、s、/、p、r、o、m、p、t、/、e、x、p、e、r、i、m、e、n、t、.、p、y、`、 、|、
-、|、 、#、3、1、 、|、 、长、记、忆、持、久、化、 、|、 、`、p、a、c、k、a、g、e、s、/、m、e、m、o、r、y、/、`、 、|、
-、|、 、#、3、2、 、|、 、M、C、P、 、真、实、集、成、 、|、 、`、p、a、c、k、a、g、e、s、/、m、c、p、/、`、 、|、
-、|、 、#、3、3、 、|、 、上、下、文、压、缩、 、|、 、`、p、a、c、k、a、g、e、s、/、a、g、e、n、t、/、c、o、n、t、e、x、t、_、c、o、m、p、r、e、s、s、.、p、y、`、 、|、
-、|、 、#、3、4、 、|、 、语、义、缓、存、 、|、 、`、p、a、c、k、a、g、e、s、/、s、e、m、a、n、t、i、c、_、c、a、c、h、e、/、`、 、|、
-、
-、#、#、#、 、P、h、a、s、e、 、G、 、—、 、E、m、b、e、d、d、i、n、g、 、独、立、服、务、 、(、#、3、5、)、
-、
-、|、 、I、s、s、u、e、 、|、 、能、力、 、|、 、关、键、文、件、 、|、
-、|、-、-、-、-、-、-、-、|、-、-、-、-、-、-、|、-、-、-、-、-、-、-、-、-、|、
-、|、 、#、3、5、 、|、 、P、r、o、v、i、d、e、r、 、抽、象、 、+、 、L、R、U、 、缓、存、 、|、 、`、p、a、c、k、a、g、e、s、/、e、m、b、e、d、d、i、n、g、/、`、 、|、
-、
-、#、#、#、 、P、h、a、s、e、 、H、 、—、 、A、g、e、n、t、 、高、阶、能、力、 、(、#、3、7、-、#、4、0、)、
-、
-、|、 、I、s、s、u、e、 、|、 、能、力、 、|、 、关、键、文、件、 、|、
-、|、-、-、-、-、-、-、-、|、-、-、-、-、-、-、|、-、-、-、-、-、-、-、-、-、|、
-、|、 、#、3、7、 、|、 、D、A、G、 、控、制、流、编、排、 、|、 、`、p、a、c、k、a、g、e、s、/、a、g、e、n、t、/、o、r、c、h、e、s、t、r、a、t、o、r、/、`、 、|、
-、|、 、#、3、8、 、|、 、M、u、l、t、i、-、A、g、e、n、t、 、协、作、 、|、 、`、p、a、c、k、a、g、e、s、/、a、g、e、n、t、/、m、u、l、t、i、_、a、g、e、n、t、/、`、 、|、
-、|、 、#、3、9、 、|、 、A、g、e、n、t、 、版、本、 、+、 、灰、度、 、+、 、回、滚、 、|、 、`、p、a、c、k、a、g、e、s、/、a、g、e、n、t、/、l、i、f、e、c、y、c、l、e、/、`、 、|、
-、|、 、#、4、0、 、|、 、H、I、T、L、 、完、整、工、作、流、 、|、 、`、p、a、c、k、a、g、e、s、/、h、i、t、l、/、`、 、|、
-、
-、#、#、#、 、P、h、a、s、e、 、I、 、—、 、安、全、合、规、 、(、#、4、1、-、#、4、4、)、
-、
-、|、 、I、s、s、u、e、 、|、 、能、力、 、|、 、关、键、文、件、 、|、
-、|、-、-、-、-、-、-、-、|、-、-、-、-、-、-、|、-、-、-、-、-、-、-、-、-、|、
-、|、 、#、4、1、 、|、 、沙、箱、容、器、隔、离、 、|、 、`、p、a、c、k、a、g、e、s、/、s、a、n、d、b、o、x、/、`、 、|、
-、|、 、#、4、2、 、|、 、动、作、分、级、审、计、 、|、 、`、p、a、c、k、a、g、e、s、/、a、u、d、i、t、/、a、c、t、i、o、n、_、l、e、v、e、l、s、.、p、y、`、 、|、
-、|、 、#、4、3、 、|、 、P、I、I、 、脱、敏、 、+、 、内、容、安、全、 、|、 、`、p、a、c、k、a、g、e、s、/、p、i、i、/、`、 、|、
-、|、 、#、4、4、 、|、 、O、A、u、t、h、2、 、/、 、m、T、L、S、 、|、 、`、p、a、c、k、a、g、e、s、/、a、u、t、h、/、o、a、u、t、h、2、.、p、y、`、 、+、 、`、m、t、l、s、.、p、y、`、 、|、
-、
-、#、#、#、 、P、h、a、s、e、 、J、 、—、 、开、发、者、体、验、 、(、#、2、9、-、#、3、2、,、 、G、i、t、H、u、b、)、
-、
-、|、 、I、s、s、u、e、 、|、 、能、力、 、|、 、关、键、文、件、 、|、
-、|、-、-、-、-、-、-、-、|、-、-、-、-、-、-、|、-、-、-、-、-、-、-、-、-、|、
-、|、 、#、2、9、 、|、 、P、y、t、h、o、n、 、S、D、K、 、|、 、`、s、d、k、/、p、y、t、h、o、n、/、a、i、_、p、l、a、t、f、o、r、m、_、l、a、b、/、`、 、|、
-、|、 、#、3、0、 、|、 、C、o、n、s、o、l、e、 、V、2、 、(、R、e、a、c、t、)、 、|、 、`、c、o、n、s、o、l、e、-、v、2、/、`、 、|、
-、|、 、#、3、1、 、|、 、评、测、 、P、i、p、e、l、i、n、e、 、+、 、C、I、 、门、禁、 、|、 、`、e、v、a、l、/、p、i、p、e、l、i、n、e、.、p、y、`、 、+、 、`、.、g、i、t、h、u、b、/、w、o、r、k、f、l、o、w、s、/、e、v、a、l、.、y、m、l、`、 、|、
-、|、 、#、3、2、 、|、 、反、馈、飞、轮、 、|、 、`、p、a、c、k、a、g、e、s、/、f、e、e、d、b、a、c、k、/、`、 、+、 、`、p、a、c、k、a、g、e、s、/、q、u、a、l、i、t、y、_、m、o、n、i、t、o、r、/、`、 、+、 、`、p、a、c、k、a、g、e、s、/、f、e、e、d、b、a、c、k、_、l、o、o、p、/、`、 、|、
-、
-、#、#、#、 、P、h、a、s、e、 、K、 、—、 、生、产、基、础、设、施、 、(、#、3、3、-、#、3、6、,、 、G、i、t、H、u、b、)、
-、
-、|、 、I、s、s、u、e、 、|、 、能、力、 、|、 、关、键、文、件、 、|、
-、|、-、-、-、-、-、-、-、|、-、-、-、-、-、-、|、-、-、-、-、-、-、-、-、-、|、
-、|、 、#、3、3、 、|、 、对、象、存、储、 、(、l、o、c、a、l、/、s、3、/、o、s、s、)、 、|、 、`、p、a、c、k、a、g、e、s、/、s、t、o、r、a、g、e、/、`、 、|、
-、|、 、#、3、4、 、|、 、K、8、s、 、H、e、l、m、 、C、h、a、r、t、 、|、 、`、d、e、p、l、o、y、/、h、e、l、m、/、a、i、-、p、l、a、t、f、o、r、m、-、l、a、b、/、`、 、|、
-、|、 、#、3、5、 、|、 、多、 、A、Z、 、高、可、用、 、|、 、`、d、e、p、l、o、y、/、h、e、l、m、/、v、a、l、u、e、s、-、m、u、l、t、i、-、a、z、.、y、a、m、l、`、 、+、 、t、e、m、p、l、a、t、e、s、 、|、
-、|、 、#、3、6、 、|、 、G、P、U、 、弹、性、调、度、 、|、 、`、d、e、p、l、o、y、/、h、e、l、m、/、v、a、l、u、e、s、-、g、p、u、.、y、a、m、l、`、 、+、 、t、e、m、p、l、a、t、e、s、 、|、
-、
-、#、#、 、6、.、 、今、日、提、交、记、录、
-、
-、|、 、C、o、m、m、i、t、 、|、 、内、容、 、|、
-、|、-、-、-、-、-、-、-、-、|、-、-、-、-、-、-、|、
-、|、 、`、e、7、5、e、5、0、d、`、 、|、 、P、h、a、s、e、 、F、 、—、 、能、力、中、台、补、全、 、(、#、2、9、-、#、3、4、)、 、|、
-、|、 、`、3、5、b、6、f、f、6、`、 、|、 、P、h、a、s、e、 、G、 、—、 、E、m、b、e、d、d、i、n、g、 、独、立、服、务、 、(、#、3、5、)、 、|、
-、|、 、`、6、f、7、3、2、c、c、`、 、|、 、P、h、a、s、e、 、H、 、—、 、A、g、e、n、t、 、高、阶、能、力、 、(、#、3、7、-、#、4、0、)、 、|、
-、|、 、`、3、6、c、1、a、c、6、`、 、|、 、P、h、a、s、e、 、I、 、—、 、安、全、合、规、 、(、#、4、1、-、#、4、4、)、 、|、
-、|、 、`、2、1、1、9、c、c、0、`、 、|、 、协、作、流、程、：、C、O、N、T、R、I、B、U、T、I、N、G、 、+、 、I、s、s、u、e、/、P、R、 、模、板、 、|、
-、|、 、`、6、9、f、b、6、e、e、`、 、|、 、R、o、a、d、m、a、p、 、关、联、 、G、i、t、H、u、b、 、I、s、s、u、e、s、 、|、
-、|、 、`、1、d、c、1、d、5、d、`、 、|、 、P、h、a、s、e、 、J、/、K、 、第、一、波、：、S、D、K、 、+、 、C、o、n、s、o、l、e、 、+、 、E、v、a、l、 、+、 、S、t、o、r、a、g、e、 、+、 、H、e、l、m、 、|、
-、|、 、`、e、5、6、2、3、e、7、`、 、|、 、P、h、a、s、e、 、J、/、K、 、第、二、波、：、反、馈、飞、轮、 、+、 、多、A、Z、 、+、 、G、P、U、 、|、
-、|、 、`、9、8、b、e、9、d、1、`、 、|、 、c、h、o、r、e、:、 、e、v、a、l、 、C、L、I、 、扩、展、 、+、 、k、u、s、t、o、m、i、z、e、 、o、v、e、r、l、a、y、 、|、
-、
-、#、#、 、7、.、 、关、键、设、计、决、策、
-、
-、#、#、#、 、7、.、1、 、向、后、兼、容、
-、-、 、所、有、新、功、能、 、*、*、o、p、t、-、i、n、*、*、（、默、认、 、`、f、a、l、s、e、`、）、，、不、破、坏、现、有、行、为、
-、-、 、`、p、a、c、k、a、g、e、s、/、a、g、e、n、t、/、h、i、t、l、.、p、y、`、 、改、为、 、s、h、i、m、 、委、托、到、新、 、`、p、a、c、k、a、g、e、s、/、h、i、t、l、/、`、
-、-、 、O、A、u、t、h、2、/、m、T、L、S、 、默、认、关、闭、，、保、持、 、J、W、T、 、H、S、2、5、6、 、鉴、权、
-、
-、#、#、#、 、7、.、2、 、共、享、文、件、保、护、
-、-、 、`、m、a、i、n、.、p、y、`、 、/、 、`、s、e、t、t、i、n、g、s、.、p、y、`、 、/、 、`、.、e、n、v、.、e、x、a、m、p、l、e、`、 、等、共、享、文、件、由、父、 、A、g、e、n、t、 、统、一、集、成、
-、-、 、子、 、A、g、e、n、t、 、只、创、建、自、己、独、有、的、文、件、（、p、a、c、k、a、g、e、 、+、 、r、o、u、t、e、s、 、+、 、t、e、s、t、s、 、+、 、d、o、c、s、）、
-、-、 、避、免、 、P、R、 、合、并、时、写、冲、突、
-、
-、#、#、#、 、7、.、3、 、P、y、t、h、o、n、 、版、本、管、理、
-、-、 、项、目、通、过、 、`、.、p、y、t、h、o、n、-、v、e、r、s、i、o、n、`、 、锁、定、 、*、*、P、y、t、h、o、n、 、3、.、1、1、*、*、，、C、I、 、也、用、 、3、.、1、1、
-、-、 、推、荐、 、*、*、u、v、*、*、 、管、理、 、P、y、t、h、o、n、 、版、本、 、+、 、虚、拟、环、境、（、`、u、v、 、v、e、n、v、`、 、自、动、按、 、`、.、p、y、t、h、o、n、-、v、e、r、s、i、o、n、`、 、装、 、P、y、t、h、o、n、）、
-、-、 、代、码、使、用、 、`、d、a、t、e、t、i、m、e、.、U、T、C、`、 、等、 、3、.、1、1、+、 、语、法、，、*、*、不、支、持、 、3、.、9、/、3、.、1、0、*、*、
-、-、 、`、p、y、p、r、o、j、e、c、t、.、t、o、m、l、`、 、声、明、 、`、r、e、q、u、i、r、e、s、-、p、y、t、h、o、n、 、=、 、"、>、=、3、.、1、1、"、`、，、r、u、f、f、 、`、t、a、r、g、e、t、-、v、e、r、s、i、o、n、 、=、 、"、p、y、3、1、1、"、`、
-、
-、#、#、#、 、7、.、4、 、测、试、要、求、
-、-、 、每、个、新、模、块、 、≥、 、1、0、 、个、单、测、
-、-、 、无、外、部、依、赖、（、无、 、L、L、M、 、A、P、I、、、无、 、P、o、s、t、g、r、e、s、、、无、 、R、e、d、i、s、）、可、跑、通、
-、-、 、S、3、/、O、S、S、 、用、 、m、o、c、k、，、不、调、真、实、云、
-、
-、#、#、 、8、.、 、协、作、流、程、
-、
-、#、#、#、 、I、s、s、u、e、 、驱、动、开、发、
-、`、`、`、
-、r、o、a、d、m、a、p、.、m、d、 、→、 、G、i、t、H、u、b、 、I、s、s、u、e、 、→、 、f、e、a、t、u、r、e、 、b、r、a、n、c、h、 、→、 、P、R、 、→、 、m、e、r、g、e、 、→、 、t、a、g、
-、`、`、`、
-、
-、-、 、*、*、认、领、 、I、s、s、u、e、*、*、：、在、 、[、I、s、s、u、e、s、]、(、h、t、t、p、s、:、/、/、g、i、t、h、u、b、.、c、o、m、/、x、i、n、g、y、u、n、0、8、1、2、/、a、i、-、p、l、a、t、f、o、r、m、-、l、a、b、/、i、s、s、u、e、s、)、 、评、论、认、领、
-、-、 、*、*、分、支、命、名、*、*、：、`、f、e、a、t、/、i、s、s、u、e、-、<、N、>、-、<、s、h、o、r、t、-、n、a、m、e、>、`、
-、-、 、*、*、C、o、m、m、i、t、 、规、范、*、*、：、C、o、n、v、e、n、t、i、o、n、a、l、 、C、o、m、m、i、t、s、（、`、f、e、a、t、:、`、 、/、 、`、f、i、x、:、`、 、/、 、`、d、o、c、s、:、`、）、
-、-、 、*、*、P、R、 、模、板、*、*、：、`、.、g、i、t、h、u、b、/、P、U、L、L、_、R、E、Q、U、E、S、T、_、T、E、M、P、L、A、T、E、.、m、d、`、
-、-、 、*、*、合、并、策、略、*、*、：、S、q、u、a、s、h、 、m、e、r、g、e、
-、
-、#、#、#、 、文、档、
-、-、 、[、C、O、N、T、R、I、B、U、T、I、N、G、.、m、d、]、(、.、.、/、C、O、N、T、R、I、B、U、T、I、N、G、.、m、d、)、 、—、 、协、作、指、南、
-、-、 、[、.、g、i、t、h、u、b、/、I、S、S、U、E、_、T、E、M、P、L、A、T、E、/、]、(、.、.、/、.、g、i、t、h、u、b、/、I、S、S、U、E、_、T、E、M、P、L、A、T、E、/、)、 、—、 、I、s、s、u、e、 、模、板、
-、-、 、[、d、o、c、s、/、9、9、-、i、s、s、u、e、s、-、b、a、c、k、l、o、g、.、m、d、]、(、.、/、9、9、-、i、s、s、u、e、s、-、b、a、c、k、l、o、g、.、m、d、)、 、—、 、#、4、5、-、#、5、2、 、可、粘、贴、 、I、s、s、u、e、 、正、文、
-、-、 、[、d、o、c、s、/、0、0、-、r、o、a、d、m、a、p、.、m、d、]、(、.、/、0、0、-、r、o、a、d、m、a、p、.、m、d、)、 、—、 、完、整、 、R、o、a、d、m、a、p、
-、
-、#、#、 、9、.、 、已、知、限、制、（、诚、实、声、明、）、
-、
-、#、#、#、 、计、费、与、用、量、
-、-、 、按、 、t、o、k、e、n、 、落、库、 、+、 、日、/、月、预、算、拦、截、；、未、区、分、 、i、n、p、u、t、/、o、u、t、p、u、t、 、单、价、
-、-、 、按、请、求、次、数、日、配、额、与、 、t、o、k、e、n、 、预、算、并、存、
-、
-、#、#、#、 、可、用、性、
-、-、 、单、进、程、 、G、a、t、e、w、a、y、（、K、8、s、 、部、署、后、可、水、平、扩、展、）、
-、-、 、Q、d、r、a、n、t、 、单、节、点、（、多、 、A、Z、 、配、置、后、可、副、本、）、
-、
-、#、#、#、 、安、全、
-、-、 、沙、箱、默、认、关、闭、（、`、S、A、N、D、B、O、X、_、E、N、A、B、L、E、D、=、f、a、l、s、e、`、）、
-、-、 、O、A、u、t、h、2、/、m、T、L、S、 、默、认、关、闭、，、需、手、动、启、用、
-、
-、#、#、#、 、开、发、者、体、验、
-、-、 、C、o、n、s、o、l、e、 、V、2、：、*、*、已、 、b、u、i、l、d、 、+、 、挂、载、*、*、 、→、 、h、t、t、p、:、/、/、1、2、7、.、0、.、0、.、1、:、8、0、0、0、/、c、o、n、s、o、l、e、/、
-、-、 、D、e、m、o、：、`、.、/、e、v、a、l、/、p、l、a、t、f、o、r、m、_、d、e、m、o、.、s、h、 、-、-、n、o、-、l、l、m、`、 、/、 、`、-、-、w、i、t、h、-、l、l、m、`、（、含、 、*、*、O、1、+、v、e、r、t、i、c、a、l、 、m、o、c、k、*、*、）、
-、-、 、离、线、门、禁、：、`、p、y、t、h、o、n、 、e、v、a、l、/、a、g、e、n、t、_、j、d、2、_、g、a、t、e、.、p、y、 、r、u、n、`、（、1、2、/、1、2、，、含、 、`、a、u、t、o、_、p、l、a、n、_、v、e、r、t、i、c、a、l、`、）、
-、-、 、S、D、K、：、`、p、i、p、 、i、n、s、t、a、l、l、 、a、i、-、p、l、a、t、f、o、r、m、-、l、a、b、`、（、见、 、[、p、h、a、s、e、-、n、-、p、y、p、i、-、s、d、k、.、m、d、]、(、.、/、0、2、-、p、h、a、s、e、-、n、-、p、y、p、i、-、s、d、k、.、m、d、)、）、或、 、`、p、i、p、 、i、n、s、t、a、l、l、 、-、e、 、s、d、k、/、p、y、t、h、o、n、`、
-、-、 、*、*、L、i、v、e、 、自、动、化、*、*、：、`、.、/、e、v、a、l、/、l、i、v、e、_、g、a、t、e、.、s、h、`、（、见、 、[、c、l、o、s、u、r、e、-、s、o、p、.、m、d、]、(、.、/、0、0、-、c、l、o、s、u、r、e、-、s、o、p、.、m、d、)、）、
-、-、 、*、*、L、i、v、e、 、手、验、表、*、*、：、[、d、e、m、o、-、w、a、l、k、t、h、r、o、u、g、h、.、m、d、]、(、.、/、9、0、-、d、e、m、o、-、w、a、l、k、t、h、r、o、u、g、h、.、m、d、)、
-、-、 、评、测、 、P、i、p、e、l、i、n、e、 、的、 、l、i、v、e、 、用、例、需、 、`、E、V、A、L、_、A、P、I、_、K、E、Y、`、
-、
-、#、#、 、1、0、.、 、下、一、步、建、议、
-、
-、#、#、#、 、文、档、 、/、 、验、收、闭、环、（、优、先、）、
-、
-、|、 、项、 、|、 、说、明、 、|、 、状、态、 、|、
-、|、-、-、-、-、|、-、-、-、-、-、-、|、-、-、-、-、-、-、|、
-、|、 、O、1、+、v、e、r、t、i、c、a、l、 、m、o、c、k、 、E、2、E、 、|、 、`、e、v、a、l、/、a、u、t、o、_、p、l、a、n、_、v、e、r、t、i、c、a、l、.、s、h、 、-、-、m、o、c、k、`、 、+、 、`、a、g、e、n、t、_、j、d、2、_、g、a、t、e、`、 、|、 、✅、 、|、
-、|、 、L、i、v、e、 、手、验、表、 、|、 、[、d、e、m、o、-、w、a、l、k、t、h、r、o、u、g、h、.、m、d、]、(、.、/、9、0、-、d、e、m、o、-、w、a、l、k、t、h、r、o、u、g、h、.、m、d、)、 、|、 、⚠、️、 、部、分、待、手、验、 、|、
-、|、 、B、a、c、k、l、o、g、 、勾、选、同、步、 、|、 、`、i、s、s、u、e、s、-、b、a、c、k、l、o、g、-、p、h、a、s、e、-、o、/、q、`、 、|、 、✅、 、2、0、2、6、-、0、5、-、1、9、 、|、
-、|、 、C、I、 、主、流、程、跑、 、j、d、2、 、g、a、t、e、 、|、 、`、.、g、i、t、h、u、b、/、w、o、r、k、f、l、o、w、s、/、c、i、.、y、m、l、`、 、|、 、见、近、期、 、c、o、m、m、i、t、 、|、
-、
-、#、#、#、 、可、选、开、发、
-、
-、|、 、方、向、 、|、 、说、明、 、|、
-、|、-、-、-、-、-、-、|、-、-、-、-、-、-、|、
-、|、 、P、h、a、s、e、 、Q、 、t、a、g、 、+、 、C、o、n、s、o、l、e、 、P、l、a、n、 、U、I、 、|、 、`、p、h、a、s、e、-、q、-、a、d、v、a、n、c、e、d、-、p、l、a、n、n、i、n、g、`、 、t、a、g、；、P、l、a、n、 、审、批、 、C、o、n、s、o、l、e、 、|、
-、|、 、面、试、演、练、 、|、 、[、i、n、t、e、r、v、i、e、w、-、n、a、r、r、a、t、i、v、e、.、m、d、]、(、.、/、9、0、-、i、n、t、e、r、v、i、e、w、-、n、a、r、r、a、t、i、v、e、.、m、d、)、 、+、 、[、d、e、m、o、-、w、a、l、k、t、h、r、o、u、g、h、.、m、d、]、(、.、/、9、0、-、d、e、m、o、-、w、a、l、k、t、h、r、o、u、g、h、.、m、d、)、 、|、
-、
-、#、#、 、1、1、.、 、核、心、面、试、讲、法、
-、
-、>、 、*、*、一、句、话、*、*、：、这、是、一、个、从、模、型、网、关、到、生、产、基、础、设、施、的、完、整、 、A、I、 、平、台、参、考、实、现、，、按、 、P、h、a、s、e、 、渐、进、交、付、；、P、h、a、s、e、 、L、 、已、补、齐、 、R、e、r、a、n、k、/、J、u、d、g、e、/、A、g、e、n、t、 、三、率、/、反、馈、飞、轮、 、l、i、v、e、，、P、h、a、s、e、 、M、 、已、补、齐、 、*、*、增、量、索、引、全、链、路、*、*、（、B、M、2、5、 、差、量、、、p、u、r、g、e、、、m、e、t、r、i、c、s、、、d、e、m、o、 、断、言、）、。、
-、
-、*、*、分、层、讲、法、*、*、：、
-、1、.、 、*、*、模、型、服、务、层、*、*、：、G、a、t、e、w、a、y、 、+、 、路、由、 、+、 、熔、断、 、+、 、计、费、 、+、 、语、义、缓、存、 、+、 、E、m、b、e、d、d、i、n、g、 、服、务、
-、2、.、 、*、*、能、力、中、台、*、*、：、R、A、G、 、+、 、P、r、o、m、p、t、 、版、本、化、/、A、/、B、 、+、 、长、记、忆、 、+、 、M、C、P、 、+、 、上、下、文、压、缩、
-、3、.、 、*、*、A、g、e、n、t、 、应、用、层、*、*、：、控、制、流、编、排、 、+、 、M、u、l、t、i、-、A、g、e、n、t、 、+、 、生、命、周、期、 、+、 、H、I、T、L、
-、4、.、 、*、*、A、g、e、n、t、O、p、s、 、治、理、*、*、：、沙、箱、 、+、 、分、级、审、计、 、+、 、P、I、I、 、+、 、O、A、u、t、h、2、/、m、T、L、S、
-、5、.、 、*、*、开、发、者、体、验、*、*、：、P、y、t、h、o、n、 、S、D、K、 、+、 、C、o、n、s、o、l、e、 、V、2、 、+、 、评、测、 、P、i、p、e、l、i、n、e、 、+、 、反、馈、飞、轮、
-、6、.、 、*、*、生、产、基、础、设、施、*、*、：、对、象、存、储、 、+、 、K、8、s、 、H、e、l、m、 、+、 、多、 、A、Z、 、+、 、G、P、U、 、调、度、
-、
-、*、*、诚、实、边、界、*、*、：、
-、-、 、单、进、程、 、G、a、t、e、w、a、y、（、K、8、s、 、可、扩、展、）、
-、-、 、细、粒、度、 、R、B、A、C、 、仍、浅、（、增、量、索、引、 、P、h、a、s、e、 、M、 、已、做、满、）、
-、-、 、多、 、A、Z、/、G、P、U、 、为、 、H、e、l、m、 、模、板、级、，、未、真、集、群、压、测、
-、
-、-、-、-、
-、
-、*、*、项、目、仓、库、*、*、：、h、t、t、p、s、:、/、/、g、i、t、h、u、b、.、c、o、m、/、x、i、n、g、y、u、n、0、8、1、2、/、a、i、-、p、l、a、t、f、o、r、m、-、l、a、b、
-、*、*、最、新、提、交、*、*、：、`、9、8、b、e、9、d、1、`、 、@、 、m、a、i、n、
-、*、*、最、新、 、T、a、g、*、*、：、`、p、h、a、s、e、-、j、k、-、c、o、m、p、l、e、t、e、`、
-、
+# ai-platform-lab 项目状态总览
+
+> **最后更新**：2026-08-19  
+> **当前状态**：Phase A～X 已交付 · tags：`phase-o-agent-jd2`、`phase-p-multimodal`、`phase-n-pypi-sdk`、`phase-q-advanced-planning`、`phase-r-agent-harness`、`phase-s-tree-of-thoughts`、`phase-t-multi-agent-debate`、`phase-u-deep-research`、`phase-v-computer-use`、`phase-x-memory-governance`  
+> **主分支**：`main`
+
+---
+
+## 1. 项目定位
+
+一个面向学习与面试的 **AI 平台参考实现**，覆盖从模型网关到生产基础设施的完整链路。对标大厂 AI 平台架构，按 Phase 渐进交付。
+
+## 2. 完成度总览
+
+| 层次 | 完成度 | 强项 | 主要缺口 |
+|------|--------|------|---------|
+| 模型服务层 | ~98% | Gateway、路由、熔断、计费、语义缓存、**多模态 Embedding** | 真 CLIP 本地推理 |
+| 基础设施层 | ~90% | 对象存储、K8s Helm、多 AZ、GPU 调度 | 跨 Region、Service Mesh |
+| 能力中台 | ~90% | RAG、Prompt 版本化+A/B、长记忆、MCP、上下文压缩 | — |
+| Agent 应用层 | ~95% | Planner、CoT、Multi-Agent、Phase Q 全链路、**Phase S ToT 高级推理** | Console Plan 审批 UI |
+| AgentOps 治理 | ~90% | 沙箱、分级审计、PII、OAuth2/mTLS | 在线评测飞轮（已有反馈飞轮） |
+| 开发者体验 | ~95% | Python SDK、PyPI 发布流程、Console V2、Demo、门禁 | TS SDK · live 全链手验表 |
+
+## 3. Phase 完成历史线
+
+```
+Phase A — 内测基线          ✅ tag: phase-a-internal-beta
+Phase B1 — 计费             ✅ tag: phase-b1-billing
+Phase B2 — 并行化           ✅ tag: phase-b2-parallel
+Phase B3 — Rerank + Canary  ✅ tag: phase-b3-rerank-canary
+Phase C — 平台能力          ✅ tag: phase-c-platform
+Phase D — 运维治理          ✅ tag: phase-d-ops
+Phase E — Agent 质量        ✅ (无单独 tag，已合并)
+Phase F — 能力中台补全      ✅ tag: phase-f-capabilities     ← 今日
+Phase G — Embedding 服务    ✅ tag: phase-g-embedding          ← 今日
+Phase H — Agent 高阶能力    ✅ tag: phase-h-agent-advanced     ← 今日
+Phase I — 安全合规          ✅ tag: phase-i-security            ← 今日
+Phase J — 开发者体验        ✅ tag: phase-j-developer-experience + phase-jk-complete ← 今日
+Phase K — 生产基础设施      ✅ tag: phase-k-infra-base + phase-jk-complete            ← 今日
+Phase L — 工程深度与面试叙事 ✅ tag: phase-l-engineering-depth                      ← 2026-06-23
+Phase M — RAG 增量索引做满    ✅ tag: phase-m-incremental-index                      ← 2026-06-23
+Phase N — Python SDK PyPI       ✅ tag: phase-n-pypi-sdk
+Phase O — Agent JD2 对齐        ✅ tag: phase-o-agent-jd2
+Phase P — 多模态 Embedding      ✅ tag: phase-p-multimodal
+Phase Q — 任务规划前沿对齐      ✅ 已交付（#116～#121）；closure：路由挂载 + live E2E
+Phase R — Agent Harness 前沿      ✅ tag: phase-r-agent-harness（R1 自进化 + R2 长程 + R3 能力探测 + R4 门禁）
+Phase S — Tree of Thoughts    ✅ tag: phase-s-tree-of-thoughts（2026-08-05）
+Phase T — Multi-Agent Debate  ✅ tag: phase-t-multi-agent-debate（2026-08-05）
+Phase U — Deep Research     ✅ tag: phase-u-deep-research（2026-08-05）
+Phase V — Computer Use      ✅ tag: phase-v-computer-use（2026-08-06）
+Phase W — Self-Refine       ✅ tag: phase-w-self-refine（2026-08-12）
+Phase X — Memory Governance ✅ tag: phase-x-memory-governance（2026-08-19）
+Phase X.5 — Memory Classification ✅（2026-08-19）
+```
+
+## 4. 代码规模
+
+| 指标 | 数量 |
+|------|------|
+| **累计单测** | **699**（`pytest` 全量） |
+| **packages + apps Python 文件** | 214 个 |
+| **路由/处理文件** | 24 个 |
+| **测试套件** | 32 个 |
+| **Phase 设计文档** | 80+ 篇 |
+| **离线门禁** | `agent_jd2_gate`（15 项含 Q6）、`multimodal_embedding_gate`、`plan_quality_gate`、`harness_capability_gate`、`self_refine_quality_gate` |
+| **GitHub Tags** | 49+ 个 |
+| **GitHub Issues** | 50+ 个（全部关闭） |
+
+## 5. 能力清单（按 Phase）
+
+### Phase F — 能力中台补全 (#29-#34)
+
+| Issue | 能力 | 关键文件 |
+|-------|------|---------|
+| #29 | Prompt 版本化 + 渲染 | `packages/prompt/` |
+| #30 | Prompt A/B 实验 | `packages/prompt/experiment.py` |
+| #31 | 长记忆持久化 | `packages/memory/` |
+| #32 | MCP 真实集成 | `packages/mcp/` |
+| #33 | 上下文压缩 | `packages/agent/context_compress.py` |
+| #34 | 语义缓存 | `packages/semantic_cache/` |
+
+### Phase G — Embedding 独立服务 (#35)
+
+| Issue | 能力 | 关键文件 |
+|-------|------|---------|
+| #35 | Provider 抽象 + LRU 缓存 | `packages/embedding/` |
+
+### Phase H — Agent 高阶能力 (#37-#40)
+
+| Issue | 能力 | 关键文件 |
+|-------|------|---------|
+| #37 | DAG 控制流编排 | `packages/agent/orchestrator/` |
+| #38 | Multi-Agent 协作 | `packages/agent/multi_agent/` |
+| #39 | Agent 版本 + 灰度 + 回滚 | `packages/agent/lifecycle/` |
+| #40 | HITL 完整工作流 | `packages/hitl/` |
+
+### Phase I — 安全合规 (#41-#44)
+
+| Issue | 能力 | 关键文件 |
+|-------|------|---------|
+| #41 | 沙箱容器隔离 | `packages/sandbox/` |
+| #42 | 动作分级审计 | `packages/audit/action_levels.py` |
+| #43 | PII 脱敏 + 内容安全 | `packages/pii/` |
+| #44 | OAuth2 / mTLS | `packages/auth/oauth2.py` + `mtls.py` |
+
+### Phase J — 开发者体验 (#29-#32, GitHub)
+
+| Issue | 能力 | 关键文件 |
+|-------|------|---------|
+| #29 | Python SDK | `sdk/python/ai_platform_lab/` |
+| #30 | Console V2 (React) | `console-v2/` |
+| #31 | 评测 Pipeline + CI 门禁 | `eval/pipeline.py` + `.github/workflows/eval.yml` |
+| #32 | 反馈飞轮 | `packages/feedback/` + `packages/quality_monitor/` + `packages/feedback_loop/` |
+
+### Phase K — 生产基础设施 (#33-#36, GitHub)
+
+| Issue | 能力 | 关键文件 |
+|-------|------|---------|
+| #33 | 对象存储 (local/s3/oss) | `packages/storage/` |
+| #34 | K8s Helm Chart | `deploy/helm/ai-platform-lab/` |
+| #35 | 多 AZ 高可用 | `deploy/helm/values-multi-az.yaml` + templates |
+| #36 | GPU 弹性调度 | `deploy/helm/values-gpu.yaml` + templates |
+
+## 6. 今日提交记录
+
+| Commit | 内容 |
+|--------|------|
+| `e75e50d` | Phase F — 能力中台补全 (#29-#34) |
+| `35b6ff6` | Phase G — Embedding 独立服务 (#35) |
+| `6f732cc` | Phase H — Agent 高阶能力 (#37-#40) |
+| `36c1ac6` | Phase I — 安全合规 (#41-#44) |
+| `2119cc0` | 协作流程：CONTRIBUTING + Issue/PR 模板 |
+| `69fb6ee` | Roadmap 关联 GitHub Issues |
+| `1dc1d5d` | Phase J/K 第一波：SDK + Console + Eval + Storage + Helm |
+| `e5623e7` | Phase J/K 第二波：反馈飞轮 + 多AZ + GPU |
+| `98be9d1` | chore: eval CLI 扩展 + kustomize overlay |
+
+## 7. 关键设计决策
+
+### 7.1 向后兼容
+- 所有新功能 **opt-in**（默认 `false`），不破坏现有行为
+- `packages/agent/hitl.py` 改为 shim 委托到新 `packages/hitl/`
+- OAuth2/mTLS 默认关闭，保持 JWT HS256 鉴权
+
+### 7.2 共享文件保护
+- `main.py` / `settings.py` / `.env.example` 等共享文件由父 Agent 统一集成
+- 子 Agent 只创建自己独有的文件（package + routes + tests + docs）
+- 避免 PR 合并时写冲突
+
+### 7.3 Python 版本管理
+- 项目通过 `.python-version` 锁定 **Python 3.11**，CI 也用 3.11
+- 推荐 **uv** 管理 Python 版本 + 虚拟环境（`uv venv` 自动按 `.python-version` 装 Python）
+- 代码使用 `datetime.UTC` 等 3.11+ 语法，**不支持 3.9/3.10**
+- `pyproject.toml` 声明 `requires-python = ">=3.11"`，ruff `target-version = "py311"`
+
+### 7.4 测试要求
+- 每个新模块 ≥ 10 个单测
+- 无外部依赖（无 LLM API、无 Postgres、无 Redis）可跑通
+- S3/OSS 用 mock，不调真实云
+
+## 8. 协作流程
+
+### Issue 驱动开发
+```
+roadmap.md → GitHub Issue → feature branch → PR → merge → tag
+```
+
+- **认领 Issue**：在 [Issues](https://github.com/xingyun0812/ai-platform-lab/issues) 评论认领
+- **分支命名**：`feat/issue-<N>-<short-name>`
+- **Commit 规范**：Conventional Commits（`feat:` / `fix:` / `docs:`）
+- **PR 模板**：`.github/PULL_REQUEST_TEMPLATE.md`
+- **合并策略**：Squash merge
+
+### 文档
+- [CONTRIBUTING.md](../CONTRIBUTING.md) — 协作指南
+- [.github/ISSUE_TEMPLATE/](../.github/ISSUE_TEMPLATE/) — Issue 模板
+- [docs/99-issues-backlog.md](./99-issues-backlog.md) — #45-#52 可粘贴 Issue 正文
+- [docs/00-roadmap.md](./00-roadmap.md) — 完整 Roadmap
+
+## 9. 已知限制（诚实声明）
+
+### 计费与用量
+- 按 token 落库 + 日/月预算拦截；未区分 input/output 单价
+- 按请求次数日配额与 token 预算并存
+
+### 可用性
+- 单进程 Gateway（K8s 部署后可水平扩展）
+- Qdrant 单节点（多 AZ 配置后可副本）
+
+### 安全
+- 沙箱默认关闭（`SANDBOX_ENABLED=false`）
+- OAuth2/mTLS 默认关闭，需手动启用
+
+### 开发者体验
+- Console V2：**已 build + 挂载** → http://127.0.0.1:8000/console/
+- Demo：`./eval/platform_demo.sh --no-llm` / `--with-llm`（含 **O1+vertical mock**）
+- 离线门禁：`python eval/agent_jd2_gate.py run`（12/12，含 `auto_plan_vertical`）
+- SDK：`pip install ai-platform-lab`（见 [phase-n-pypi-sdk.md](./02-phase-n-pypi-sdk.md)）或 `pip install -e sdk/python`
+- **Live 自动化**：`./eval/live_gate.sh`（见 [closure-sop.md](./00-closure-sop.md)）
+- **Live 手验表**：[demo-walkthrough.md](./90-demo-walkthrough.md)
+- 评测 Pipeline 的 live 用例需 `EVAL_API_KEY`
+
+## 10. 下一步建议
+
+### 文档 / 验收闭环（优先）
+
+| 项 | 说明 | 状态 |
+|----|------|------|
+| O1+vertical mock E2E | `eval/auto_plan_vertical.sh --mock` + `agent_jd2_gate` | ✅ |
+| Live 手验表 | [demo-walkthrough.md](./90-demo-walkthrough.md) | ⚠️ 部分待手验 |
+| Backlog 勾选同步 | `issues-backlog-phase-o/q` | ✅ 2026-05-19 |
+| CI 主流程跑 jd2 gate | `.github/workflows/ci.yml` | 见近期 commit |
+
+### 可选开发
+
+| 方向 | 说明 |
+|------|------|
+| Phase Q tag + Console Plan UI | `phase-q-advanced-planning` tag；Plan 审批 Console |
+| 面试演练 | [interview-narrative.md](./90-interview-narrative.md) + [demo-walkthrough.md](./90-demo-walkthrough.md) |
+
+## 11. 核心面试讲法
+
+> **一句话**：这是一个从模型网关到生产基础设施的完整 AI 平台参考实现，按 Phase 渐进交付；Phase L 已补齐 Rerank/Judge/Agent 三率/反馈飞轮 live，Phase M 已补齐 **增量索引全链路**（BM25 差量、purge、metrics、demo 断言）。
+
+**分层讲法**：
+1. **模型服务层**：Gateway + 路由 + 熔断 + 计费 + 语义缓存 + Embedding 服务
+2. **能力中台**：RAG + Prompt 版本化/A/B + 长记忆 + MCP + 上下文压缩
+3. **Agent 应用层**：控制流编排 + Multi-Agent + 生命周期 + HITL
+4. **AgentOps 治理**：沙箱 + 分级审计 + PII + OAuth2/mTLS
+5. **开发者体验**：Python SDK + Console V2 + 评测 Pipeline + 反馈飞轮
+6. **生产基础设施**：对象存储 + K8s Helm + 多 AZ + GPU 调度
+
+**诚实边界**：
+- 单进程 Gateway（K8s 可扩展）
+- 细粒度 RBAC 仍浅（增量索引 Phase M 已做满）
+- 多 AZ/GPU 为 Helm 模板级，未真集群压测
+
+## 追加：Phase X.5 — Memory Classification（记忆分类子系统）
+
+> **交付日期**：2026-08-19
+> **Issue**：[#222](https://github.com/xingyun0812/ai-platform-lab/issues/222)
+
+### 新增能力
+
+- **L0 记忆分类器**：双轨分类（规则 + LLM 降级），产出 4 类标签（preference/factual/ephemeral/noise）
+- **规则分类器**：关键词/模式匹配零依赖拦截噪音，识别偏好/事实类记忆
+- **LLM 分类器**：复用 verify.py 的 LLM 调用模式，200ms 超时降级为 ephemeral
+- **存储集成**：在 L1 quality_filter 后、L2 dedup 前插入分类，自动决定 scope/TTL/权重
+- **Config + Metrics**：`MemoryGovernanceConfig` 扩展 classifier 字段，6 个分类器 Prometheus 指标
+- **REST API**：`PATCH /{memory_id}/classify`（platform_admin 手动纠正分类）
+
+### 代码规模
+
+| 指标 | 数值 |
+|------|------|
+| 新增文件 | 7 个（4 模块 + 4 测试） |
+| 分类器测试 | 38 个 |
+| 分类器回归测试 | 75 个（Phase X 无退化） |
+
+### 文件清单
+
+- `packages/memory/classifier/{__init__,config,rules,llm,types}.py`
+- `tests/test_memory_classifier{_rules,_llm,}.py` + `test_memory_routes_classifier.py`
+- `docs/02-phase-x5-memory-classification.md`
+**最新提交**：`98be9d1` @ main
+**最新 Tag**：`phase-jk-complete`
+
+---
+
+## 追加：Phase X — Memory Governance（记忆治理子系统）
+
+> **交付日期**：2026-08-19 · **Tag**：`phase-x-memory-governance`
+> **Issues**：[#216](https://github.com/xingyun0812/ai-platform-lab/issues/216) ~ [#221](https://github.com/xingyun0812/ai-platform-lab/issues/221)
+
+### 完成度更新
+
+`Phase A～X 已交付`，tags 追加 `phase-x-memory-governance`。
+
+### 新增能力（F40）
+
+- **L2 语义去重**：写入时 cosine 相似度检测，skip(≥0.92)/merge(0.85~0.92)/insert 三路
+- **L5 权重排序**：四维公式（近时性/频次/业务相关性/人类反馈），读时计算
+- **L4 召回校验**：LLM judge top-1 相关性验证，不相关降级
+- **L3 清理归档**：expired/low-weight/zero-access 三条 purge 规则，archive 先归档再删除
+- **Governance Worker CLI**：`python -m packages.memory.governance_worker run --dry-run`
+- **REST API**：`POST /governance/run`、`GET /governance/stats`、`GET /archive/list`、`PATCH /{id}/feedback`
+- **10 个治理 Prometheus 指标**：dedup/verify/purge/archive/library 全覆盖
+
+### 代码规模
+
+| 指标 | 数值 |
+|------|------|
+| 新增文件 | 21 个 |
+| 净增代码 | +4,664 行 |
+| 治理单元测试 | 83 个 |
+| 治理 Smoke 检查 | 26/26 passed |
+| 全量单元测试 | 616 + 83 = **699 个** |
+
+### 已知限制
+
+- 离线全库重去重未做（当前仅写入时对比最近 20 条）
+- 跨 scope 去重未做
+- 可视化治理面板未做（需 Console V2 集成）
+- 治理指标无独立 Grafana 面板

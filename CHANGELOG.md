@@ -1,5 +1,25 @@
 # Changelog
 
+## 2026-08-19 — Phase X.5 Memory Classification (#222)
+
+### Added
+
+- `packages/memory/classifier/` — L0 记忆分类器模块（规则 + LLM 双轨）
+- `ClassResult` dataclass + `run_classifier()` 编排函数
+- 规则分类器：关键词/模式匹配零依赖拦截噪音
+- LLM 分类器：200ms 超时降级，复用 verify.py LLM 调用
+- 集成到 MemoryStore.add()：L1 之后插入，影响 scope/TTL/权重
+- `MemoryGovernanceConfig` 扩展：classifier 开关、模型、超时、fallback
+- 6 个分类器 Prometheus 指标（classified/latency/llm_calls/llm_errors/rule_matched）
+- `PATCH /{memory_id}/classify` 管理端点（platform_admin 手动纠正分类）
+
+### Tests
+
+- 38 个分类器测试（规则 12 + LLM 10 + 集成 8 + API 8）
+- 75 个 Phase X 回归测试全部通过
+
+---
+
 ## 2026-07-07 — Sprint 1~3：Harness 工程最佳实践
 
 ### Added

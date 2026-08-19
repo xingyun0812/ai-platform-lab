@@ -62,6 +62,7 @@ class MemoryRecord:
     access_count: int = 0
     last_accessed_at: float | None = None
     weight: float = 1.0
+    merged_from: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
         return _dc.asdict(self)
@@ -93,21 +94,27 @@ def _cosine_similarity(a: list[float], b: list[float]) -> float:
 
 def _apply_weighted_score(
     scored: list[tuple[float, MemoryRecord]],
+    *,
+    records: list[MemoryRecord] | None = None,
+    config: MemoryGovernanceConfig | None = None,
 ) -> list[tuple[float, MemoryRecord]]:
     """Convert raw similarity scores to weighted final scores.
 
-    final_score = similarity * 0.7 + normalized_weight * 0.3
-    normalized_weight = min(1.0, weight / max_weight_in_results)
+    Uses the L5 weighted scoring formula:
+        final_score = similarity * 0.7 + computed_weight * 0.3
     """
+    from packages.memory.governance.weight import ScopeStats as _SS
+    from packages.memory.governance.weight import compute_scope_stats as _css
+    from packages.memory.governance.weight import compute_weight
+
     if not scored:
         return scored
-    max_weight = max(r.weight for _, r in scored)
-    if max_weight <= 0:
-        max_weight = 1.0
+    cfg = config or MemoryGovernanceConfig()
+    scope_stats = _css(records) if records else _SS()
     result: list[tuple[float, MemoryRecord]] = []
     for sim, r in scored:
-        norm_w = min(1.0, r.weight / max_weight)
-        final_score = sim * 0.7 + norm_w * 0.3
+        cw = compute_weight(r, scope_stats, cfg)
+        final_score = sim * 0.7 + cw * 0.3
         result.append((final_score, r))
     return result
 
@@ -198,6 +205,28 @@ class MemoryStore:
     ) -> list[MemoryRecord]:
         raise NotImplementedError
 
+    async def count_by_scope(
+        self,
+        *,
+        tenant_id: str,
+        scope: str,
+        scope_id: str,
+    ) -> int:
+        raise NotImplementedError
+
+    async def list_expired(
+        self,
+        *,
+        tenant_id: str = "*",
+        scope: str = "*",
+        scope_id: str = "*",
+    ) -> list[MemoryRecord]:
+        raise NotImplementedError
+
+    async def update_metadata(self, memory_id: str, metadata: dict) -> bool:
+        """Update metadata on an existing record."""
+        raise NotImplementedError
+
 
 # --------------------------------------------------------------------- #
 # 进程内实现
@@ -232,6 +261,98 @@ class InMemoryMemoryStore(MemoryStore):
             )
             self._metrics.record_quality_rejected(tenant_id=record.tenant_id, scope=record.scope)
             return record.memory_id  # still return the id, but don't store
+
+        cfg = governance_config or self._governance_config
+
+        # L0: Memory Classification (before dedup)
+        if cfg.classifier_enabled:
+            from packages.memory.classifier import ClassResult, run_classifier
+
+            result = await run_classifier(record.content, cfg)
+            if result is None:
+                result = ClassResult("factual", confidence=0.5, source="default")
+
+            # Record metrics
+            self._metrics.record_classified(class_label=result.class_label, source=result.source)
+
+            if result.class_label == "noise":
+                logger.warning(
+                    "classifier rejected noise memory %s: %s",
+                    record.memory_id,
+                    result.reason,
+                )
+                self._metrics.record_quality_rejected(
+                    tenant_id=record.tenant_id, scope=record.scope
+                )
+                return record.memory_id  # reject but return id (same pattern as quality_filter)
+
+            # Apply classification to record
+            record.metadata["class"] = result.class_label
+            record.metadata["class_confidence"] = result.confidence
+            record.metadata["class_source"] = result.source
+
+            if result.class_label == "ephemeral":
+                record.scope = "session"
+                record.expires_at = time.time() + 86400
+                record.metadata["feedback_bonus"] = -0.1
+            elif result.class_label == "preference":
+                record.scope = "user"
+                record.expires_at = None
+                record.metadata["feedback_bonus"] = 0.2
+            # factual: keep existing scope, no adjustment
+
+        # L2: Semantic dedup check
+        from packages.memory.governance.dedup import check_dedup
+
+        with self._lock:
+            key = (record.tenant_id, record.scope, record.scope_id)
+            bucket = self._records.get(key, [])
+            # Sort by last_accessed_at desc, take top N candidates
+            sorted_candidates = sorted(
+                bucket,
+                key=lambda r: r.last_accessed_at or 0,
+                reverse=True,
+            )[: cfg.dedup_candidate_count]
+
+        dedup_result = check_dedup(record, sorted_candidates, cfg)
+
+        if dedup_result.action == "skip":
+            logger.warning(
+                "dedup skipped memory %s (matched %s): %s",
+                record.memory_id,
+                dedup_result.matched_id,
+                dedup_result.reason,
+            )
+            self._metrics.record_dedup_skipped(tenant_id=record.tenant_id, scope=record.scope)
+            return dedup_result.matched_id or record.memory_id
+
+        if dedup_result.action == "merge":
+            logger.warning(
+                "dedup merging memory %s into %s: %s",
+                record.memory_id,
+                dedup_result.matched_id,
+                dedup_result.reason,
+            )
+            # Perform the merge on the matched record
+            with self._lock:
+                matched = self._by_id.get(dedup_result.matched_id or "")
+                if matched is not None:
+                    # Simple content merge (append unique content)
+                    if record.content not in matched.content:
+                        matched.content = matched.content + "\n" + record.content
+                    matched.last_accessed_at = time.time()
+                    matched.access_count = (matched.access_count or 0) + 1
+                    if not hasattr(matched, "merged_from") or matched.merged_from is None:
+                        matched.merged_from = []
+                    if record.memory_id not in matched.merged_from:
+                        matched.merged_from.append(record.memory_id)
+                    # Merge metadata
+                    if record.metadata:
+                        matched.metadata.update(record.metadata)
+            self._metrics.record_dedup_merged(tenant_id=record.tenant_id, scope=record.scope)
+            return dedup_result.matched_id or record.memory_id
+
+        # action == "insert" — normal insert
         with self._lock:
             key = (record.tenant_id, record.scope, record.scope_id)
             self._records.setdefault(key, []).append(record)
@@ -290,7 +411,11 @@ class InMemoryMemoryStore(MemoryStore):
                 scored.append((score, r))
         # Apply weighted scoring before sorting (semantic search only)
         if query_embedding is not None:
-            scored = _apply_weighted_score(scored)
+            scored = _apply_weighted_score(
+                scored,
+                records=records,
+                config=self._governance_config,
+            )
         scored.sort(key=lambda x: x[0], reverse=True)
         results = [r for _s, r in scored[:top_k] if _s > 0]
         # Auto-update access tracking for matched records
@@ -298,6 +423,21 @@ class InMemoryMemoryStore(MemoryStore):
         for r in results:
             r.access_count += 1
             r.last_accessed_at = now
+        # L4: Recall verification (top-1 only)
+        from packages.memory.governance.verify import verify_top_k_sync
+
+        verify_results = verify_top_k_sync(query, results, self._governance_config)
+        if verify_results and verify_results[0].demoted:
+            demoted_id = verify_results[0].memory_id
+            for i, (_s, r) in enumerate(scored):
+                if r.memory_id == demoted_id:
+                    scored[i] = (verify_results[0].demoted_score, r)
+                    break
+            scored.sort(key=lambda x: x[0], reverse=True)
+            results = [r for _s, r in scored[:top_k] if _s > 0]
+            self._metrics.record_verify_demoted(tenant_id=tenant_id, scope=scope)
+
+        self._metrics.record_verify_check(tenant_id=tenant_id, scope=scope)
         latency_ms = (_time.perf_counter() - start) * 1000
         self._metrics.record_search(tenant_id=tenant_id, scope=scope)
         self._metrics.record_search_latency(tenant_id=tenant_id, scope=scope, latency_ms=latency_ms)
@@ -325,6 +465,45 @@ class InMemoryMemoryStore(MemoryStore):
             key = (tenant_id, scope, scope_id)
             records = [r for r in self._records.get(key, []) if not r.is_expired()]
         return records[:limit]
+
+    async def count_by_scope(
+        self,
+        *,
+        tenant_id: str,
+        scope: str,
+        scope_id: str,
+    ) -> int:
+        with self._lock:
+            key = (tenant_id, scope, scope_id)
+            return len([r for r in self._records.get(key, []) if not r.is_expired()])
+
+    async def list_expired(
+        self,
+        *,
+        tenant_id: str = "*",
+        scope: str = "*",
+        scope_id: str = "*",
+    ) -> list[MemoryRecord]:
+        with self._lock:
+            results: list[MemoryRecord] = []
+            for (tid, scp, sid), records in self._records.items():
+                if tenant_id != "*" and tid != tenant_id:
+                    continue
+                if scope != "*" and scp != scope:
+                    continue
+                if scope_id != "*" and sid != scope_id:
+                    continue
+                # Return all records as purge candidates (not just expired)
+                results.extend(records)
+            return results
+
+    async def update_metadata(self, memory_id: str, metadata: dict) -> bool:
+        with self._lock:
+            r = self._by_id.get(memory_id)
+            if r is None or r.is_expired():
+                return False
+            r.metadata.update(metadata)
+            return True
 
 
 # --------------------------------------------------------------------- #
@@ -366,7 +545,8 @@ class PostgresMemoryStore(MemoryStore):
         expires_at TIMESTAMPTZ,
         access_count INTEGER DEFAULT 0,
         last_accessed_at DOUBLE PRECISION,
-        weight DOUBLE PRECISION DEFAULT 1.0
+        weight DOUBLE PRECISION DEFAULT 1.0,
+        merged_from JSONB DEFAULT '[]'::jsonb
     );
     CREATE INDEX IF NOT EXISTS idx_mem_scope
         ON agent_memories (tenant_id, scope, scope_id);
@@ -437,6 +617,7 @@ class PostgresMemoryStore(MemoryStore):
             access_count=int(row.get("access_count", 0)),
             last_accessed_at=row.get("last_accessed_at"),
             weight=float(row.get("weight", 1.0)),
+            merged_from=row.get("merged_from") or [],
         )
 
     async def add(
@@ -459,6 +640,145 @@ class PostgresMemoryStore(MemoryStore):
             )
             self._metrics.record_quality_rejected(tenant_id=record.tenant_id, scope=record.scope)
             return record.memory_id
+
+        cfg = governance_config or self._governance_config
+
+        # L0: Memory Classification (before dedup)
+        if cfg.classifier_enabled:
+            from packages.memory.classifier import ClassResult, run_classifier
+
+            result = await run_classifier(record.content, cfg)
+            if result is None:
+                result = ClassResult("factual", confidence=0.5, source="default")
+
+            # Record metrics
+            self._metrics.record_classified(class_label=result.class_label, source=result.source)
+
+            if result.class_label == "noise":
+                logger.warning(
+                    "classifier rejected noise memory %s: %s",
+                    record.memory_id,
+                    result.reason,
+                )
+                self._metrics.record_quality_rejected(
+                    tenant_id=record.tenant_id, scope=record.scope
+                )
+                return record.memory_id  # reject but return id
+
+            # Apply classification to record
+            record.metadata["class"] = result.class_label
+            record.metadata["class_confidence"] = result.confidence
+            record.metadata["class_source"] = result.source
+
+            if result.class_label == "ephemeral":
+                record.scope = "session"
+                record.expires_at = time.time() + 86400
+                record.metadata["feedback_bonus"] = -0.1
+            elif result.class_label == "preference":
+                record.scope = "user"
+                record.expires_at = None
+                record.metadata["feedback_bonus"] = 0.2
+            # factual: keep existing scope, no adjustment
+
+        # L2: Semantic dedup check (fetch top N candidates from same scope)
+        from packages.memory.governance.dedup import check_dedup
+
+        try:
+            with self._connect() as conn:
+                rows = conn.execute(
+                    """
+                    SELECT * FROM agent_memories
+                    WHERE tenant_id = %s AND scope = %s AND scope_id = %s
+                      AND (expires_at IS NULL OR expires_at > NOW())
+                    ORDER BY last_accessed_at DESC NULLS LAST
+                    LIMIT %s
+                    """,
+                    (record.tenant_id, record.scope, record.scope_id, cfg.dedup_candidate_count),
+                ).fetchall()
+            candidates = [self._row_to_record(r) for r in rows]
+        except Exception as e:
+            logger.warning("dedup candidate fetch failed, skipping dedup: %s", e)
+            candidates = []
+
+        dedup_result = check_dedup(record, candidates, cfg)
+
+        if dedup_result.action == "skip":
+            logger.warning(
+                "dedup skipped memory %s (matched %s): %s",
+                record.memory_id,
+                dedup_result.matched_id,
+                dedup_result.reason,
+            )
+            self._metrics.record_dedup_skipped(tenant_id=record.tenant_id, scope=record.scope)
+            return dedup_result.matched_id or record.memory_id
+
+        if dedup_result.action == "merge":
+            logger.warning(
+                "dedup merging memory %s into %s: %s",
+                record.memory_id,
+                dedup_result.matched_id,
+                dedup_result.reason,
+            )
+            matched_id = dedup_result.matched_id or ""
+            try:
+                with self._connect() as conn:
+                    # Fetch the matched record
+                    matched_row = conn.execute(
+                        "SELECT * FROM agent_memories WHERE memory_id = %s",
+                        (matched_id,),
+                    ).fetchone()
+                    if matched_row is not None:
+                        existing_content = matched_row["content"]
+                        existing_meta = matched_row.get("metadata", {})
+                        if isinstance(existing_meta, str):
+                            existing_meta = json.loads(existing_meta)
+                        if existing_meta is None:
+                            existing_meta = {}
+                        existing_merged_from = matched_row.get("merged_from")
+                        if isinstance(existing_merged_from, str):
+                            existing_merged_from = json.loads(existing_merged_from)
+                        if existing_merged_from is None:
+                            existing_merged_from = []
+
+                        # Merge content
+                        if record.content not in existing_content:
+                            new_content = existing_content + "\n" + record.content
+                        else:
+                            new_content = existing_content
+
+                        # Merge metadata
+                        if record.metadata:
+                            existing_meta.update(record.metadata)
+
+                        # Track merge history
+                        if record.memory_id not in existing_merged_from:
+                            existing_merged_from.append(record.memory_id)
+
+                        conn.execute(
+                            """
+                            UPDATE agent_memories
+                            SET content = %s,
+                                metadata = %s,
+                                last_accessed_at = %s,
+                                access_count = access_count + 1,
+                                merged_from = %s
+                            WHERE memory_id = %s
+                            """,
+                            (
+                                new_content,
+                                json.dumps(existing_meta),
+                                time.time(),
+                                json.dumps(existing_merged_from),
+                                matched_id,
+                            ),
+                        )
+                        conn.commit()
+            except Exception as e:
+                logger.error("dedup merge failed for %s: %s", matched_id, e)
+            self._metrics.record_dedup_merged(tenant_id=record.tenant_id, scope=record.scope)
+            return matched_id
+
+        # action == "insert" — normal insert
         try:
             with self._connect() as conn:
                 conn.execute(
@@ -576,7 +896,11 @@ class PostgresMemoryStore(MemoryStore):
                 scored.append((score, r))
         # Apply weighted scoring before sorting (semantic search only)
         if query_embedding is not None:
-            scored = _apply_weighted_score(scored)
+            scored = _apply_weighted_score(
+                scored,
+                records=records,
+                config=self._governance_config,
+            )
         scored.sort(key=lambda x: x[0], reverse=True)
         results = [r for _s, r in scored[:top_k] if _s > 0]
         # Auto-update access tracking for matched records
@@ -601,6 +925,21 @@ class PostgresMemoryStore(MemoryStore):
             for r in results:
                 r.access_count += 1
                 r.last_accessed_at = now
+        # L4: Recall verification (top-1 only)
+        from packages.memory.governance.verify import verify_top_k_sync
+
+        verify_results = verify_top_k_sync(query, results, self._governance_config)
+        if verify_results and verify_results[0].demoted:
+            demoted_id = verify_results[0].memory_id
+            for i, (_s, r) in enumerate(scored):
+                if r.memory_id == demoted_id:
+                    scored[i] = (verify_results[0].demoted_score, r)
+                    break
+            scored.sort(key=lambda x: x[0], reverse=True)
+            results = [r for _s, r in scored[:top_k] if _s > 0]
+            self._metrics.record_verify_demoted(tenant_id=tenant_id, scope=scope)
+
+        self._metrics.record_verify_check(tenant_id=tenant_id, scope=scope)
         latency_ms = (_time.perf_counter() - start) * 1000
         self._metrics.record_search(tenant_id=tenant_id, scope=scope)
         self._metrics.record_search_latency(tenant_id=tenant_id, scope=scope, latency_ms=latency_ms)
@@ -643,6 +982,70 @@ class PostgresMemoryStore(MemoryStore):
         except Exception as e:
             logger.error("memory list failed: %s", e)
             return []
+
+    async def count_by_scope(
+        self,
+        *,
+        tenant_id: str,
+        scope: str,
+        scope_id: str,
+    ) -> int:
+        try:
+            with self._connect() as conn:
+                row = conn.execute(
+                    """
+                    SELECT COUNT(*) AS cnt FROM agent_memories
+                    WHERE tenant_id = %s AND scope = %s AND scope_id = %s
+                      AND (expires_at IS NULL OR expires_at > NOW())
+                    """,
+                    (tenant_id, scope, scope_id),
+                ).fetchone()
+            return int(row["cnt"]) if row else 0
+        except Exception as e:
+            logger.error("memory count failed: %s", e)
+            return 0
+
+    async def list_expired(
+        self,
+        *,
+        tenant_id: str = "*",
+        scope: str = "*",
+        scope_id: str = "*",
+    ) -> list[MemoryRecord]:
+        try:
+            with self._connect() as conn:
+                # Return all records as purge candidates
+                clauses: list[str] = []
+                params: list[Any] = []
+                if tenant_id != "*":
+                    clauses.append("tenant_id = %s")
+                    params.append(tenant_id)
+                if scope != "*":
+                    clauses.append("scope = %s")
+                    params.append(scope)
+                if scope_id != "*":
+                    clauses.append("scope_id = %s")
+                    params.append(scope_id)
+                where = " AND ".join(clauses)
+                sql = f"SELECT * FROM agent_memories WHERE {where} ORDER BY expires_at"
+                rows = conn.execute(sql, params).fetchall()
+            return [self._row_to_record(r) for r in rows]
+        except Exception as e:
+            logger.error("memory list_expired failed: %s", e)
+            return []
+
+    async def update_metadata(self, memory_id: str, metadata: dict) -> bool:
+        try:
+            with self._connect() as conn:
+                result = conn.execute(
+                    "UPDATE agent_memories SET metadata = metadata || %s WHERE memory_id = %s",
+                    (json.dumps(metadata), memory_id),
+                )
+                conn.commit()
+                return (result.rowcount or 0) > 0
+        except Exception as e:
+            logger.error("memory update_metadata failed: %s", e)
+            return False
 
 
 # --------------------------------------------------------------------- #

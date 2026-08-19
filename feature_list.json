@@ -1,7 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/xingyun0812/ai-platform-lab/main/feature_list.schema.json",
   "project": "ai-platform-lab",
-  "updated": "2026-08-13",
+  "updated": "2026-08-19",
   "activePhase": "post-delivery",
   "activeFeature": null,
   "features": [
@@ -395,34 +395,14 @@
     },
     {
       "id": "F40",
-      "name": "Memory Governance — quality_filter",
+      "name": "Memory Governance 记忆治理系统",
       "status": "done",
-      "phase": "R",
+      "phase": "X",
       "verifiedBy": [
-        "tests/test_memory_quality.py"
+        "python -m pytest tests/test_memory_dedup.py tests/test_memory_weight.py tests/test_memory_purge.py tests/test_memory_governance_worker.py tests/test_memory_routes_governance.py tests/test_memory_governance_config.py tests/test_memory_verify.py -q",
+        "python eval/governance_smoke.py"
       ],
-      "evidence": "quality_filter L1 准入：min_content_length、has_substance、echo guard"
-    },
-    {
-      "id": "F41",
-      "name": "Memory Governance — dedup_filter",
-      "status": "done",
-      "phase": "R",
-      "verifiedBy": [
-        "tests/test_experience_dedup.py"
-      ],
-      "evidence": "dedup_filter L2 语义去重：skip/merge_lessons/store 三分支、自定义 config 透传"
-    },
-    {
-      "id": "F42",
-      "name": "Memory Governance — rerank + metrics",
-      "status": "done",
-      "phase": "R",
-      "verifiedBy": [
-        "tests/test_experience_rerank.py",
-        "tests/test_memory_governance_e2e.py"
-      ],
-      "evidence": "LLM judge rerank、缓存 TTL、fail-open、Prometheus metrics、E2E 集成"
+      "evidence": "L1-L5 五层治理管线：quality_filter + L2语义去重 + L5权重排序 + L4召回校验 + L3清理归档 + Governance Worker CLI + REST API + 10个治理Metrics"
     }
   ]
 }
