@@ -56,14 +56,14 @@ Phase X — Memory Governance ✅ tag: phase-x-memory-governance（2026-08-19）
 
 | 指标 | 数量 |
 |------|------|
-| **累计单测** | **616**（`pytest` 全量） |
-| **packages 模块 Python 文件** | 130 个 |
-| **REST 路由文件** | 20 个 |
-| **测试套件** | 25 个 |
-| **Phase 设计文档** | 60+ 篇 |
-| **离线门禁** | `agent_jd2_gate`（15 项含 Q6）、`multimodal_embedding_gate`、`plan_quality_gate` |
-| **GitHub Tags** | 15 个（含 `phase-m-incremental-index`） |
-| **GitHub Issues** | 8 个（全部关闭） |
+| **累计单测** | **699**（`pytest` 全量） |
+| **packages + apps Python 文件** | 214 个 |
+| **路由/处理文件** | 24 个 |
+| **测试套件** | 32 个 |
+| **Phase 设计文档** | 80+ 篇 |
+| **离线门禁** | `agent_jd2_gate`（15 项含 Q6）、`multimodal_embedding_gate`、`plan_quality_gate`、`harness_capability_gate`、`self_refine_quality_gate` |
+| **GitHub Tags** | 49+ 个 |
+| **GitHub Issues** | 50+ 个（全部关闭） |
 
 ## 5. 能力清单（按 Phase）
 
