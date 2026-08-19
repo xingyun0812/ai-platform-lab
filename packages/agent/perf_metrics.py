@@ -15,6 +15,9 @@ class AgentPerfMetrics:
         self._parallel_durations: defaultdict[tuple[str, str], list[float]] = defaultdict(list)
         self._self_evolve_experiences: defaultdict[str, int] = defaultdict(int)
         self._self_evolve_strategy_patches: defaultdict[str, int] = defaultdict(int)
+        # Guardrail metrics
+        self._guardrail_triggered: dict = defaultdict(int)  # "layer|reason" -> count
+        self._guardrail_stuck: dict = defaultdict(int)  # "reason" -> count
 
     def record_parallel_steps(self, *, tenant_id: str, steps: int) -> None:
         """记录并行执行的 step 数量 (agent_plan_parallel_steps_total)。"""
@@ -69,6 +72,18 @@ class AgentPerfMetrics:
         with self._lock:
             self._self_evolve_strategy_patches[tenant] += 1
 
+    def record_guardrail_triggered(self, *, layer: int, reason: str) -> None:
+        """记录 guardrail 触发次数 (guardrail_triggered_total)。"""
+        key = f"{layer}|{reason}"
+        with self._lock:
+            self._guardrail_triggered[key] += 1
+
+    def record_guardrail_stuck(self, *, reason: str) -> None:
+        """记录 stuck 检测次数 (guardrail_stuck_total)。"""
+        key = reason or "unknown"
+        with self._lock:
+            self._guardrail_stuck[key] += 1
+
     @staticmethod
     def _p95(values: list[float]) -> float:
         if not values:
@@ -85,6 +100,8 @@ class AgentPerfMetrics:
             parallel = {k: list(v) for k, v in self._parallel_durations.items()}
             se_experiences = dict(self._self_evolve_experiences)
             se_patches = dict(self._self_evolve_strategy_patches)
+            gr_triggered = dict(self._guardrail_triggered)
+            gr_stuck = dict(self._guardrail_stuck)
 
         lines: list[str] = []
         lines.append("# HELP agent_plan_steps_total Planner steps executed")
@@ -120,6 +137,19 @@ class AgentPerfMetrics:
         lines.append("# TYPE agent_self_evolve_strategy_patches_total counter")
         for tenant, count in sorted(se_patches.items()):
             lines.append(f'agent_self_evolve_strategy_patches_total{{tenant="{tenant}"}} {count}')
+
+        lines.append("# HELP guardrail_triggered_total Guardrail trigger count by layer and reason")
+        lines.append("# TYPE guardrail_triggered_total counter")
+        for key, count in sorted(gr_triggered.items()):
+            parts = key.split("|", 1)
+            layer = parts[0]
+            reason = parts[1] if len(parts) > 1 else "unknown"
+            lines.append(f'guardrail_triggered_total{{layer="{layer}",reason="{reason}"}} {count}')
+
+        lines.append("# HELP guardrail_stuck_total Agent stuck detection count by reason")
+        lines.append("# TYPE guardrail_stuck_total counter")
+        for key, count in sorted(gr_stuck.items()):
+            lines.append(f'guardrail_stuck_total{{reason="{key}"}} {count}')
 
         return "\n".join(lines) + "\n"
 
