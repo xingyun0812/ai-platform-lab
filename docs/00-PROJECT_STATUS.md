@@ -48,6 +48,8 @@ Phase S — Tree of Thoughts    ✅ tag: phase-s-tree-of-thoughts（2026-08-05�
 Phase T — Multi-Agent Debate  ✅ tag: phase-t-multi-agent-debate（2026-08-05）
 Phase U — Deep Research     ✅ tag: phase-u-deep-research（2026-08-05）
 Phase V — Computer Use      ✅ tag: phase-v-computer-use（2026-08-06）
+Phase W — Self-Refine       ✅ tag: phase-w-self-refine（2026-08-12）
+Phase X — Memory Governance ✅ tag: phase-x-memory-governance（2026-08-19）
 ```
 
 ## 4. 代码规模
