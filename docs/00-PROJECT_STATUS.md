@@ -50,6 +50,7 @@ Phase U — Deep Research     ✅ tag: phase-u-deep-research（2026-08-05）
 Phase V — Computer Use      ✅ tag: phase-v-computer-use（2026-08-06）
 Phase W — Self-Refine       ✅ tag: phase-w-self-refine（2026-08-12）
 Phase X — Memory Governance ✅ tag: phase-x-memory-governance（2026-08-19）
+Phase X.5 — Memory Classification ✅（2026-08-19）
 ```
 
 ## 4. 代码规模
@@ -234,9 +235,33 @@ roadmap.md → GitHub Issue → feature branch → PR → merge → tag
 - 细粒度 RBAC 仍浅（增量索引 Phase M 已做满）
 - 多 AZ/GPU 为 Helm 模板级，未真集群压测
 
----
+## 追加：Phase X.5 — Memory Classification（记忆分类子系统）
 
-**项目仓库**：https://github.com/xingyun0812/ai-platform-lab
+> **交付日期**：2026-08-19
+> **Issue**：[#222](https://github.com/xingyun0812/ai-platform-lab/issues/222)
+
+### 新增能力
+
+- **L0 记忆分类器**：双轨分类（规则 + LLM 降级），产出 4 类标签（preference/factual/ephemeral/noise）
+- **规则分类器**：关键词/模式匹配零依赖拦截噪音，识别偏好/事实类记忆
+- **LLM 分类器**：复用 verify.py 的 LLM 调用模式，200ms 超时降级为 ephemeral
+- **存储集成**：在 L1 quality_filter 后、L2 dedup 前插入分类，自动决定 scope/TTL/权重
+- **Config + Metrics**：`MemoryGovernanceConfig` 扩展 classifier 字段，6 个分类器 Prometheus 指标
+- **REST API**：`PATCH /{memory_id}/classify`（platform_admin 手动纠正分类）
+
+### 代码规模
+
+| 指标 | 数值 |
+|------|------|
+| 新增文件 | 7 个（4 模块 + 4 测试） |
+| 分类器测试 | 38 个 |
+| 分类器回归测试 | 75 个（Phase X 无退化） |
+
+### 文件清单
+
+- `packages/memory/classifier/{__init__,config,rules,llm,types}.py`
+- `tests/test_memory_classifier{_rules,_llm,}.py` + `test_memory_routes_classifier.py`
+- `docs/02-phase-x5-memory-classification.md`
 **最新提交**：`98be9d1` @ main
 **最新 Tag**：`phase-jk-complete`
 

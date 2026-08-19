@@ -13,6 +13,7 @@
 from __future__ import annotations
 
 import logging
+import time
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Header, HTTPException
@@ -286,6 +287,75 @@ async def set_feedback(
 
 class FeedbackRequest(BaseModel):
     feedback_bonus: float = Field(..., ge=-1.0, le=1.0, description="-1.0 ~ +1.0")
+
+
+class ClassifyRequest(BaseModel):
+    class_label: str = Field(
+        ...,
+        pattern="^(preference|factual|ephemeral)$",
+        description="目标分类",
+    )
+
+
+@router.patch("/{memory_id}/classify")
+async def classify_memory(
+    memory_id: str,
+    body: ClassifyRequest,
+    x_tenant_id: Annotated[str | None, Header(alias="X-Tenant-Id")] = None,
+    authorization: Annotated[str | None, Header()] = None,
+) -> JSONResponse:
+    """Override a memory's classification.
+
+    Updates metadata["class"] and adjusts scope/expires_at accordingly.
+    Requires platform_admin role.
+    """
+    tenant = _resolve(x_tenant_id, authorization)
+    if isinstance(tenant, JSONResponse):
+        return tenant
+    err = _require_admin(tenant)
+    if err is not None:
+        return err
+    store = _store()
+    if isinstance(store, JSONResponse):
+        return store
+
+    r = await store.get(memory_id)
+    if r is None:
+        return json_error(404, "NOT_FOUND", f"memory {memory_id} 不存在")
+    # 跨租户隔离
+    if r.tenant_id != tenant.tenant_id and tenant.role != "platform_admin":
+        return json_error(403, "FORBIDDEN", "跨租户操作禁止")
+
+    # Apply new classification
+    label = body.class_label
+    r.metadata["class"] = label
+    r.metadata["class_source"] = "manual"
+
+    if label == "ephemeral":
+        r.scope = "session"
+        r.expires_at = time.time() + 86400
+        r.metadata["feedback_bonus"] = -0.1
+    elif label == "preference":
+        r.scope = "user"
+        r.expires_at = None
+        r.metadata["feedback_bonus"] = 0.2
+    elif label == "factual":
+        r.scope = "user"
+        r.expires_at = None
+        r.metadata.pop("feedback_bonus", None)
+
+    # Persist: update metadata in store
+    await store.update_metadata(memory_id, r.metadata)
+
+    return JSONResponse(
+        {
+            "memory_id": memory_id,
+            "class": label,
+            "scope": r.scope,
+            "expires_at": r.expires_at,
+            "updated": True,
+        }
+    )
 
 
 # ------------------------------------------------------------------------- #

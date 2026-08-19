@@ -29,6 +29,13 @@ class MemoryMetrics:
         self._library_total: defaultdict[tuple[str, str], int] = defaultdict(int)
         self._library_expired: defaultdict[tuple[str, str], int] = defaultdict(int)
 
+        # — Classifier metrics —
+        self._classifier_classified: dict = defaultdict(int)  # key is "class|source"
+        self._classifier_latency: dict = defaultdict(list)  # key is source -> list of ms
+        self._classifier_llm_calls: int = 0
+        self._classifier_llm_errors: int = 0
+        self._classifier_rule_matched: dict = defaultdict(int)  # key is pattern
+
     def record_add(self, *, tenant_id: str, scope: str) -> None:
         key = (tenant_id or "unknown", scope or "unknown")
         with self._lock:
@@ -119,6 +126,37 @@ class MemoryMetrics:
         with self._lock:
             self._library_expired[key] = count
 
+    # --- Classifier metric recorders ---
+
+    def record_classified(self, *, class_label: str, source: str) -> None:
+        """memory_classified_total{class,source}"""
+        key = f"{class_label}|{source}"
+        with self._lock:
+            self._classifier_classified[key] += 1
+
+    def record_classifier_latency(self, *, source: str, latency_ms: float) -> None:
+        """memory_classifier_latency_ms{source}"""
+        with self._lock:
+            bucket = self._classifier_latency[source or "unknown"]
+            bucket.append(float(latency_ms))
+            if len(bucket) > 500:
+                del bucket[: len(bucket) - 500]
+
+    def record_classifier_llm_calls(self) -> None:
+        """memory_classifier_llm_calls"""
+        with self._lock:
+            self._classifier_llm_calls += 1
+
+    def record_classifier_llm_error(self) -> None:
+        """memory_classifier_llm_errors"""
+        with self._lock:
+            self._classifier_llm_errors += 1
+
+    def record_classifier_rule_matched(self, *, pattern: str) -> None:
+        """memory_classifier_rule_matched{pattern}"""
+        with self._lock:
+            self._classifier_rule_matched[pattern or "unknown"] += 1
+
     @staticmethod
     def _p95(values: list[float]) -> float:
         if not values:
@@ -146,6 +184,11 @@ class MemoryMetrics:
             gov_run_dur = self._governance_run_duration
             lib_total = dict(self._library_total)
             lib_expired = dict(self._library_expired)
+            cls_classified = dict(self._classifier_classified)
+            cls_latency = {k: list(v) for k, v in self._classifier_latency.items()}
+            cls_llm_calls = self._classifier_llm_calls
+            cls_llm_errors = self._classifier_llm_errors
+            cls_rule_matched = dict(self._classifier_rule_matched)
         lines: list[str] = []
         lines.append("# HELP memory_adds_total Memory records added by tenant/scope")
         lines.append("# TYPE memory_adds_total counter")
@@ -218,6 +261,33 @@ class MemoryMetrics:
         lines.append("# TYPE memory_library_expired gauge")
         for (t, s), c in sorted(lib_expired.items()):
             lines.append(f'memory_library_expired{{tenant_id="{t}",scope="{s}"}} {c}')
+
+        # --- Classifier metrics ---
+        lines.append("# HELP memory_classified_total Memory records classified by label/source")
+        lines.append("# TYPE memory_classified_total counter")
+        for key, c in sorted(cls_classified.items()):
+            # key is "class_label|source"
+            parts = key.split("|", 1)
+            cl = parts[0]
+            src = parts[1] if len(parts) > 1 else "unknown"
+            lines.append(f'memory_classified_total{{class="{cl}",source="{src}"}} {c}')
+        lines.append("# HELP memory_classifier_latency_ms Classifier latency P95 by source")
+        lines.append("# TYPE memory_classifier_latency_ms gauge")
+        for src, samples in sorted(cls_latency.items()):
+            p95 = self._p95(samples)
+            lines.append(f'memory_classifier_latency_ms_p95{{source="{src}"}} {p95:.2f}')
+        lines.append("# HELP memory_classifier_llm_calls_total Classifier LLM calls")
+        lines.append("# TYPE memory_classifier_llm_calls_total counter")
+        lines.append(f"memory_classifier_llm_calls_total {cls_llm_calls}")
+        lines.append("# HELP memory_classifier_llm_errors_total Classifier LLM errors")
+        lines.append("# TYPE memory_classifier_llm_errors_total counter")
+        lines.append(f"memory_classifier_llm_errors_total {cls_llm_errors}")
+        lines.append(
+            "# HELP memory_classifier_rule_matched_total Classifier rule matches by pattern"
+        )
+        lines.append("# TYPE memory_classifier_rule_matched_total counter")
+        for pattern, c in sorted(cls_rule_matched.items()):
+            lines.append(f'memory_classifier_rule_matched_total{{pattern="{pattern}"}} {c}')
 
         return "\n".join(lines) + "\n"
 

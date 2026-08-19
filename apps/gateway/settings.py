@@ -373,6 +373,23 @@ class Settings(BaseSettings):
         description="Archive retention period in days",
     )
 
+    # Phase X.5 — Memory Classifier
+    memory_classifier_enabled: bool = Field(
+        default=True,
+        validation_alias="MEMORY_CLASSIFIER_ENABLED",
+        description="Classifier switch for memory classification",
+    )
+    memory_classifier_model: str | None = Field(
+        default=None,
+        validation_alias="MEMORY_CLASSIFIER_MODEL",
+        description="Classifier LLM model; None = use default_model",
+    )
+    memory_classifier_timeout_ms: int = Field(
+        default=200,
+        validation_alias="MEMORY_CLASSIFIER_TIMEOUT_MS",
+        description="Classifier LLM call timeout in milliseconds",
+    )
+
     # Phase F — 上下文压缩 (#33)
     context_llm_summary_enabled: bool = Field(
         default=True,

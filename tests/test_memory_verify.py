@@ -347,7 +347,11 @@ def test_feedback_affects_ranking():
     from packages.memory.config import MemoryGovernanceConfig as _MGC2
 
     # Use InMemoryMemoryStore with verify disabled to avoid asyncio nesting issues
-    store = InMemoryMemoryStore(governance_config=_MGC2(min_content_length=1, verify_enabled=False))
+    store = InMemoryMemoryStore(
+        governance_config=_MGC2(
+            min_content_length=1, verify_enabled=False, classifier_enabled=False
+        )
+    )
     with (
         _mock_tenants(patch),
         patch("apps.gateway.memory_routes.get_memory_store", return_value=store),

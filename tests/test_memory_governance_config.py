@@ -55,6 +55,12 @@ def test_config_defaults() -> None:
     assert cfg.archive_enabled is True
     assert cfg.archive_retention_days == 365
     assert cfg.governance_cron == "0 3 * * *"
+    # Classifier
+    assert cfg.classifier_enabled is True
+    assert cfg.classifier_llm_model is None
+    assert cfg.classifier_timeout_ms == 200
+    assert cfg.classifier_rule_enabled is True
+    assert cfg.classifier_llm_fallback_class == "ephemeral"
     print("PASS test_config_defaults")
 
 
@@ -203,8 +209,70 @@ def test_metrics_library_stats() -> None:
     print("PASS test_metrics_library_stats")
 
 
+def test_metrics_classifier_classified() -> None:
+    """record_classified 按 class|source 递增计数。"""
+    reset_metrics_for_tests()
+    m = get_memory_metrics()
+    m.record_classified(class_label="important", source="rule")
+    m.record_classified(class_label="important", source="rule")
+    m.record_classified(class_label="ephemeral", source="llm")
+    text = m.prometheus_text()
+    lines = [ln for ln in text.splitlines() if "memory_classified_total{" in ln]
+    assert len(lines) == 2
+    assert any('class="important"' in ln for ln in lines)
+    assert any('class="ephemeral"' in ln for ln in lines)
+    important_line = [ln for ln in lines if 'class="important"' in ln][0]
+    assert " 2" in important_line
+    print("PASS test_metrics_classifier_classified")
+
+
+def test_metrics_classifier_latency() -> None:
+    """record_classifier_latency 记录 P95 值。"""
+    reset_metrics_for_tests()
+    m = get_memory_metrics()
+    m.record_classifier_latency(source="llm", latency_ms=50.0)
+    m.record_classifier_latency(source="llm", latency_ms=150.0)
+    text = m.prometheus_text()
+    assert "memory_classifier_latency_ms_p95{" in text
+    print("PASS test_metrics_classifier_latency")
+
+
+def test_metrics_classifier_llm_calls() -> None:
+    """record_classifier_llm_calls 递增计数。"""
+    reset_metrics_for_tests()
+    m = get_memory_metrics()
+    m.record_classifier_llm_calls()
+    m.record_classifier_llm_calls()
+    text = m.prometheus_text()
+    assert "memory_classifier_llm_calls_total 2" in text
+    print("PASS test_metrics_classifier_llm_calls")
+
+
+def test_metrics_classifier_llm_error() -> None:
+    """record_classifier_llm_error 递增计数。"""
+    reset_metrics_for_tests()
+    m = get_memory_metrics()
+    m.record_classifier_llm_error()
+    text = m.prometheus_text()
+    assert "memory_classifier_llm_errors_total 1" in text
+    print("PASS test_metrics_classifier_llm_error")
+
+
+def test_metrics_classifier_rule_matched() -> None:
+    """record_classifier_rule_matched 按 pattern 计数。"""
+    reset_metrics_for_tests()
+    m = get_memory_metrics()
+    m.record_classifier_rule_matched(pattern="*password*")
+    m.record_classifier_rule_matched(pattern="*password*")
+    m.record_classifier_rule_matched(pattern="*api_key*")
+    text = m.prometheus_text()
+    assert 'memory_classifier_rule_matched_total{pattern="*password*"} 2' in text
+    assert 'memory_classifier_rule_matched_total{pattern="*api_key*"} 1' in text
+    print("PASS test_metrics_classifier_rule_matched")
+
+
 def test_prometheus_has_all_new_metrics() -> None:
-    """prometheus_text 包含所有 10 个新指标。"""
+    """prometheus_text 包含所有 15 个新指标。"""
     reset_metrics_for_tests()
     m = get_memory_metrics()
     # 写入至少一条数据到每个指标
@@ -218,6 +286,12 @@ def test_prometheus_has_all_new_metrics() -> None:
     m.record_governance_run(duration_seconds=1.0)
     m.record_library_total(tenant_id="t1", scope="user", count=10)
     m.record_library_expired(tenant_id="t1", scope="user", count=1)
+    # Classifier metrics
+    m.record_classified(class_label="important", source="rule")
+    m.record_classifier_latency(source="llm", latency_ms=50.0)
+    m.record_classifier_llm_calls()
+    m.record_classifier_llm_error()
+    m.record_classifier_rule_matched(pattern="*password*")
     text = m.prometheus_text()
     expected = [
         "memory_dedup_skipped_total",
@@ -230,6 +304,12 @@ def test_prometheus_has_all_new_metrics() -> None:
         "governance_runtime_seconds",
         "memory_library_total",
         "memory_library_expired",
+        # Classifier metrics
+        "memory_classified_total",
+        "memory_classifier_latency_ms",
+        "memory_classifier_llm_calls_total",
+        "memory_classifier_llm_errors_total",
+        "memory_classifier_rule_matched_total",
     ]
     for name in expected:
         assert name in text, f"指标 {name} 不在 prometheus_text 输出中"
@@ -288,6 +368,11 @@ def main() -> int:
         test_metrics_archive,
         test_metrics_governance_run,
         test_metrics_library_stats,
+        test_metrics_classifier_classified,
+        test_metrics_classifier_latency,
+        test_metrics_classifier_llm_calls,
+        test_metrics_classifier_llm_error,
+        test_metrics_classifier_rule_matched,
         test_prometheus_has_all_new_metrics,
         test_prometheus_still_has_old_metrics,
         test_metrics_lock_safety,

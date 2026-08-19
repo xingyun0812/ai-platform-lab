@@ -223,6 +223,10 @@ class MemoryStore:
     ) -> list[MemoryRecord]:
         raise NotImplementedError
 
+    async def update_metadata(self, memory_id: str, metadata: dict) -> bool:
+        """Update metadata on an existing record."""
+        raise NotImplementedError
+
 
 # --------------------------------------------------------------------- #
 # 进程内实现
@@ -259,6 +263,43 @@ class InMemoryMemoryStore(MemoryStore):
             return record.memory_id  # still return the id, but don't store
 
         cfg = governance_config or self._governance_config
+
+        # L0: Memory Classification (before dedup)
+        if cfg.classifier_enabled:
+            from packages.memory.classifier import ClassResult, run_classifier
+
+            result = await run_classifier(record.content, cfg)
+            if result is None:
+                result = ClassResult("factual", confidence=0.5, source="default")
+
+            # Record metrics
+            self._metrics.record_classified(class_label=result.class_label, source=result.source)
+
+            if result.class_label == "noise":
+                logger.warning(
+                    "classifier rejected noise memory %s: %s",
+                    record.memory_id,
+                    result.reason,
+                )
+                self._metrics.record_quality_rejected(
+                    tenant_id=record.tenant_id, scope=record.scope
+                )
+                return record.memory_id  # reject but return id (same pattern as quality_filter)
+
+            # Apply classification to record
+            record.metadata["class"] = result.class_label
+            record.metadata["class_confidence"] = result.confidence
+            record.metadata["class_source"] = result.source
+
+            if result.class_label == "ephemeral":
+                record.scope = "session"
+                record.expires_at = time.time() + 86400
+                record.metadata["feedback_bonus"] = -0.1
+            elif result.class_label == "preference":
+                record.scope = "user"
+                record.expires_at = None
+                record.metadata["feedback_bonus"] = 0.2
+            # factual: keep existing scope, no adjustment
 
         # L2: Semantic dedup check
         from packages.memory.governance.dedup import check_dedup
@@ -456,6 +497,14 @@ class InMemoryMemoryStore(MemoryStore):
                 results.extend(records)
             return results
 
+    async def update_metadata(self, memory_id: str, metadata: dict) -> bool:
+        with self._lock:
+            r = self._by_id.get(memory_id)
+            if r is None or r.is_expired():
+                return False
+            r.metadata.update(metadata)
+            return True
+
 
 # --------------------------------------------------------------------- #
 # Postgres 实现
@@ -593,6 +642,43 @@ class PostgresMemoryStore(MemoryStore):
             return record.memory_id
 
         cfg = governance_config or self._governance_config
+
+        # L0: Memory Classification (before dedup)
+        if cfg.classifier_enabled:
+            from packages.memory.classifier import ClassResult, run_classifier
+
+            result = await run_classifier(record.content, cfg)
+            if result is None:
+                result = ClassResult("factual", confidence=0.5, source="default")
+
+            # Record metrics
+            self._metrics.record_classified(class_label=result.class_label, source=result.source)
+
+            if result.class_label == "noise":
+                logger.warning(
+                    "classifier rejected noise memory %s: %s",
+                    record.memory_id,
+                    result.reason,
+                )
+                self._metrics.record_quality_rejected(
+                    tenant_id=record.tenant_id, scope=record.scope
+                )
+                return record.memory_id  # reject but return id
+
+            # Apply classification to record
+            record.metadata["class"] = result.class_label
+            record.metadata["class_confidence"] = result.confidence
+            record.metadata["class_source"] = result.source
+
+            if result.class_label == "ephemeral":
+                record.scope = "session"
+                record.expires_at = time.time() + 86400
+                record.metadata["feedback_bonus"] = -0.1
+            elif result.class_label == "preference":
+                record.scope = "user"
+                record.expires_at = None
+                record.metadata["feedback_bonus"] = 0.2
+            # factual: keep existing scope, no adjustment
 
         # L2: Semantic dedup check (fetch top N candidates from same scope)
         from packages.memory.governance.dedup import check_dedup
@@ -947,6 +1033,19 @@ class PostgresMemoryStore(MemoryStore):
         except Exception as e:
             logger.error("memory list_expired failed: %s", e)
             return []
+
+    async def update_metadata(self, memory_id: str, metadata: dict) -> bool:
+        try:
+            with self._connect() as conn:
+                result = conn.execute(
+                    "UPDATE agent_memories SET metadata = metadata || %s WHERE memory_id = %s",
+                    (json.dumps(metadata), memory_id),
+                )
+                conn.commit()
+                return (result.rowcount or 0) > 0
+        except Exception as e:
+            logger.error("memory update_metadata failed: %s", e)
+            return False
 
 
 # --------------------------------------------------------------------- #

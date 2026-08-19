@@ -19,6 +19,8 @@ from fastapi.testclient import TestClient  # noqa: E402
 from apps.gateway.memory_routes import router as memory_router  # noqa: E402
 from packages.memory.metrics import reset_metrics_for_tests  # noqa: E402
 from packages.memory.store import reset_memory_store_for_tests  # noqa: E402
+from packages.platform import configure as _configure_platform  # noqa: E402
+from packages.platform.testing import InMemoryPlatformPort  # noqa: E402
 
 APP = FastAPI()
 APP.include_router(memory_router)
@@ -40,6 +42,7 @@ USER_HEADERS = {
 def _setup():
     reset_metrics_for_tests()
     reset_memory_store_for_tests()
+    _configure_platform(InMemoryPlatformPort())
 
 
 # ------------------------------------------------------------------------- #
@@ -223,6 +226,9 @@ def test_archive_list_with_data():
             content="archived content",
         )
         await store.add(r)
+        # Reset scope after classifier may have overridden it
+        r.scope = "user"
+        r.expires_at = None
         await archive.archive(r, purge_reason="test")
 
     import asyncio

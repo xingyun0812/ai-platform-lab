@@ -33,9 +33,11 @@ def _setup():
 
 
 def _make_store(min_content_length: int = 1) -> InMemoryMemoryStore:
-    """Create a permissive InMemoryMemoryStore for testing."""
+    """Create a permissive InMemoryMemoryStore for testing (classifier disabled)."""
     return InMemoryMemoryStore(
-        governance_config=MemoryGovernanceConfig(min_content_length=min_content_length)
+        governance_config=MemoryGovernanceConfig(
+            min_content_length=min_content_length, classifier_enabled=False
+        )
     )
 
 

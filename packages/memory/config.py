@@ -52,5 +52,12 @@ class MemoryGovernanceConfig:
     archive_retention_days: int = 365
     governance_cron: str = "0 3 * * *"
 
+    # — L0: Classifier —
+    classifier_enabled: bool = True
+    classifier_llm_model: str | None = None
+    classifier_timeout_ms: int = 200
+    classifier_rule_enabled: bool = True
+    classifier_llm_fallback_class: str = "ephemeral"
+
     # — Metadata —
     metadata: dict[str, Any] = field(default_factory=dict)

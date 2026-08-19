@@ -50,6 +50,7 @@ from packages.memory.archive import (
     init_archive_store,
     reset_archive_store_for_tests,
 )
+from packages.memory.classifier import ClassResult, run_classifier
 from packages.memory.config import MemoryGovernanceConfig
 from packages.memory.governance.verify import Verdict, VerifyResult, verify_relevance
 from packages.memory.metrics import (
@@ -69,6 +70,7 @@ from packages.memory.store import (
 __all__ = [
     "ArchiveStore",
     "ArchivedRecord",
+    "ClassResult",
     "get_archive_store",
     "get_memory_metrics",
     "get_memory_store",
@@ -84,6 +86,7 @@ __all__ = [
     "PostgresMemoryStore",
     "quality_filter",
     "reset_archive_store_for_tests",
+    "run_classifier",
     "Verdict",
     "VerifyResult",
     "verify_relevance",
