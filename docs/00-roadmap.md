@@ -313,6 +313,16 @@
 
 **是否开搞**：冲 DeepSeek Harness 岗 **必做 R1**；想做 AgentOps 深度优先 R2；想做 Harness 与模型协同进化优先 R3。
 
+**Phase R-5 — Memory Governance（治理增强）**
+> **Issues**：[#205](https://github.com/xingyun0812/ai-platform-lab/issues/205) [#206](https://github.com/xingyun0812/ai-platform-lab/issues/206) [#207](https://github.com/xingyun0812/ai-platform-lab/issues/207)
+> **文档**：[docs/02-phase-r-05-memory-governance.md](./02-phase-r-05-memory-governance.md)
+
+| Issue | 内容 | 状态 |
+|-------|------|------|
+| #205 | quality_filter for MemoryStore（L1 准入过滤） | ✅ |
+| #206 | quality_filter + dedup_filter for ExperienceStore | ✅ |
+| #207 | Metrics + rerank + 集成测试 | ✅ |
+
 ---
 
 ## Phase S — Tree of Thoughts（高级推理 ✅）

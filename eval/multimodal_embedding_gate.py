@@ -81,7 +81,7 @@ REQUIRED_PATHS: tuple[tuple[str, Path], ...] = (
     ("console_embedding_page", REPO_ROOT / "console-v2" / "src" / "pages" / "Embedding.tsx"),
     ("console_embedding_api", REPO_ROOT / "console-v2" / "src" / "api" / "embedding.ts"),
     ("sdk_embedding", REPO_ROOT / "sdk" / "python" / "ai_platform_lab" / "resources" / "embedding.py"),
-    ("phase_p_doc", REPO_ROOT / "docs" / "phase-p-multimodal-embedding.md"),
+    ("phase_p_doc", REPO_ROOT / "docs" / "02-phase-p-multimodal-embedding.md"),
 )
 
 
