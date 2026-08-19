@@ -51,6 +51,7 @@ python eval/acceptance_smoke.py
 - **Packages → Platform facade**: `packages/` MUST NOT import `apps.gateway`; depend on `packages.platform` via `PlatformPort` protocol
 - **Worker**: MUST NOT import `apps.gateway.rag`
 - **Process**: Issue → feature branch → PR (with 3-line acceptance alignment) → merge. No direct pushes to `main`.
+- **Commit convention**: When a commit closes issues, include `Closes #N` (one per issue) in commit message body. This auto-links the PR to the issue and closes it on merge.
 
 ## Config & Deploy
 
