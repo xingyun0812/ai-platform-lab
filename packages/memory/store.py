@@ -382,6 +382,21 @@ class InMemoryMemoryStore(MemoryStore):
         for r in results:
             r.access_count += 1
             r.last_accessed_at = now
+        # L4: Recall verification (top-1 only)
+        from packages.memory.governance.verify import verify_top_k_sync
+
+        verify_results = verify_top_k_sync(query, results, self._governance_config)
+        if verify_results and verify_results[0].demoted:
+            demoted_id = verify_results[0].memory_id
+            for i, (_s, r) in enumerate(scored):
+                if r.memory_id == demoted_id:
+                    scored[i] = (verify_results[0].demoted_score, r)
+                    break
+            scored.sort(key=lambda x: x[0], reverse=True)
+            results = [r for _s, r in scored[:top_k] if _s > 0]
+            self._metrics.record_verify_demoted(tenant_id=tenant_id, scope=scope)
+
+        self._metrics.record_verify_check(tenant_id=tenant_id, scope=scope)
         latency_ms = (_time.perf_counter() - start) * 1000
         self._metrics.record_search(tenant_id=tenant_id, scope=scope)
         self._metrics.record_search_latency(tenant_id=tenant_id, scope=scope, latency_ms=latency_ms)
@@ -824,6 +839,21 @@ class PostgresMemoryStore(MemoryStore):
             for r in results:
                 r.access_count += 1
                 r.last_accessed_at = now
+        # L4: Recall verification (top-1 only)
+        from packages.memory.governance.verify import verify_top_k_sync
+
+        verify_results = verify_top_k_sync(query, results, self._governance_config)
+        if verify_results and verify_results[0].demoted:
+            demoted_id = verify_results[0].memory_id
+            for i, (_s, r) in enumerate(scored):
+                if r.memory_id == demoted_id:
+                    scored[i] = (verify_results[0].demoted_score, r)
+                    break
+            scored.sort(key=lambda x: x[0], reverse=True)
+            results = [r for _s, r in scored[:top_k] if _s > 0]
+            self._metrics.record_verify_demoted(tenant_id=tenant_id, scope=scope)
+
+        self._metrics.record_verify_check(tenant_id=tenant_id, scope=scope)
         latency_ms = (_time.perf_counter() - start) * 1000
         self._metrics.record_search(tenant_id=tenant_id, scope=scope)
         self._metrics.record_search_latency(tenant_id=tenant_id, scope=scope, latency_ms=latency_ms)

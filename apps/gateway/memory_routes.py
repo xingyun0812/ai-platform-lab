@@ -12,6 +12,7 @@
 
 from __future__ import annotations
 
+import logging
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Header, HTTPException
@@ -26,10 +27,13 @@ from packages.memory import (
     MemoryGovernanceConfig,
     MemoryRecord,
     MemoryStore,
+    PostgresMemoryStore,
     get_archive_store,
     get_memory_store,
 )
 from packages.memory.governance.purge import get_governance_stats, run_purge
+
+logger = logging.getLogger("ai_platform.gateway.memory_routes")
 
 router = APIRouter(prefix="/internal/memory", tags=["memory"])
 
@@ -230,6 +234,58 @@ async def delete_memory(
         return json_error(403, "FORBIDDEN", "跨租户删除禁止")
     deleted = await store.delete(memory_id)
     return JSONResponse({"memory_id": memory_id, "deleted": deleted})
+
+
+@router.patch("/{memory_id}/feedback")
+async def set_feedback(
+    memory_id: str,
+    body: FeedbackRequest,
+    x_tenant_id: Annotated[str | None, Header(alias="X-Tenant-Id")] = None,
+    authorization: Annotated[str | None, Header()] = None,
+) -> JSONResponse:
+    """Set user feedback bonus on a memory record.
+
+    feedback_bonus range: -1.0 (negative) ~ +1.0 (positive).
+    Any authenticated user can set feedback on accessible memories.
+    """
+    tenant = _resolve(x_tenant_id, authorization)
+    if isinstance(tenant, JSONResponse):
+        return tenant
+    store = _store()
+    if isinstance(store, JSONResponse):
+        return store
+    r = await store.get(memory_id)
+    if r is None:
+        return json_error(404, "NOT_FOUND", f"memory {memory_id} 不存在或已过期")
+    if r.tenant_id != tenant.tenant_id and tenant.role != "platform_admin":
+        return json_error(403, "FORBIDDEN", "跨租户访问禁止")
+    # Update feedback_bonus in metadata
+    r.metadata["feedback_bonus"] = body.feedback_bonus
+    # Persist via store._update or direct metadata write
+    # InMemoryMemoryStore: metadata is in-memory, already updated via reference
+    # For PostgresMemoryStore, persist via SQL
+    if isinstance(store, PostgresMemoryStore):
+        import json as _json
+
+        try:
+            with store._connect() as conn:
+                conn.execute(
+                    """
+                    UPDATE agent_memories
+                    SET metadata = %s
+                    WHERE memory_id = %s
+                    """,
+                    (_json.dumps(r.metadata), memory_id),
+                )
+                conn.commit()
+        except Exception as e:
+            logger.error("memory feedback update failed: %s", e)
+            return json_error(500, "UPDATE_FAILED", "feedback 更新失败")
+    return JSONResponse(_record_payload(r))
+
+
+class FeedbackRequest(BaseModel):
+    feedback_bonus: float = Field(..., ge=-1.0, le=1.0, description="-1.0 ~ +1.0")
 
 
 # ------------------------------------------------------------------------- #
