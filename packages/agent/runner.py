@@ -205,7 +205,8 @@ def _build_run_payload(
         budget=loop.budget_meta.budget,
         estimated_tokens=estimate_messages_tokens(loop.messages),
         truncated_messages=loop.budget_meta.truncated_messages,
-        truncated_tool_results=loop.budget_meta.truncated_tool_results + loop.runtime_truncated_tools,
+        truncated_tool_results=loop.budget_meta.truncated_tool_results
+        + loop.runtime_truncated_tools,
         summary_applied=loop.budget_meta.summary_applied,
         keep_recent_turns=loop.budget_meta.keep_recent_turns,
     )
@@ -355,6 +356,43 @@ async def run_agent(
     tools_spec = reg.openai_tools_spec_subset(tool_names, allowed_tools)
     pinned_prefix = 1 if budget_meta.summary_applied else 0
 
+    # Initialize guardrails
+    progress_tracker = None
+    threshold_enforcer = None
+    guardrail_config = None
+    if settings.agent_guardrail_enabled:
+        import json
+
+        from packages.agent.guardrails import (
+            AgentGuardrailConfig,
+            ProgressTracker,
+            ThresholdEnforcer,
+        )
+
+        tool_limits_raw = getattr(settings, "agent_guardrail_tool_call_limits", "{}")
+        try:
+            tool_limits = json.loads(tool_limits_raw)
+        except (json.JSONDecodeError, TypeError):
+            tool_limits = {}
+        guardrail_config = AgentGuardrailConfig(
+            enabled=settings.agent_guardrail_enabled,
+            max_tool_calls_total=settings.agent_guardrail_max_tool_calls_total,
+            tool_call_limits=tool_limits,
+            agent_timeout_seconds=settings.agent_guardrail_timeout_seconds,
+            max_consecutive_empty_tools=settings.agent_guardrail_max_consecutive_empty,
+            max_consecutive_identical_calls=settings.agent_guardrail_max_consecutive_identical,
+            convergence_strategy=settings.agent_guardrail_convergence_strategy,
+        )
+        progress_tracker = ProgressTracker(
+            max_consecutive_empty_tools=guardrail_config.max_consecutive_empty_tools,
+            max_consecutive_identical_calls=guardrail_config.max_consecutive_identical_calls,
+        )
+        threshold_enforcer = ThresholdEnforcer(
+            max_tool_calls_total=guardrail_config.max_tool_calls_total,
+            tool_call_limits=guardrail_config.tool_call_limits,
+            agent_timeout_seconds=guardrail_config.agent_timeout_seconds,
+        )
+
     loop = await run_react_loop(
         messages=messages,
         session_messages=session_messages,
@@ -372,6 +410,9 @@ async def run_agent(
         budget_meta=budget_meta,
         pinned_prefix=pinned_prefix,
         reflect_remaining=settings.agent_reflect_max_retries,
+        progress_tracker=progress_tracker,
+        threshold_enforcer=threshold_enforcer,
+        guardrail_config=guardrail_config,
     )
 
     saved_state = SessionState(
