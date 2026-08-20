@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import asyncio
+
 import pytest
 
 from packages.agent.exception_policy import (
@@ -97,7 +99,12 @@ class TestHierarchicalExceptionPolicy:
 
 
 class TestExecuteWithRetryPolicy:
-    async def test_success_no_retry(self) -> None:
+    @staticmethod
+    def _run(coro_factory):
+        """Run an async test synchronously."""
+        return asyncio.run(coro_factory())
+
+    def test_success_no_retry(self) -> None:
         calls = 0
 
         async def fn() -> str:
@@ -105,11 +112,11 @@ class TestExecuteWithRetryPolicy:
             calls += 1
             return "ok"
 
-        result = await execute_with_retry_policy(fn, RetryPolicy(max_retries=3, jitter=False))
+        result = self._run(lambda: execute_with_retry_policy(fn, RetryPolicy(max_retries=3, jitter=False)))
         assert result == "ok"
         assert calls == 1
 
-    async def test_retry_then_succeed(self) -> None:
+    def test_retry_then_succeed(self) -> None:
         calls = 0
 
         async def fn() -> str:
@@ -119,11 +126,11 @@ class TestExecuteWithRetryPolicy:
                 raise RuntimeError("transient error")
             return "ok"
 
-        result = await execute_with_retry_policy(fn, RetryPolicy(max_retries=3, jitter=False))
+        result = self._run(lambda: execute_with_retry_policy(fn, RetryPolicy(max_retries=3, jitter=False)))
         assert result == "ok"
         assert calls == 3
 
-    async def test_retry_exhausted(self) -> None:
+    def test_retry_exhausted(self) -> None:
         calls = 0
 
         async def fn() -> str:
@@ -132,10 +139,10 @@ class TestExecuteWithRetryPolicy:
             raise RuntimeError("persistent error")
 
         with pytest.raises(RuntimeError, match="persistent error"):
-            await execute_with_retry_policy(fn, RetryPolicy(max_retries=2, jitter=False))
+            self._run(lambda: execute_with_retry_policy(fn, RetryPolicy(max_retries=2, jitter=False)))
         assert calls == 3  # initial + 2 retries
 
-    async def test_no_retries_configured(self) -> None:
+    def test_no_retries_configured(self) -> None:
         calls = 0
 
         async def fn() -> str:
@@ -144,12 +151,12 @@ class TestExecuteWithRetryPolicy:
             raise ValueError("no retry")
 
         with pytest.raises(ValueError, match="no retry"):
-            await execute_with_retry_policy(fn, RetryPolicy(max_retries=0, jitter=False))
+            self._run(lambda: execute_with_retry_policy(fn, RetryPolicy(max_retries=0, jitter=False)))
         assert calls == 1
 
-    async def test_exception_preserves_type(self) -> None:
+    def test_exception_preserves_type(self) -> None:
         async def fn() -> str:
             raise KeyError("missing key")
 
         with pytest.raises(KeyError, match="missing key"):
-            await execute_with_retry_policy(fn, RetryPolicy(max_retries=1, jitter=False))
+            self._run(lambda: execute_with_retry_policy(fn, RetryPolicy(max_retries=1, jitter=False)))

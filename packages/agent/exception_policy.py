@@ -4,8 +4,9 @@ import enum
 import logging
 import random
 import time
+from collections.abc import Callable, Coroutine
 from dataclasses import dataclass, field
-from typing import Any, Callable, Coroutine
+from typing import Any
 
 logger = logging.getLogger("ai_platform.agent.exception_policy")
 
@@ -54,6 +55,11 @@ _TRANSIENT_PATTERNS = [
 ]
 
 
+def _normalize(text: str) -> str:
+    """Normalize text for pattern matching: uppercase, replace underscores with spaces."""
+    return text.upper().replace("_", " ")
+
+
 def classify_failure(error_code: str, error_message: str) -> FailureClass:
     """Classify a failure as TRANSIENT or FATAL based on error patterns.
 
@@ -65,9 +71,10 @@ def classify_failure(error_code: str, error_message: str) -> FailureClass:
         FailureClass.TRANSIENT if the error matches known transient patterns,
         FailureClass.FATAL otherwise.
     """
-    combined = f"{error_code} {error_message}".upper()
+    combined = _normalize(f"{error_code} {error_message}")
     for pattern in _TRANSIENT_PATTERNS:
-        if pattern in combined:
+        normalized_pattern = _normalize(pattern)
+        if normalized_pattern in combined:
             return FailureClass.TRANSIENT
     return FailureClass.FATAL
 
