@@ -51,6 +51,7 @@ Phase V — Computer Use      ✅ tag: phase-v-computer-use（2026-08-06）
 Phase W — Self-Refine       ✅ tag: phase-w-self-refine（2026-08-12）
 Phase X — Memory Governance ✅ tag: phase-x-memory-governance（2026-08-19）
 Phase X.5 — Memory Classification ✅（2026-08-19）
+Phase Y — Agent Production Guardrails ✅（2026-08-20）
 ```
 
 ## 4. 代码规模
@@ -302,3 +303,36 @@ roadmap.md → GitHub Issue → feature branch → PR → merge → tag
 - 跨 scope 去重未做
 - 可视化治理面板未做（需 Console V2 集成）
 - 治理指标无独立 Grafana 面板
+
+## 追加：Phase Y — Agent Production Guardrails（Agent 执行防护系统）
+
+> **交付日期**：2026-08-20
+> **Issues**：[#225](https://github.com/xingyun0812/ai-platform-lab/issues/225) ~ [#228](https://github.com/xingyun0812/ai-platform-lab/issues/228)
+
+### 新增能力
+
+- **Layer 1 — 粒度硬约束**：Planner validate_plan() 校验 step 数上限（plan_max_steps=20）、最小执行单元（plan_min_step_description=10），超出直接拒绝
+- **Layer 2 — 收敛检测**：ReAct 循环中连续 N 轮无 tool_call 且输出稳定则提前终止（共享组件，从 Self-Refine 抽取，支持 similarity/llm_judged/hybrid）
+- **Layer 3 — 进度校验**：ProgressTracker 滑动窗口检测连续空结果、同工具同参数重复、输出语义循环
+- **Layer 4 — 熔断告警**：ThresholdEnforcer 控制工具调用总次数上限(30)、按工具类型上限、执行超时(300s)，触发熔断记录 Prometheus 指标 + 结构化日志
+
+### 文件清单
+
+- `packages/agent/guardrails/` — 新子包（types, config, convergence, progress, circuit, __init__）
+- `packages/agent/planner.py` — Layer 1 接入
+- `packages/agent/plan_executor.py` — Layer 3/4 接入
+- `packages/agent/react_loop.py` — Layer 2/3/4 接入
+- `packages/agent/runner.py` — Guardrail 初始化与配置
+- `apps/gateway/settings.py` — 8 个 AGENT_GUARDRAIL_* 配置字段
+- `packages/agent/self_refine/orchestrator.py` — 收敛检测改为调用共享组件
+- `packages/agent/perf_metrics.py` — guardrail_triggered_total + guardrail_stuck_total 指标
+- `tests/test_guardrails.py` — 23 个单元测试
+
+### 代码规模
+
+| 指标 | 数值 |
+|------|------|
+| 新增文件 | 7 个（guardrails 子包 6 + 测试 1） |
+| 净增代码 | ~945 行 |
+| 分类器测试 | 23 个 |
+| 覆盖执行模式 | ReAct / Plan / Self-Refine |
