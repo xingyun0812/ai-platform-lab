@@ -91,6 +91,7 @@ async def execute_tool(
     session_id: str = "",
     shadow_mode: bool = False,
     skip_hitl: bool = False,
+    execution_key: str | None = None,
 ) -> tuple[str, ToolCallRecord]:
     started = time.perf_counter()
     if not registry.is_allowed(tool_name, allowed_tools):
@@ -150,6 +151,25 @@ async def execute_tool(
             },
         )
 
+    # Idempotent execution check: skip retry loop on cache hit
+    if execution_key is not None:
+        from packages.agent.idempotency import lookup_execution
+
+        existing = lookup_execution(execution_key)
+        if existing is not None and existing.status == "success":
+            logger.info("idempotent hit: %s", execution_key)
+            elapsed = (time.perf_counter() - started) * 1000
+            record = ToolCallRecord(
+                tool_name=tool_name,
+                arguments=args,
+                status="success",
+                result=existing.result,
+                error=None,
+                latency_ms=round(elapsed, 2),
+                attempt=0,
+            )
+            return existing.result or "", record
+
     last_err: str | None = None
     for attempt in range(tool_max_retries + 1):
         try:
@@ -177,6 +197,24 @@ async def execute_tool(
                 latency_ms=round(elapsed, 2),
                 attempt=attempt,
             )
+            # Record successful execution for idempotency
+            if execution_key is not None:
+                from packages.agent.idempotency import ToolExecutionRecord, record_execution
+
+                record_execution(
+                    ToolExecutionRecord(
+                        execution_key=execution_key,
+                        task_id="",  # caller should overwrite with real task_id
+                        step=0,  # caller should overwrite with real step
+                        tool_call_id="",  # caller should overwrite with real tool_call_id
+                        tool_name=tool_name,
+                        arguments_json=arguments_json,
+                        status="success",
+                        result=result,
+                        error=None,
+                        created_at=time.time(),
+                    )
+                )
             await _audit_tool_action(
                 tenant_id=tenant_id,
                 session_id=session_id,
