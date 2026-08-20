@@ -23,6 +23,7 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 from typing import Any
 
+from packages.agent.state_machine import TaskStatus, validate_task_transition
 from packages.contracts.agent_schemas import AgentPlan
 
 logger = logging.getLogger("ai_platform.agent.long_horizon")
@@ -48,6 +49,7 @@ __all__ = [
     "finalize_long_run_task_status",
     "new_task_id",
     "new_checkpoint_id",
+    "safe_update_task_status",
 ]
 
 # ---------------------------------------------------------------------------
@@ -780,6 +782,37 @@ def new_checkpoint_id() -> str:
 # ---------------------------------------------------------------------------
 # Top-level async convenience functions
 # ---------------------------------------------------------------------------
+
+
+async def safe_update_task_status(task_id: str, new_status: str) -> bool:
+    """Update task status with state machine validation.
+
+    Args:
+        task_id: The ID of the task to update.
+        new_status: The desired new status string.
+
+    Returns:
+        True if the transition was valid and applied, False otherwise.
+    """
+    store = get_long_run_store()
+    task = await store.get(task_id)
+    if task is None:
+        logger.warning("safe_update_task_status: task %s not found", task_id)
+        return False
+
+    current_status = TaskStatus(task.status)
+    next_status = TaskStatus(new_status)
+
+    if not validate_task_transition(current_status, next_status):
+        logger.warning(
+            "safe_update_task_status: invalid transition for task %s: %s -> %s",
+            task_id,
+            task.status,
+            new_status,
+        )
+        return False
+
+    return await store.update_status(task_id, new_status)
 
 
 async def create_long_run(
