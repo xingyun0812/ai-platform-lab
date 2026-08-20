@@ -8,6 +8,12 @@ from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from typing import Any
 
+from packages.agent.guardrails import (
+    AgentGuardrailConfig,
+    GuardrailVerdict,
+    ProgressTracker,
+    ThresholdEnforcer,
+)
 from packages.agent.perf_metrics import get_agent_perf_metrics
 from packages.agent.plan_execution_policy import (
     gate_plan_approval_or_none,
@@ -48,6 +54,11 @@ class PlanExecutionContext:
     last_approval_id: str | None = None
     completed_count: int = 0
     completed_step_ids: set[str] = field(default_factory=set)
+
+    # Guardrail tracking
+    progress_tracker: ProgressTracker | None = None
+    threshold_enforcer: ThresholdEnforcer | None = None
+    guardrail_config: AgentGuardrailConfig = field(default_factory=AgentGuardrailConfig)
 
     @classmethod
     async def create(
@@ -110,7 +121,37 @@ class PlanExecutionContext:
                 ctx.completed_step_ids = {
                     s.step_id for s in lr_task.step_states if s.status == "completed"
                 }
+
+        # Initialize guardrails
+        gr_cfg = AgentGuardrailConfig()
+        ctx.guardrail_config = gr_cfg
+        ctx.progress_tracker = ProgressTracker(
+            max_consecutive_empty_tools=gr_cfg.max_consecutive_empty_tools,
+            max_consecutive_identical_calls=gr_cfg.max_consecutive_identical_calls,
+        )
+        ctx.threshold_enforcer = ThresholdEnforcer(
+            max_tool_calls_total=gr_cfg.max_tool_calls_total,
+            tool_call_limits=gr_cfg.tool_call_limits,
+            agent_timeout_seconds=gr_cfg.agent_timeout_seconds,
+        )
+
         return ctx, None
+
+    def check_guardrails(self) -> GuardrailVerdict | None:
+        """Return GuardrailVerdict if triggered, None if OK."""
+        metrics = get_agent_perf_metrics()
+        if self.progress_tracker:
+            stuck = self.progress_tracker.check_stuck()
+            if stuck is not None and stuck.stuck:
+                metrics.record_guardrail_stuck(reason=stuck.reason)
+                metrics.record_guardrail_triggered(layer=3, reason=stuck.reason)
+                return GuardrailVerdict.stuck(stuck.reason, stuck.detail)
+        if self.threshold_enforcer:
+            timeout = self.threshold_enforcer.check_timeout()
+            if timeout.triggered:
+                metrics.record_guardrail_triggered(layer=4, reason="timeout")
+                return timeout
+        return None
 
     def result(
         self,
@@ -222,6 +263,13 @@ async def execute_plan_serial(ctx: PlanExecutionContext) -> dict[str, Any]:
         if step_status == "pending_approval":
             get_agent_perf_metrics().record_plan_steps(tenant_id=ctx.tenant_id, steps=idx - 1)
             return ctx.result(plan_steps_completed=idx - 1)
+
+        if step_status != "failed":
+            verdict = ctx.check_guardrails()
+            if verdict is not None and verdict.triggered:
+                ctx.last_status = "guardrail_triggered"
+                get_agent_perf_metrics().record_plan_steps(tenant_id=ctx.tenant_id, steps=idx)
+                return ctx.result(plan_steps_completed=idx, status="guardrail_triggered")
 
         if step_status == "failed":
             failure_reason = ctx.final_message or f"step {step.id} returned status=failed"
@@ -348,6 +396,15 @@ async def execute_plan_parallel(ctx: PlanExecutionContext) -> dict[str, Any]:
                 ctx.last_status = "failed"
                 layer_completed = False
             ctx.completed_count += 1
+
+        # Guardrail check after processing this layer's steps
+        if ctx.last_status not in ("pending_approval", "failed"):
+            verdict = ctx.check_guardrails()
+            if verdict is not None and verdict.triggered:
+                ctx.last_status = "guardrail_triggered"
+                return ctx.result(
+                    plan_steps_completed=ctx.completed_count, status="guardrail_triggered"
+                )
 
         if ctx.long_run_task_id and layer_outcomes:
             from packages.agent.long_horizon import record_layer_step_outcomes
