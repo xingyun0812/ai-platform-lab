@@ -250,6 +250,190 @@ def _build_run_payload(
     return payload
 
 
+async def _run_resumed_agent(
+    *,
+    resume_ctx: Any,
+    tenant_id: str,
+    session_id: str,
+    allowed_tools: tuple[str, ...],
+    allowed_models: tuple[str, ...],
+    model: str | None,
+    session_store: SessionStore,
+    registry: ToolRegistry,
+    shadow_mode: bool,
+    settings: Any,
+    token_budget_daily: int,
+    token_budget_monthly: int,
+) -> dict[str, Any]:
+    """Run the agent by injecting a ReactResumeContext into run_react_loop.
+
+    This skips normal message assembly, memory injection, and tool routing
+    because the resume context already contains the fully reconstructed state
+    from the previous checkpoint.
+    """
+    from packages.agent.react_loop import run_react_loop as _run_react_loop
+
+    # Build tools_spec (needed for LLM call)
+    tool_names = [t for t in registry.list_tools() if t in allowed_tools]
+    tools_spec = registry.openai_tools_spec_subset(
+        tool_names if tool_names else allowed_tools,
+        allowed_tools,
+    )
+
+    # Init guardrails (same machinery as normal path)
+    progress_tracker = None
+    threshold_enforcer = None
+    if settings.agent_guardrail_enabled:
+        import json
+
+        from packages.agent.guardrails import (
+            AgentGuardrailConfig,
+            ProgressTracker,
+            ThresholdEnforcer,
+        )
+
+        tool_limits_raw = getattr(settings, "agent_guardrail_tool_call_limits", "{}")
+        try:
+            tool_limits = json.loads(tool_limits_raw)
+        except (json.JSONDecodeError, TypeError):
+            tool_limits = {}
+        guardrail_config = AgentGuardrailConfig(
+            enabled=settings.agent_guardrail_enabled,
+            max_tool_calls_total=settings.agent_guardrail_max_tool_calls_total,
+            tool_call_limits=tool_limits,
+            agent_timeout_seconds=settings.agent_guardrail_timeout_seconds,
+            max_consecutive_empty_tools=settings.agent_guardrail_max_consecutive_empty,
+            max_consecutive_identical_calls=settings.agent_guardrail_max_consecutive_identical,
+            convergence_strategy=settings.agent_guardrail_convergence_strategy,
+        )
+        progress_tracker = ProgressTracker(
+            max_consecutive_empty_tools=guardrail_config.max_consecutive_empty_tools,
+            max_consecutive_identical_calls=guardrail_config.max_consecutive_identical_calls,
+        )
+        threshold_enforcer = ThresholdEnforcer(
+            max_tool_calls_total=guardrail_config.max_tool_calls_total,
+            tool_call_limits=guardrail_config.tool_call_limits,
+            agent_timeout_seconds=guardrail_config.agent_timeout_seconds,
+        )
+
+    # Run the react loop with restored state
+    loop = await _run_react_loop(
+        messages=resume_ctx.messages,
+        session_messages=resume_ctx.session_messages,
+        registry=registry,
+        tools_spec=tools_spec,
+        resolved_model=resume_ctx.resolved_model or (model or settings.agent_model or settings.default_model),
+        model=model,
+        tenant_id=tenant_id,
+        session_id=session_id,
+        allowed_tools=allowed_tools,
+        settings=settings,
+        shadow_mode=shadow_mode,
+        active_reasoning_mode=settings.agent_reasoning_mode or "",
+        active_tool_call_strategy=settings.agent_tool_call_strategy or "",
+        budget_meta=resume_ctx.budget_meta,
+        pinned_prefix=0,
+        reflect_remaining=resume_ctx.reflect_remaining,
+        runtime_truncated_tools=resume_ctx.runtime_truncated_tools,
+        progress_tracker=progress_tracker,
+        threshold_enforcer=threshold_enforcer,
+        guardrail_config=guardrail_config,
+    )
+
+    # Merge prior trace + reasoning_trace with new loop result
+    all_trace: list[ToolCallRecord] = list(resume_ctx.trace) + list(loop.trace)
+    all_reasoning: list[ReasoningTraceRecord] = (
+        list(resume_ctx.reasoning_trace) + list(loop.reasoning_trace)
+    )
+    merged_messages: list[dict[str, Any]] = (
+        list(resume_ctx.messages) + list(loop.messages)[len(resume_ctx.messages):]
+    )
+    merged_session_messages: list[dict[str, Any]] = (
+        list(resume_ctx.session_messages)
+        + list(loop.session_messages)[len(resume_ctx.session_messages):]
+    )
+
+    # Build a synthetic ReActLoopResult with merged traces
+    merged_loop = ReActLoopResult(
+        final_message=loop.final_message,
+        steps=resume_ctx.resume_step + loop.steps,
+        messages=merged_messages,
+        session_messages=merged_session_messages,
+        trace=all_trace,
+        shadow_trace=loop.shadow_trace,
+        reasoning_trace=all_reasoning,
+        reflect_remaining=loop.reflect_remaining,
+        runtime_truncated_tools=loop.runtime_truncated_tools,
+        budget_meta=loop.budget_meta,
+        resolved_model=loop.resolved_model,
+        total_input_tokens=loop.total_input_tokens,
+        total_output_tokens=loop.total_output_tokens,
+        total_tokens=loop.total_tokens,
+    )
+
+    # Session state save
+    state = session_store.get_session_state(tenant_id, session_id)
+    saved_state = SessionState(
+        messages=merged_loop.session_messages,
+        summary=state.summary,
+        turn_count=state.turn_count + 1,
+    )
+    if settings.context_llm_summary_enabled:
+        saved_state = await maybe_compact_with_llm(
+            saved_state,
+            every_n_turns=settings.agent_summary_every_n_turns,
+            keep_recent_turns=settings.agent_context_keep_recent_turns,
+            tenant_id=tenant_id,
+            enable_llm_summary=settings.context_llm_summary_enabled,
+        )
+    else:
+        saved_state = maybe_compact_session(
+            saved_state,
+            every_n_turns=settings.agent_summary_every_n_turns,
+            keep_recent_turns=settings.agent_context_keep_recent_turns,
+        )
+    session_store.save_session_state(tenant_id, session_id, saved_state)
+
+    memory_persisted = False
+    if (
+        settings.memory_store_enabled
+        and saved_state.turn_count > 0
+        and saved_state.turn_count % max(1, settings.memory_summarize_every_n_turns) == 0
+    ):
+        memory_persisted = await _maybe_persist_memory(
+            tenant_id=tenant_id,
+            session_id=session_id,
+            messages=saved_state.messages,
+            turn_count=saved_state.turn_count,
+        )
+
+    logger.info(
+        "agent_run (resumed)",
+        extra={
+            "trace_id": get_trace_id(),
+            "tenant_id": tenant_id,
+            "session_id": session_id,
+            "steps": merged_loop.steps,
+            "tool_calls": len(all_trace),
+            "resume_step": resume_ctx.resume_step,
+        },
+    )
+
+    return _build_run_payload(
+        tenant_id=tenant_id,
+        session_id=session_id,
+        loop=merged_loop,
+        saved_state=saved_state,
+        shadow_mode=shadow_mode,
+        active_reasoning_mode=settings.agent_reasoning_mode or "",
+        active_tool_call_strategy=settings.agent_tool_call_strategy or "",
+        routing=None,
+        memory_injection=None,
+        memory_persisted=memory_persisted,
+        token_budget_daily=token_budget_daily,
+        token_budget_monthly=token_budget_monthly,
+    )
+
 async def run_agent(
     *,
     tenant_id: str,
@@ -267,6 +451,7 @@ async def run_agent(
     reasoning_mode: str | None = None,
     tool_call_strategy: str | None = None,
     pinned_tools: tuple[str, ...] | None = None,
+    long_run_task_id: str | None = None,
 ) -> dict[str, Any]:
     if approval_id:
         return await resume_approved_tool(
@@ -279,6 +464,31 @@ async def run_agent(
         )
 
     settings = get_settings()
+
+    # ------------------------------------------------------------------ #
+    # Resume path: inject checkpoint state directly into run_react_loop
+    # ------------------------------------------------------------------ #
+    if long_run_task_id is not None:
+        from packages.agent.react_resume_loader import load_react_resume_context
+
+        resume_ctx = await load_react_resume_context(long_run_task_id)
+        if resume_ctx is not None:
+            return await _run_resumed_agent(
+                resume_ctx=resume_ctx,
+                tenant_id=tenant_id,
+                session_id=session_id,
+                allowed_tools=allowed_tools,
+                allowed_models=allowed_models,
+                model=model,
+                session_store=session_store,
+                registry=registry or ToolRegistry(),
+                shadow_mode=shadow_mode,
+                settings=settings,
+                token_budget_daily=token_budget_daily,
+                token_budget_monthly=token_budget_monthly,
+            )
+
+    # Fall-through: no resume context found, continue with normal flow
     try:
         active_reasoning_mode = resolve_reasoning_mode(
             reasoning_mode, settings.agent_reasoning_mode
