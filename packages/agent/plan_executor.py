@@ -211,6 +211,7 @@ class PlanExecutionContext:
                 model=self.model,
                 session_store=self.session_store,
                 pinned_tools=pinned,
+                long_run_task_id=self.long_run_task_id,
             )
         except Exception as exc:
             logger.warning("%s: step %s raised exception: %s", log_prefix, step.id, exc)
