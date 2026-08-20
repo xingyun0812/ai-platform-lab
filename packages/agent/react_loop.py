@@ -455,6 +455,10 @@ async def run_react_loop(
     pinned_prefix: int,
     reflect_remaining: int,
     runtime_truncated_tools: int = 0,
+    # Guardrail tracking
+    progress_tracker: Any | None = None,
+    threshold_enforcer: Any | None = None,
+    guardrail_config: Any | None = None,
 ) -> ReActLoopResult:
     """LLM ↔ tools ReAct 循环，直到 assistant 返回最终文本或超步数。"""
     trace: list[ToolCallRecord] = []
@@ -474,6 +478,18 @@ async def run_react_loop(
 
     while steps < settings.agent_max_steps:
         steps += 1
+
+        # Layer 4: Timeout check
+        if threshold_enforcer is not None:
+            timeout_verdict = threshold_enforcer.check_timeout()
+            if timeout_verdict.triggered:
+                get_agent_perf_metrics().record_guardrail_triggered(layer=4, reason="timeout")
+                raise AgentRunError(
+                    "GUARDRAIL_TIMEOUT",
+                    f"Agent execution timeout ({guardrail_config.agent_timeout_seconds}s)",
+                    detail={"timeout_seconds": guardrail_config.agent_timeout_seconds},
+                )
+
         if estimate_messages_tokens(working_messages) > settings.agent_context_token_budget:
             working_messages, dropped = drop_oldest_until_budget(
                 working_messages,
@@ -563,7 +579,24 @@ async def run_react_loop(
         tool_calls = msg.get("tool_calls")
         if finish == "tool_calls" or tool_calls:
             if not isinstance(tool_calls, list) or not tool_calls:
-                raise AgentRunError("AGENT_UPSTREAM_ERROR", "finish_reason=tool_calls 但无 tool_calls")
+                raise AgentRunError(
+                    "AGENT_UPSTREAM_ERROR", "finish_reason=tool_calls 但无 tool_calls"
+                )
+
+            # Layer 3/4: Guardrail check after tool calls
+            if threshold_enforcer is not None:
+                for parsed_call in _parse_tool_calls(tool_calls):
+                    verdict = threshold_enforcer.check_tool_call(parsed_call.tool_name)
+                    if verdict.triggered:
+                        get_agent_perf_metrics().record_guardrail_triggered(
+                            layer=verdict.layer, reason=verdict.reason
+                        )
+                        raise AgentRunError(
+                            f"GUARDRAIL_{verdict.reason.upper()}",
+                            f"Guardrail triggered: {verdict.reason}",
+                            detail=verdict.detail,
+                        )
+                    threshold_enforcer.record_tool_call(parsed_call.tool_name)
 
             round_result = await process_tool_calls_round(
                 tool_calls,
@@ -586,10 +619,55 @@ async def run_react_loop(
             for tool_msg in round_result.tool_messages:
                 working_messages.append(tool_msg)
                 working_session_messages.append(tool_msg)
+
+            # Layer 3: Stuck detection after tool round
+            if progress_tracker is not None:
+                for tool_msg in round_result.tool_messages:
+                    progress_tracker.record_tool_call(
+                        tool_name="unknown",
+                        result=tool_msg.get("content", ""),
+                    )
+                stuck = progress_tracker.check_stuck()
+                if stuck is not None and stuck.stuck:
+                    get_agent_perf_metrics().record_guardrail_stuck(reason=stuck.reason)
+                    get_agent_perf_metrics().record_guardrail_triggered(
+                        layer=3, reason=stuck.reason
+                    )
+                    raise AgentRunError(
+                        f"GUARDRAIL_STUCK_{stuck.reason.upper()}",
+                        f"Agent stuck: {stuck.reason}",
+                        detail=stuck.detail,
+                    )
+
             continue
 
         content = msg.get("content")
         final_message = content.strip() if isinstance(content, str) else ""
+
+        # Layer 2: Convergence detection when LLM returns final text
+        if progress_tracker is not None:
+            progress_tracker.record_no_tool_call()
+            progress_tracker.record_llm_output(final_message)
+            if guardrail_config is not None and getattr(
+                guardrail_config, "convergence_enabled", True
+            ):
+                if progress_tracker.consecutive_no_tool_rounds >= getattr(
+                    guardrail_config, "convergence_no_tool_rounds", 2
+                ):
+                    if len(progress_tracker.recent_llm_outputs) >= 2:
+                        outputs = progress_tracker.recent_llm_outputs
+                        from packages.agent.guardrails import check_convergence
+
+                        converged, reason = await check_convergence(
+                            strategy=getattr(guardrail_config, "convergence_strategy", "hybrid"),
+                            current_output=outputs[-1],
+                            previous_output=outputs[-2],
+                            threshold=getattr(guardrail_config, "convergence_threshold", 0.85),
+                        )
+                        if converged:
+                            logger.info("convergence detected: %s", reason)
+                            break
+
         break
     else:
         raise AgentRunError(

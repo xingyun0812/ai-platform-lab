@@ -390,6 +390,43 @@ class Settings(BaseSettings):
         description="Classifier LLM call timeout in milliseconds",
     )
 
+    # Phase Y — Agent Production Guardrails
+    agent_guardrail_enabled: bool = Field(
+        default=True,
+        validation_alias="AGENT_GUARDRAIL_ENABLED",
+        description="Master switch for agent production guardrails",
+    )
+    agent_guardrail_max_tool_calls_total: int = Field(
+        default=30,
+        validation_alias="AGENT_GUARDRAIL_MAX_TOOL_CALLS_TOTAL",
+        description="Max total tool calls per agent run before circuit break",
+    )
+    agent_guardrail_tool_call_limits: str = Field(
+        default='{"web_search": 5, "sql_query": 10, "computer_use": 20}',
+        validation_alias="AGENT_GUARDRAIL_TOOL_CALL_LIMITS",
+        description="JSON dict of per-tool max call limits",
+    )
+    agent_guardrail_timeout_seconds: float = Field(
+        default=300.0,
+        validation_alias="AGENT_GUARDRAIL_TIMEOUT_SECONDS",
+        description="Max execution time per agent run",
+    )
+    agent_guardrail_max_consecutive_empty: int = Field(
+        default=3,
+        validation_alias="AGENT_GUARDRAIL_MAX_CONSECUTIVE_EMPTY",
+        description="Max consecutive empty tool results before stuck detection",
+    )
+    agent_guardrail_max_consecutive_identical: int = Field(
+        default=3,
+        validation_alias="AGENT_GUARDRAIL_MAX_CONSECUTIVE_IDENTICAL",
+        description="Max consecutive identical tool calls before stuck detection",
+    )
+    agent_guardrail_convergence_strategy: str = Field(
+        default="hybrid",
+        validation_alias="AGENT_GUARDRAIL_CONVERGENCE_STRATEGY",
+        description="Convergence detection strategy: similarity, llm_judged, hybrid",
+    )
+
     # Phase F — 上下文压缩 (#33)
     context_llm_summary_enabled: bool = Field(
         default=True,
