@@ -153,6 +153,29 @@ def validate_plan(plan: AgentPlan) -> None:
     if topological_sort(plan.steps) is None:
         raise PlannerError("PLAN_CYCLE", "Plan 存在循环依赖")
 
+    # Layer 1: Granularity constraints
+    from packages.agent.guardrails import AgentGuardrailConfig
+
+    gr_cfg = AgentGuardrailConfig()
+    if len(plan.steps) > gr_cfg.plan_max_steps:
+        raise PlannerError(
+            "PLAN_TOO_MANY_STEPS",
+            f"Plan step count {len(plan.steps)} exceeds limit {gr_cfg.plan_max_steps}",
+            detail={"steps": len(plan.steps), "max": gr_cfg.plan_max_steps},
+        )
+    # Check each step has meaningful description
+    for step in plan.steps:
+        if len(step.description.strip()) < gr_cfg.plan_min_step_description:
+            raise PlannerError(
+                "PLAN_STEP_TOO_SHORT",
+                f"Step {step.id} description too short ({len(step.description.strip())} chars)",
+                detail={
+                    "step_id": step.id,
+                    "length": len(step.description.strip()),
+                    "min": gr_cfg.plan_min_step_description,
+                },
+            )
+
 
 def topological_sort(steps: list[PlanStep]) -> list[PlanStep] | None:
     """Kahn 拓扑排序；有环返回 None。"""
