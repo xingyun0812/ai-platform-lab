@@ -1,5 +1,28 @@
 # Changelog
 
+## 2026-08-20 — Phase Y Agent Production Guardrails (#225-#228)
+
+### Added
+
+- `packages/agent/guardrails/` — 新子包，四层防护共享基础设施
+  - `AgentGuardrailConfig` — 统一配置 dataclass（四层参数 + 全局开关）
+  - `check_convergence()` — 收敛检测共享组件（从 Self-Refine 抽取，3 策略）
+  - `ProgressTracker` — 滑动窗口 stuck 检测（连续空结果/同参数重复/输出循环）
+  - `ThresholdEnforcer` — 熔断计数器（全局上限 + 按工具类型 + 超时）
+- **Layer 1 — 粒度硬约束**：`planner.validate_plan()` 校验 step 数上限和最小执行单元
+- **Layer 2 — 收敛检测**：`react_loop.py` 中，连续无 tool_call 且输出稳定时提前终止
+- **Layer 3 — 进度校验**：`plan_executor.py` + `react_loop.py` 接入 stuck 检测
+- **Layer 4 — 熔断告警**：settings.py 新增 8 个 `AGENT_GUARDRAIL_*` env var，触发熔断时记录 Prometheus 指标
+- **Self-Refine** — 收敛检测改为调用 `guardrails.convergence` 共享组件，向后兼容
+- **Prometheus 指标**：`guardrail_triggered_total{layer,reason}` + `guardrail_stuck_total{reason}`
+
+### Tests
+
+- 23 个 guardrails 单元测试（全部不依赖 LLM）
+- 127 个回归测试全部通过（guardrails + self_refine + memory）
+
+---
+
 ## 2026-08-19 — Phase X.5 Memory Classification (#222)
 
 ### Added
