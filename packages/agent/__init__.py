@@ -1,3 +1,11 @@
+from packages.agent.exception_policy import (
+    FailureClass,
+    FailurePolicy,
+    HierarchicalExceptionPolicy,
+    RetryPolicy,
+    classify_failure,
+    execute_with_retry_policy,
+)
 from packages.agent.experience_store import (
     ExperienceMetrics,
     ExperienceRecord,
@@ -17,17 +25,33 @@ from packages.agent.experience_store import (
 )
 from packages.agent.registry import ToolRegistry, get_tool_registry
 from packages.agent.runner import AgentRunError, run_agent
+from packages.agent.state_machine import (
+    StateTransitionError,
+    StepStatus,
+    TaskStatus,
+    validate_step_transition,
+    validate_task_transition,
+)
 
 __all__ = [
     "AgentRunError",
     "ExperienceMetrics",
     "ExperienceRecord",
+    "FailureClass",
+    "FailurePolicy",
+    "HierarchicalExceptionPolicy",
     "InMemoryExperienceStore",
     "PostgresExperienceStore",
+    "RetryPolicy",
+    "StateTransitionError",
+    "StepStatus",
+    "TaskStatus",
     "ToolRegistry",
     "build_experience_record",
+    "classify_failure",
     "compute_task_signature",
     "dedup_filter",
+    "execute_with_retry_policy",
     "get_experience_metrics",
     "get_experience_store",
     "get_tool_registry",
@@ -38,4 +62,6 @@ __all__ = [
     "retrieve_similar_experiences",
     "run_agent",
     "store_experience",
+    "validate_step_transition",
+    "validate_task_transition",
 ]
