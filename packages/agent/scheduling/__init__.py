@@ -5,6 +5,12 @@ from packages.agent.scheduling.mutex import (
     MutexConflict,
     MutexDecision,
 )
+from packages.agent.scheduling.resource_pool import (
+    DEFAULT_MAX_CONCURRENT,
+    ResourceEvent,
+    ResourceHandle,
+    ResourcePoolManager,
+)
 from packages.agent.scheduling.schedule_policy import (
     DEFAULT_TOOL_CLASSIFICATIONS_PATH,
     SchedulePolicyStore,
@@ -15,10 +21,14 @@ from packages.agent.scheduling.schedule_policy import (
 )
 
 __all__ = [
+    "DEFAULT_MAX_CONCURRENT",
     "DEFAULT_TOOL_CLASSIFICATIONS_PATH",
     "MutexArbitrator",
     "MutexConflict",
     "MutexDecision",
+    "ResourceEvent",
+    "ResourceHandle",
+    "ResourcePoolManager",
     "SchedulePolicyStore",
     "SchedulingPolicy",
     "load_scheduling_config",
