@@ -23,6 +23,8 @@ from packages.agent.quality_gate import QUALITY_HINT, assess_tool_output
 from packages.agent.reasoning import apply_cot_to_assistant_message
 from packages.agent.registry import ToolRegistry
 from packages.agent.risk import tool_requires_hitl
+from packages.agent.scheduling.mutex import MutexArbitrator
+from packages.agent.scheduling.schedule_policy import SchedulePolicyStore
 from packages.agent.shadow import shadow_tool_record
 from packages.agent.tool_envelope import parse_tool_result, with_quality_hint
 from packages.billing.recorder import record_upstream_usage
@@ -30,6 +32,18 @@ from packages.contracts.agent_schemas import ReasoningTraceRecord, ToolCallRecor
 from packages.observability.context import get_trace_id
 
 logger = logging.getLogger("ai_platform.agent.react_loop")
+
+# 互斥仲裁器模块级惰性缓存：SchedulePolicyStore 读取 YAML，避免每轮重建（#246）。
+_mutex_arbitrator: MutexArbitrator | None = None
+
+
+def _get_mutex_arbitrator(reg: ToolRegistry) -> MutexArbitrator:
+    """惰性构建并缓存互斥仲裁器（asyncio 单线程下线程安全）。"""
+    global _mutex_arbitrator
+    if _mutex_arbitrator is None:
+        store = SchedulePolicyStore(registry=reg)
+        _mutex_arbitrator = MutexArbitrator(resolve=store.resolve)
+    return _mutex_arbitrator
 
 
 class AgentRunError(Exception):
@@ -369,6 +383,82 @@ def _finalize_tool_call(
     return tool_msg, reflect_remaining, runtime_truncated_tools
 
 
+async def _process_round_batch(
+    reg: ToolRegistry,
+    parsed: list[ParsedToolCall],
+    *,
+    allowed_tools: tuple[str, ...],
+    settings: Any,
+    tenant_id: str,
+    session_id: str,
+    shadow_mode: bool,
+) -> list[tuple[ParsedToolCall, tuple[str | None, ToolCallRecord | None, AgentRunError | None]]]:
+    """批量执行一列 tool call（并行），返回 (parsed, raw) 逐条对齐结果。"""
+    t0 = time.perf_counter()
+    exec_pairs = await asyncio.gather(
+        *(
+            _execute_single_tool_call_raw(
+                reg,
+                p,
+                allowed_tools=allowed_tools,
+                settings=settings,
+                tenant_id=tenant_id,
+                session_id=session_id,
+                shadow_mode=shadow_mode,
+            )
+            for p in parsed
+        )
+    )
+    duration_ms = (time.perf_counter() - t0) * 1000
+    get_agent_perf_metrics().record_tool_parallel_batch(
+        tenant_id=tenant_id,
+        strategy="parallel",
+        duration_ms=duration_ms,
+        tool_count=len(parsed),
+    )
+    return list(zip(parsed, exec_pairs, strict=True))
+
+
+def _partition_by_mutex(
+    reg: ToolRegistry,
+    parsed: list[ParsedToolCall],
+) -> tuple[list[ParsedToolCall], list[ParsedToolCall], list[dict[str, Any]]]:
+    """按互斥组裁决，把本轮 tool call 分成 keep（可并行）与 deferred（串行回退）。
+
+    Returns: (keep, deferred, conflict_records)
+        - keep 并行执行；deferred 串行回退（优先者完成后并入重试，AC3）。
+        - conflict_records 为 ``status="mutex_deferred"`` 的 trace 记录（AC4）。
+    MutexArbitrator 惰性构建并缓存，避免每轮重建；无互斥声明的工具透传（AC5）。
+    """
+    if len(parsed) <= 1:
+        return parsed, [], []
+
+    arbitrator = _get_mutex_arbitrator(reg)
+    names = [(p.tool_name, p) for p in parsed]
+    decision = arbitrator.arbitrate(tool_name for tool_name, _ in names)
+    if not decision.conflicts:
+        return parsed, [], []
+
+    keep_by_name = set(decision.keep)
+    keep = [p for tool_name, p in names if tool_name in keep_by_name]
+    deferred = [p for tool_name, p in names if tool_name not in keep_by_name]
+
+    # 冲突写 trace：为每个被推迟的工具生成一条 mutex_deferred 记录（AC4）
+    conflict_records: list[dict[str, Any]] = []
+    for conflict in decision.conflicts:
+        for deferred_name in conflict.deferred:
+            conflict_records.append(
+                {
+                    "tool_name": deferred_name,
+                    "status": "mutex_deferred",
+                    "mutex_group": conflict.mutex_group,
+                    "reason": conflict.reason,
+                    "keep": list(conflict.keep),
+                }
+            )
+    return keep, deferred, conflict_records
+
+
 async def process_tool_calls_round(
     tool_calls: list[Any],
     *,
@@ -390,29 +480,50 @@ async def process_tool_calls_round(
         return ToolRoundResult(tool_messages, reflect_remaining, runtime_truncated_tools, None)
 
     if strategy == "parallel" and len(parsed) > 1:
-        t0 = time.perf_counter()
-        exec_pairs = await asyncio.gather(
-            *(
-                _execute_single_tool_call_raw(
+        keep_calls, deferred_calls, conflict_records = _partition_by_mutex(reg, parsed)
+        # AC4：互斥冲突写 trace（追加到 trace 列表 + 注入 tool_messages 观感）
+        for cr in conflict_records:
+            record = ToolCallRecord(
+                tool_name=cr["tool_name"],
+                arguments={},
+                status=cr["status"],
+                result=None,
+                error=f"mutex_deferred group={cr['mutex_group']} reason={cr['reason']}",
+            )
+            trace.append(record)
+            tool_messages.append(
+                {
+                    "role": "tool",
+                    "tool_call_id": f"mutex_{cr['tool_name']}_{len(tool_messages)}",
+                    "content": f"[mutex-deferred] {cr['tool_name']} ({cr['reason']})",
+                }
+            )
+
+        # keep 组并行；deferred 组在优先者完成后串行回退（AC2/AC3）
+        exec_results = []
+        if keep_calls:
+            exec_results.extend(
+                await _process_round_batch(
                     reg,
-                    p,
+                    keep_calls,
                     allowed_tools=allowed_tools,
                     settings=settings,
                     tenant_id=tenant_id,
                     session_id=session_id,
                     shadow_mode=shadow_mode,
                 )
-                for p in parsed
             )
-        )
-        duration_ms = (time.perf_counter() - t0) * 1000
-        get_agent_perf_metrics().record_tool_parallel_batch(
-            tenant_id=tenant_id,
-            strategy=strategy,
-            duration_ms=duration_ms,
-            tool_count=len(parsed),
-        )
-        exec_results = list(zip(parsed, exec_pairs, strict=True))
+        for p in deferred_calls:
+            raw = await _execute_single_tool_call_raw(
+                reg,
+                p,
+                allowed_tools=allowed_tools,
+                settings=settings,
+                tenant_id=tenant_id,
+                session_id=session_id,
+                shadow_mode=shadow_mode,
+            )
+            exec_results.append((p, raw))
     else:
         exec_results = []
         for p in parsed:
