@@ -60,6 +60,22 @@ def get_executor(node_type: str) -> NodeExecutor | None:
     return _EXECUTORS.get(node_type)
 
 
+# 资源池管理器模块级惰性缓存：SchedulePolicyStore 读取 YAML，避免每次工具调用重建（#247）。
+_resource_pool_manager: Any = None
+
+
+def _get_resource_pool_manager(registry: Any) -> Any:
+    """惰性构建并缓存资源池管理器（asyncio 单线程下线程安全）。"""
+    global _resource_pool_manager
+    if _resource_pool_manager is None:
+        from packages.agent.scheduling.resource_pool import ResourcePoolManager
+        from packages.agent.scheduling.schedule_policy import SchedulePolicyStore
+
+        store = SchedulePolicyStore(registry=registry)
+        _resource_pool_manager = ResourcePoolManager(resolve=store.resolve)
+    return _resource_pool_manager
+
+
 # --------------------------------------------------------------------- #
 # 模板渲染：${node_id.field} 或 ${variable}
 # --------------------------------------------------------------------- #
@@ -230,8 +246,9 @@ async def _execute_llm_call(config: dict[str, Any], ctx: Any) -> dict[str, Any]:
 
 
 async def _execute_tool_call(config: dict[str, Any], ctx: Any) -> dict[str, Any]:
-    """调用 Agent 工具。"""
+    """调用 Agent 工具（执行前申领资源、执行后释放，#247）。"""
     from packages.agent.registry import ToolRegistry
+    from packages.agent.scheduling.resource_pool import ResourceEvent
 
     tool_name = str(config.get("tool_name", ""))
     arguments = config.get("arguments", {})
@@ -251,13 +268,27 @@ async def _execute_tool_call(config: dict[str, Any], ctx: Any) -> dict[str, Any]
         raise NodeExecutorError(
             "TOOL_NOT_FOUND", f"工具 {tool_name} 不存在"
         )
+    events: list[ResourceEvent] = []
+    manager = _get_resource_pool_manager(registry)
+    handle = await manager.acquire(tool_name)
+    events.extend(handle.events)
     try:
         result = await tool.handler(rendered_args)
-        return {"result": result, "tool": tool_name}
     except Exception as e:
         raise NodeExecutorError(
             "TOOL_CALL_FAILED", f"工具 {tool_name} 调用失败: {e}"
         ) from e
+    finally:
+        # 无论成功/失败都在后释放资源，并发不泄漏
+        release_ev = await handle.release()
+        if release_ev is not None:
+            events.append(release_ev)
+    return {
+        "result": result,
+        "tool": tool_name,
+        "pool": handle.pool,
+        "resource_events": [ev.to_dict() for ev in events],
+    }
 
 
 async def _execute_condition(config: dict[str, Any], ctx: Any) -> dict[str, Any]:
