@@ -152,8 +152,15 @@ async def traverse_workflow(
                     "NO_EXECUTOR", f"节点类型 {node.node_type} 无执行器"
                 )
             output = await executor(node.config, ctx)
+            # 聚合校验钩子（#248）：parallel/tool_call 节点执行后按 output_schema
+            # 校验产物完整性，标记失败/缺失产物到 trace，不阻塞成功分支。
+            agg = await _run_aggregation_hook(node.node_type, node.config, output)
             ctx.outputs[current] = output
-            ctx.record_trace(current, "completed", {"output": _summarize(output)})
+            ctx.record_trace(
+                current,
+                "completed",
+                {"output": _summarize(output), "aggregation": agg.get("aggregation")},
+            )
 
             if node.node_type == "end":
                 last_output = output
@@ -364,3 +371,64 @@ def _summarize(value: Any, max_len: int = 200) -> str:
     if len(s) > max_len:
         return s[:max_len] + "...[truncated]"
     return s
+
+
+async def _run_aggregation_hook(
+    node_type: str, config: dict[str, Any], output: Any
+) -> dict[str, Any]:
+    """聚合校验钩子：parallel/tool_call 节点执行后，按各工具声明的 output_schema
+    校验产物完整性（缺失/失败识别），标记失败产物到 trace，不阻塞成功分支。
+
+    - 仅对声明了 ``output_schema`` 的工具做校验/聚合。
+    - 未声明 schema 的工具：不校验、按原样透传（向后兼容）。
+    - 从不抛出异常，返回 ``{\"aggregation\": ...}`` 供 trace 落库。
+    """
+    from packages.agent.scheduling.aggregator import aggregate_tool_outputs
+    from packages.agent.scheduling.schedule_policy import SchedulePolicyStore
+
+    products: list[dict[str, Any]] = []
+    schemas: dict[str, Any] = {}
+    store = SchedulePolicyStore()
+
+    if node_type == "tool_call":
+        tool_name = str(config.get("tool_name", ""))
+        if not tool_name:
+            return {"aggregation": {"status": "skipped", "reason": "no_tool_name"}}
+        products.append({"tool_name": tool_name, "result": output})
+        schemas[tool_name] = store.resolve(tool_name).output_schema
+    elif node_type == "parallel":
+        branch_results = output.get("results", []) if isinstance(output, dict) else []
+        for br in branch_results:
+            if not isinstance(br, dict):
+                continue
+            name = str(br.get("branch_id") or br.get("tool_name") or "")
+            if not name:
+                continue
+            products.append({"tool_name": name, "result": br.get("output")})
+            schemas[name] = store.resolve(name).output_schema
+    else:
+        return {"aggregation": {"status": "skipped", "reason": "not_aggregated_type"}}
+
+    if not products:
+        return {"aggregation": {"status": "skipped", "reason": "no_products"}}
+
+    result = await aggregate_tool_outputs(
+        products, schemas=schemas, completions_cb=None
+    )
+    if not result.has_failures:
+        return {"aggregation": {"status": "ok", "errors": []}}
+    failed = [
+        {
+            "tool_name": p.tool_name,
+            "status": p.status,
+            "missing_fields": list(p.missing_fields),
+        }
+        for p in result.failed
+    ]
+    return {
+        "aggregation": {
+            "status": "partial",
+            "errors": list(result.errors),
+            "failed": failed,
+        }
+    }
