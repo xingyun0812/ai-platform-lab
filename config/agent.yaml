@@ -16,3 +16,5 @@ reflect_max_retries: 2
 reasoning_mode: react
 # Phase O #94 — sequential（默认）| parallel（同轮多 tool_calls 并行）
 tool_call_strategy: sequential
+# 结果聚合补全重试次数（#248，缺省 1）：缺产物时按此次数重跑工具补全
+aggregation_completion_attempts: 1

@@ -33,6 +33,7 @@ class OrchestratorError(Exception):
 @dataclass
 class ExecutionContext:
     """运行时上下文。"""
+
     inputs: dict[str, Any] = field(default_factory=dict)
     outputs: dict[str, Any] = field(default_factory=dict)  # node_id → output
     variables: dict[str, Any] = field(default_factory=dict)
@@ -41,17 +42,20 @@ class ExecutionContext:
     current_node: str | None = None
 
     def record_trace(self, node_id: str, status: str, detail: dict[str, Any] | None = None) -> None:
-        self.trace.append({
-            "node_id": node_id,
-            "status": status,
-            "timestamp": time.time(),
-            "detail": detail or {},
-        })
+        self.trace.append(
+            {
+                "node_id": node_id,
+                "status": status,
+                "timestamp": time.time(),
+                "detail": detail or {},
+            }
+        )
 
 
 @dataclass
 class ExecutionResult:
     """工作流执行结果。"""
+
     workflow_id: str
     status: str  # completed | failed | timeout
     outputs: dict[str, Any]
@@ -148,9 +152,7 @@ async def traverse_workflow(
         try:
             executor = get_executor(node.node_type)
             if executor is None:
-                raise OrchestratorError(
-                    "NO_EXECUTOR", f"节点类型 {node.node_type} 无执行器"
-                )
+                raise OrchestratorError("NO_EXECUTOR", f"节点类型 {node.node_type} 无执行器")
             output = await executor(node.config, ctx)
             # 聚合校验钩子（#248）：parallel/tool_call 节点执行后按 output_schema
             # 校验产物完整性，标记失败/缺失产物到 trace，不阻塞成功分支。
@@ -377,18 +379,23 @@ async def _run_aggregation_hook(
     node_type: str, config: dict[str, Any], output: Any
 ) -> dict[str, Any]:
     """聚合校验钩子：parallel/tool_call 节点执行后，按各工具声明的 output_schema
-    校验产物完整性（缺失/失败识别），标记失败产物到 trace，不阻塞成功分支。
+    校验产物完整性（缺失/失败识别），对缺产物重跑工具补全，标记仍失败产物到
+    trace，不阻塞成功分支。
 
-    - 仅对声明了 ``output_schema`` 的工具做校验/聚合。
-    - 未声明 schema 的工具：不校验、按原样透传（向后兼容）。
+    - 仅对声明了 ``output_schema`` 的工具做校验/聚合补全。
+    - 未声明 schema 的工具：不校验、不补全、按原样透传（向后兼容）。
+    - 补全次数来自 ``config/agent.yaml`` 的 ``aggregation_completion_attempts``
+      （缺省 1），可通过补全回调可配置。
     - 从不抛出异常，返回 ``{\"aggregation\": ...}`` 供 trace 落库。
     """
+    from packages.agent.registry import ToolRegistry
     from packages.agent.scheduling.aggregator import aggregate_tool_outputs
     from packages.agent.scheduling.schedule_policy import SchedulePolicyStore
 
     products: list[dict[str, Any]] = []
     schemas: dict[str, Any] = {}
     store = SchedulePolicyStore()
+    original_args: dict[str, Any] = {}
 
     if node_type == "tool_call":
         tool_name = str(config.get("tool_name", ""))
@@ -396,6 +403,9 @@ async def _run_aggregation_hook(
             return {"aggregation": {"status": "skipped", "reason": "no_tool_name"}}
         products.append({"tool_name": tool_name, "result": output})
         schemas[tool_name] = store.resolve(tool_name).output_schema
+        original_args[tool_name] = (
+            config.get("arguments", {}) if isinstance(config.get("arguments"), dict) else {}
+        )
     elif node_type == "parallel":
         branch_results = output.get("results", []) if isinstance(output, dict) else []
         for br in branch_results:
@@ -406,22 +416,45 @@ async def _run_aggregation_hook(
                 continue
             products.append({"tool_name": name, "result": br.get("output")})
             schemas[name] = store.resolve(name).output_schema
+            # 平行分支子图已执行完，原始 arguments 不可得 → 补全以空参 + 缺失提示重跑
+            original_args[name] = {}
     else:
         return {"aggregation": {"status": "skipped", "reason": "not_aggregated_type"}}
 
     if not products:
         return {"aggregation": {"status": "skipped", "reason": "no_products"}}
 
+    # 补全回调（#248 AC2）：缺失/失败产物用 ToolRegistry 重跑该工具，按原
+    # arguments（tool_call 节点）或空参（parallel 分支）重跑；返回与节点输出
+    # 一致的 wrapper dict，使 schema 校验一致。异常/无工具 → None（补全失败）。
+    async def _completion_cb(tool_name: str, old_output: Any) -> Any:
+        registry = ToolRegistry()
+        tool = registry.get(tool_name)
+        if tool is None:
+            return None
+        args: dict[str, Any] = dict(original_args.get(tool_name) or {})
+        try:
+            new_result: Any = await tool.handler(args)
+        except Exception:  # noqa: BLE001 — 补全执行失败视为本次补全未成功
+            return None
+        return {"result": new_result, "tool": tool_name}
+
+    completion_attempts = _aggregation_completion_attempts()
+
     result = await aggregate_tool_outputs(
-        products, schemas=schemas, completions_cb=None
+        products,
+        schemas=schemas,
+        completions_cb=_completion_cb,
+        completion_attempts=completion_attempts,
     )
     if not result.has_failures:
-        return {"aggregation": {"status": "ok", "errors": []}}
+        return {"aggregation": {"status": "ok", "errors": [], "attempts": result.attempts}}
     failed = [
         {
             "tool_name": p.tool_name,
             "status": p.status,
             "missing_fields": list(p.missing_fields),
+            "attempts": p.attempts,
         }
         for p in result.failed
     ]
@@ -430,5 +463,24 @@ async def _run_aggregation_hook(
             "status": "partial",
             "errors": list(result.errors),
             "failed": failed,
+            "attempts": result.attempts,
         }
     }
+
+
+def _aggregation_completion_attempts() -> int:
+    """读取补全重试次数：config/agent.yaml 的 aggregation_completion_attempts，缺省 1。
+
+    轻量读取，不新增 Platform Protocol 字段；yaml 缺失/解析失败回退默认值。
+    """
+    from pathlib import Path
+
+    try:
+        import yaml
+
+        path = Path(__file__).resolve().parents[3] / "config" / "agent.yaml"
+        raw = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+        value = raw.get("aggregation_completion_attempts", 1)
+        return max(0, int(value)) if isinstance(value, int) else 1
+    except Exception:  # noqa: BLE001 — 配置读取失败回退默认 1
+        return 1
