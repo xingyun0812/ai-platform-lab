@@ -314,6 +314,13 @@ async def execute_subgraph(
                 break
             output = await executor(node.config, sub_ctx)
             sub_ctx.outputs[current] = output
+            if node.node_type == "plan_step":
+                # #249: 并行/loop 分支内的 plan_step 产物回写父上下文，键 = step.id。
+                # 使 execution_engine 的 outputs[step.id] 映射（_map_workflow_result_to_plan_dict）
+                # 对 parallel 分支内 step 同样成立，与顶层 plan_step 产出兼容。
+                step_id = str(node.config.get("step_id") or "")
+                if step_id:
+                    parent_ctx.outputs[step_id] = output
             if node.node_type == "end":
                 # 回写父上下文
                 parent_ctx.outputs[f"{branch_id}_result"] = output
