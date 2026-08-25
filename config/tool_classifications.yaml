@@ -3,12 +3,20 @@
 #
 # action_level: read_only | write | destructive | network | unknown
 # requires_approval: 是否强制要求审批（destructive 默认强制）
+#
+# 调度元数据（ADR-0009 #244，可选，向后兼容；YAML 优先于工具注册元数据）：
+#   mutex_group:   互斥组名；同组工具不同时并行调度（None=无约束）
+#   priority:      优先级 int，越大越优先；未显式声明时互斥冲突默认只拦截不择优
+#   resource_pool: core | shared；core 独占、shared 限流共享（未声明默认 shared）
+#   output_schema: 输出 JSON Schema 摘要，结果聚合校验用
 
 classifications:
   - tool_name: calc
     action_level: read_only
     requires_approval: false
     description: 本地计算器，纯只读
+    resource_pool: shared
+    output_schema: '{"result": "number"}'
 
   - tool_name: get_kb_snippet
     action_level: read_only
@@ -29,6 +37,8 @@ classifications:
     action_level: read_only
     requires_approval: false
     description: 只读 SQL 查询（SELECT + LIMIT）
+    resource_pool: shared
+    output_schema: '{"rows": "array"}'
 
   - tool_name: httpbin_delay
     action_level: network
@@ -44,18 +54,30 @@ classifications:
     action_level: destructive
     requires_approval: true
     description: 删除文件（高危）
+    mutex_group: destructive
+    priority: 100
+    resource_pool: core
 
   - tool_name: drop_table
     action_level: destructive
     requires_approval: true
     description: 删除数据库表（高危）
+    mutex_group: destructive
+    priority: 100
+    resource_pool: core
 
   - tool_name: send_email
     action_level: write
     requires_approval: false
     description: 发送邮件
+    mutex_group: write
+    resource_pool: shared
+    output_schema: '{"sent": "boolean"}'
 
   - tool_name: create_record
     action_level: write
     requires_approval: false
     description: 创建数据库记录
+    mutex_group: write
+    resource_pool: shared
+    output_schema: '{"record_id": "integer"}'

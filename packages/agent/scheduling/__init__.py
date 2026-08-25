@@ -1,0 +1,19 @@
+"""调度能力子包 — 互斥 / 资源池 / 聚合补全的底层模型（PRD #243，ADR-0009 #244）。"""
+
+from packages.agent.scheduling.schedule_policy import (
+    DEFAULT_TOOL_CLASSIFICATIONS_PATH,
+    SchedulePolicyStore,
+    SchedulingPolicy,
+    load_scheduling_config,
+    merge_tool_policy,
+    resolve_scheduling_policy,
+)
+
+__all__ = [
+    "DEFAULT_TOOL_CLASSIFICATIONS_PATH",
+    "SchedulePolicyStore",
+    "SchedulingPolicy",
+    "load_scheduling_config",
+    "merge_tool_policy",
+    "resolve_scheduling_policy",
+]
