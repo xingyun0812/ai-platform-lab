@@ -1,5 +1,10 @@
 """调度能力子包 — 互斥 / 资源池 / 聚合补全的底层模型（PRD #243，ADR-0009 #244）。"""
 
+from packages.agent.scheduling.mutex import (
+    MutexArbitrator,
+    MutexConflict,
+    MutexDecision,
+)
 from packages.agent.scheduling.schedule_policy import (
     DEFAULT_TOOL_CLASSIFICATIONS_PATH,
     SchedulePolicyStore,
@@ -11,6 +16,9 @@ from packages.agent.scheduling.schedule_policy import (
 
 __all__ = [
     "DEFAULT_TOOL_CLASSIFICATIONS_PATH",
+    "MutexArbitrator",
+    "MutexConflict",
+    "MutexDecision",
     "SchedulePolicyStore",
     "SchedulingPolicy",
     "load_scheduling_config",
