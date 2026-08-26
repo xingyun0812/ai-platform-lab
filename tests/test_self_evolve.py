@@ -75,17 +75,12 @@ def _setup_model_router_mock(fail: bool = False) -> None:
         )
     configure(port)
 
-    fake_perf = types.ModuleType("packages.agent.perf_metrics")
-
-    class _Metrics:
-        def record_self_evolve_experience(self, tid: str) -> None:
-            pass
-
-        def record_self_evolve_strategy_patch(self, tid: str) -> None:
-            pass
-
-    fake_perf.get_agent_perf_metrics = lambda: _Metrics()  # type: ignore[attr-defined]
-    sys.modules["packages.agent.perf_metrics"] = fake_perf
+    # NOTE: fake perf_metrics removed — real AgentPerfMetrics already provides
+    # record_self_evolve_experience / record_self_evolve_strategy_patch /
+    # record_reflection_use / record_parallel_steps. Permanently stubbing
+    # sys.modules["packages.agent.perf_metrics"] here leaked a fake module that
+    # lacked record_parallel_steps, breaking test_plan_parallel and
+    # test_long_horizon collected in the same session (#258-class bug).
 
 
 def _run_async(coro) -> object:
@@ -451,7 +446,11 @@ class TestPlannerExperienceInjection(unittest.TestCase):
     def test_experience_injected_into_context(self) -> None:
         """当有成功经验时，应能检索并注入 lessons。"""
         goal = "生成财务报告"
-        r = _make_record(goal=goal, outcome="success", lessons="经验 P1: 先对账再输出。经验不足 20 字会被 quality filter 拦截")
+        r = _make_record(
+            goal=goal,
+            outcome="success",
+            lessons="经验 P1: 先对账再输出。经验不足 20 字会被 quality filter 拦截",
+        )
         _run_async(_exp_mod.store_experience(r))
 
         sig = _exp_mod.compute_task_signature(goal)
