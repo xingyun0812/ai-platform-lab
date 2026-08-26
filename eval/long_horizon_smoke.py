@@ -6,81 +6,27 @@
 from __future__ import annotations
 
 import asyncio
-import importlib.util
 import sys
 import time
-import types
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT))
 
-
-def _ensure_namespace(name: str) -> types.ModuleType:
-    if name not in sys.modules:
-        mod = types.ModuleType(name)
-        sys.modules[name] = mod
-    return sys.modules[name]
-
-
-def _load_module(name: str, path: str) -> types.ModuleType:
-    spec = importlib.util.spec_from_file_location(name, path)
-    mod = importlib.util.module_from_spec(spec)
-    sys.modules[name] = mod
-    spec.loader.exec_module(mod)
-    return mod
-
-
-# Bootstrap namespace packages
-_ensure_namespace("packages")
-_ensure_namespace("packages.contracts")
-_ensure_namespace("packages.agent")
-
-# Stub contracts.errors to avoid Python 3.9 incompatibility
-_errors_mod = types.ModuleType("packages.contracts.errors")
-
-
-class _ErrorDetail:
-    def __init__(self, **kw):
-        for k, v in kw.items():
-            setattr(self, k, v)
-
-    def model_dump(self):
-        return self.__dict__
-
-
-class _ErrorBody:
-    def __init__(self, error=None):
-        self.error = error
-
-    def model_dump(self):
-        return {"error": self.error.model_dump() if self.error else None}
-
-
-_errors_mod.ErrorDetail = _ErrorDetail  # type: ignore[attr-defined]
-_errors_mod.ErrorBody = _ErrorBody  # type: ignore[attr-defined]
-sys.modules["packages.contracts.errors"] = _errors_mod
-
-_agent_schemas = _load_module(
-    "packages.contracts.agent_schemas",
-    str(REPO_ROOT / "packages" / "contracts" / "agent_schemas.py"),
+# Normal package imports — the real packages must stay intact (the previous
+# bootstrap registered fake empty namespace modules, breaking the
+# packages.agent → packages.contracts chain under import).
+from packages.agent.long_horizon import (  # noqa: E402
+    cancel_task,
+    checkpoint_task,
+    create_long_run,
+    get_long_run,
+    get_long_run_store,
+    get_task_status,
+    reset_long_run_store_for_tests,
+    resume_task,
 )
-_long_horizon = _load_module(
-    "packages.agent.long_horizon",
-    str(REPO_ROOT / "packages" / "agent" / "long_horizon.py"),
-)
-
-AgentPlan = _agent_schemas.AgentPlan
-PlanStep = _agent_schemas.PlanStep
-
-cancel_task = _long_horizon.cancel_task
-checkpoint_task = _long_horizon.checkpoint_task
-create_long_run = _long_horizon.create_long_run
-get_long_run = _long_horizon.get_long_run
-get_long_run_store = _long_horizon.get_long_run_store
-get_task_status = _long_horizon.get_task_status
-reset_long_run_store_for_tests = _long_horizon.reset_long_run_store_for_tests
-resume_task = _long_horizon.resume_task
+from packages.contracts.agent_schemas import AgentPlan, PlanStep  # noqa: E402
 
 
 def _make_plan() -> AgentPlan:
