@@ -19,11 +19,9 @@
 from __future__ import annotations
 
 import asyncio
-import importlib.util
 import json
 import sys
 import time
-import types
 import unittest
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -31,79 +29,20 @@ from unittest.mock import MagicMock, patch
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT))
 
-
-def _ensure_namespace(name: str) -> types.ModuleType:
-    if name not in sys.modules:
-        mod = types.ModuleType(name)
-        sys.modules[name] = mod
-    return sys.modules[name]
-
-
-def _load_module(name: str, path: str) -> types.ModuleType:
-    spec = importlib.util.spec_from_file_location(name, path)
-    mod = importlib.util.module_from_spec(spec)
-    sys.modules[name] = mod
-    spec.loader.exec_module(mod)
-    return mod
-
-
-# ---------------------------------------------------------------------------
-# Bootstrap namespace packages
-# ---------------------------------------------------------------------------
-_ensure_namespace("packages")
-_ensure_namespace("packages.contracts")
-_ensure_namespace("packages.agent")
-
-# Stub contracts.errors
-_errors_mod = types.ModuleType("packages.contracts.errors")
-
-
-class _ErrorDetail:
-    def __init__(self, **kw):
-        for k, v in kw.items():
-            setattr(self, k, v)
-
-    def model_dump(self):
-        return self.__dict__
-
-
-class _ErrorBody:
-    def __init__(self, error=None):
-        self.error = error
-
-    def model_dump(self):
-        return {"error": self.error.model_dump() if self.error else None}
-
-
-_errors_mod.ErrorDetail = _ErrorDetail  # type: ignore[attr-defined]
-_errors_mod.ErrorBody = _ErrorBody  # type: ignore[attr-defined]
-sys.modules["packages.contracts.errors"] = _errors_mod
-
-_agent_schemas = _load_module(
-    "packages.contracts.agent_schemas",
-    str(REPO_ROOT / "packages" / "contracts" / "agent_schemas.py"),
+# Normal package imports — the real packages must stay intact (the previous
+# bootstrap registered fake empty namespace modules, breaking the
+# packages.agent → packages.contracts chain under pytest collection).
+from packages.agent.long_horizon import (
+    Checkpoint,
+    InMemoryLongRunTaskStore,
+    PostgresLongRunTaskStore,
+    RedisLongRunCache,
+    StepState,
+    get_long_run_store,
+    new_checkpoint_id,
+    reset_long_run_store_for_tests,
 )
-
-_long_horizon = _load_module(
-    "packages.agent.long_horizon",
-    str(REPO_ROOT / "packages" / "agent" / "long_horizon.py"),
-)
-
-# Import symbols
-AgentPlan = _agent_schemas.AgentPlan
-PlanStep = _agent_schemas.PlanStep
-
-StepState = _long_horizon.StepState
-Checkpoint = _long_horizon.Checkpoint
-LongRunTask = _long_horizon.LongRunTask
-LongRunTaskStore = _long_horizon.LongRunTaskStore
-InMemoryLongRunTaskStore = _long_horizon.InMemoryLongRunTaskStore
-PostgresLongRunTaskStore = _long_horizon.PostgresLongRunTaskStore
-RedisLongRunCache = _long_horizon.RedisLongRunCache
-get_long_run_store = _long_horizon.get_long_run_store
-reset_long_run_store_for_tests = _long_horizon.reset_long_run_store_for_tests
-new_task_id = _long_horizon.new_task_id
-new_checkpoint_id = _long_horizon.new_checkpoint_id
+from packages.contracts.agent_schemas import AgentPlan, PlanStep
 
 
 def _run_async(coro):
