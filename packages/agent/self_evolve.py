@@ -187,8 +187,7 @@ class PostgresStrategyPatchStore:
                 "ON strategy_patches(tenant_id)"
             )
             cur.execute(
-                "CREATE INDEX IF NOT EXISTS idx_strategy_patches_status "
-                "ON strategy_patches(status)"
+                "CREATE INDEX IF NOT EXISTS idx_strategy_patches_status ON strategy_patches(status)"
             )
         self._conn.commit()
 
@@ -328,9 +327,7 @@ def get_strategy_patch_store() -> StrategyPatchStore | PostgresStrategyPatchStor
                         _patch_store = PostgresStrategyPatchStore(database_url)
                         logger.info("strategy patch store backend=postgres")
                     except Exception as exc:
-                        logger.warning(
-                            "postgres 不可达，回退内存 strategy patch store: %s", exc
-                        )
+                        logger.warning("postgres 不可达，回退内存 strategy patch store: %s", exc)
                         _patch_store = StrategyPatchStore()
                 else:
                     _patch_store = StrategyPatchStore()
@@ -532,8 +529,14 @@ async def trigger_self_evolve(
     tool_calls: list[dict[str, Any]] | None = None,
     current_strategy: dict[str, Any] | None = None,
     model: str | None = None,
+    reflection_depth: str = "legacy",  # full | light | off | legacy（#256 反思成本治理）
 ) -> dict[str, Any]:
     """串联全流程：store_experience + reflect_on_run + maybe_patch_strategy。
+
+    经 ReflectionPolicy 解析反思深度（向后兼容：默认 legacy = 现状全流程）。
+        off   → 完全跳过（不 store / 不反思 / 不 patch）。
+        light → 仅异步存储经验（不 LLM 反思、不策略 patch），低成本。
+        full / legacy → 完整全流程（store + LLM 反思 + 策略 patch）。
 
     异常隔离：任何步骤失败不影响主流程，返回执行摘要。
     """
@@ -544,6 +547,19 @@ async def trigger_self_evolve(
         "errors": [],
     }
     tool_calls = tool_calls or []
+
+    # #256 反思成本治理：解析反思深度。
+    try:
+        from packages.agent.reflection_policy import ReflectionPolicy
+
+        mode = ReflectionPolicy(default_depth=reflection_depth).resolve(reflection_depth)
+    except Exception:
+        mode = "legacy"
+
+    # off → 完全跳过，零成本。
+    if mode == "off":
+        result["errors"].append("skipped: reflection_depth=off")
+        return result
 
     # Step 1: 存储经验
     try:
@@ -563,6 +579,24 @@ async def trigger_self_evolve(
         )
         stored = await store_experience(record)
         result["experience_id"] = stored.experience_id
+
+        # light → 仅存经验，不 LLM 反思、不策略 patch。
+        if mode == "light":
+            try:
+                from packages.agent.perf_metrics import get_agent_perf_metrics
+                from packages.agent.reflection_gate import TRIGGER_TASK_FAILURE
+
+                get_agent_perf_metrics().record_reflection_use(
+                    reason=TRIGGER_TASK_FAILURE,
+                    depth="light",
+                    tokens=0,
+                    latency_ms=0.0,
+                    rounds=0,
+                )
+                get_agent_perf_metrics().record_self_evolve_experience(tenant_id)
+            except Exception as exc:
+                logger.warning("light self_evolve metric record failed: %s", exc)
+            return result
 
         # Step 2: 反思生成 lessons
         try:
@@ -718,12 +752,12 @@ def _run_async_rerank(
         import concurrent.futures
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
-            future = pool.submit(asyncio.run, rerank_experiences(goal, records, max_relevant=len(records)))
+            future = pool.submit(
+                asyncio.run, rerank_experiences(goal, records, max_relevant=len(records))
+            )
             return future.result()
     else:
-        return loop.run_until_complete(
-            rerank_experiences(goal, records, max_relevant=len(records))
-        )
+        return loop.run_until_complete(rerank_experiences(goal, records, max_relevant=len(records)))
 
 
 def format_approved_strategy_context(

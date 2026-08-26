@@ -25,6 +25,15 @@ class SelfRefineConfig:
         feedback_dimensions: 结构化反馈维度列表。None 表示自由文本模式。
         temperature: LLM 生成温度。
         timeout_seconds: 超时截断时间。
+        reflection_depth: 反思深度（full | light | off | legacy）。
+            默认 legacy = 现状 pass-through（保留既有多轮迭代+收敛行为）。
+            off  → 仅生成一次，跳过所有迭代（零反思 LLM）。
+            light → 单轮即时校验（生成 + 一轮反馈/修正），低时延。
+            full → 多轮迭代 + 收敛判停 + 三重兜底。
+        small_model: 反思链路低成本小模型（None = 复用 generator_model）。
+        confidence_gate_enabled: 是否启用置信度闸门（小模型低置信度升级大模型复核）。
+        confidence_threshold: 置信度闸门阈值（0-1）。
+        max_total_latency_s: 迭代累计时延硬超时（秒），超过即提前终止。
     """
 
     enabled: bool = True
@@ -43,6 +52,12 @@ class SelfRefineConfig:
     )
     temperature: float = 0.3
     timeout_seconds: float = 120.0
+    # -- 反思成本治理（#256，全部向后兼容）--
+    reflection_depth: str = "legacy"  # full | light | off | legacy
+    small_model: str | None = None
+    confidence_gate_enabled: bool = False
+    confidence_threshold: float = 0.85
+    max_total_latency_s: float = 120.0
 
     def __post_init__(self) -> None:
         if self.max_iterations < 1 or self.max_iterations > 10:
@@ -53,6 +68,10 @@ class SelfRefineConfig:
             raise ValueError(f"unknown convergence_strategy: {self.convergence_strategy}")
         if not 0.0 <= self.convergence_threshold <= 1.0:
             raise ValueError(f"convergence_threshold must be 0-1, got {self.convergence_threshold}")
+        if self.reflection_depth not in ("full", "light", "off", "legacy"):
+            raise ValueError(f"unknown reflection_depth: {self.reflection_depth}")
+        if not 0.0 <= self.confidence_threshold <= 1.0:
+            raise ValueError(f"confidence_threshold must be 0-1, got {self.confidence_threshold}")
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -66,4 +85,9 @@ class SelfRefineConfig:
             "feedback_dimensions": list(self.feedback_dimensions),
             "temperature": self.temperature,
             "timeout_seconds": self.timeout_seconds,
+            "reflection_depth": self.reflection_depth,
+            "small_model": self.small_model,
+            "confidence_gate_enabled": self.confidence_gate_enabled,
+            "confidence_threshold": self.confidence_threshold,
+            "max_total_latency_s": self.max_total_latency_s,
         }

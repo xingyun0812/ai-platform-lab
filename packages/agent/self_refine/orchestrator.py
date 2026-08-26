@@ -10,6 +10,8 @@ import time
 from typing import Any
 
 from packages.agent.guardrails.convergence import check_convergence
+from packages.agent.reflection_gate import TRIGGER_TASK_FAILURE
+from packages.agent.reflection_policy import ReflectionPolicy
 from packages.agent.self_refine.config import SelfRefineConfig
 from packages.agent.self_refine.models import FeedbackRound, SelfRefineResult
 
@@ -172,6 +174,35 @@ async def convergence_check(
     )
 
 
+def _resolve_reflection_mode(cfg: SelfRefineConfig) -> str:
+    """经 ReflectionPolicy 解析反思深度（向后兼容：默认 legacy = 现状多轮迭代）。"""
+    policy = ReflectionPolicy(default_depth=cfg.reflection_depth)
+    return policy.resolve(cfg.reflection_depth)
+
+
+async def _record_reflection_metric(
+    *,
+    depth: str,
+    tokens: int,
+    latency_ms: float,
+    rounds: int,
+) -> None:
+    """记录一次 self_refine 反思使用到全局指标存储（失败静默，不阻塞主流程）。"""
+    try:
+        from packages.agent.perf_metrics import get_agent_perf_metrics
+
+        get_agent_perf_metrics().record_reflection_use(
+            reason=TRIGGER_TASK_FAILURE,
+            depth=depth,
+            tokens=tokens,
+            latency_ms=latency_ms,
+            rounds=rounds,
+        )
+    except Exception:
+        # 指标记录失败不影响主流程。
+        pass
+
+
 async def run_self_refine(
     prompt: str,
     config: SelfRefineConfig | None = None,
@@ -187,8 +218,11 @@ async def run_self_refine(
 
     generator_model = cfg.generator_model or model
     feedback_model = cfg.feedback_model or generator_model
+    # 反思深度经 ReflectionGate 策略解析（默认 legacy = 现状，向后兼容）。
+    mode = _resolve_reflection_mode(cfg)
 
-    if not cfg.enabled:
+    # -- off / disabled：零反思 LLM，仅生成一次 -----------------------------
+    if not cfg.enabled or mode == "off":
         current_output = await generate(
             prompt=prompt,
             model=generator_model,
@@ -196,6 +230,9 @@ async def run_self_refine(
             counter=counter,
         )
         elapsed = (time.time() - start) * 1000
+        await _record_reflection_metric(
+            depth="off", tokens=counter[0], latency_ms=elapsed, rounds=0
+        )
         return SelfRefineResult(
             prompt=prompt,
             final_output=current_output,
@@ -209,6 +246,83 @@ async def run_self_refine(
             success=True,
         )
 
+    # -- light：单轮即时校验（生成 + 一轮反馈/修正，不迭代收敛） ------------
+    if mode == "light":
+        current_output = await generate(
+            prompt=prompt,
+            model=generator_model,
+            temperature=cfg.temperature,
+            counter=counter,
+        )
+        if not current_output.strip():
+            elapsed = (time.time() - start) * 1000
+            return SelfRefineResult(
+                prompt=prompt,
+                final_output="",
+                config=cfg,
+                iterations_completed=0,
+                converged=True,
+                convergence_reason="empty_generation",
+                trace=[],
+                execution_time_ms=elapsed,
+                total_llm_calls=counter[0],
+                error="Generator returned empty output",
+                success=False,
+            )
+
+        iteration = 1
+        round_start = time.time()
+        dimensions = cfg.feedback_dimensions
+        dim = dimensions[0] if dimensions else None
+        try:
+            fb_text, _fb_dim = await feedback(
+                prompt=prompt,
+                current_output=current_output,
+                model=feedback_model,
+                dimension=dim,
+                temperature=cfg.temperature,
+                counter=counter,
+            )
+            new_output = await refine(
+                prompt=prompt,
+                current_output=current_output,
+                feedback_text=fb_text,
+                model=generator_model,
+                temperature=cfg.temperature,
+                counter=counter,
+            )
+            if new_output.strip():
+                current_output = new_output
+        except Exception as exc:
+            logger.warning("light single-pass refine failed: %s", exc)
+        round_elapsed = (time.time() - round_start) * 1000
+        trace.append(
+            FeedbackRound(
+                iteration=iteration,
+                feedback=fb_text if "fb_text" in dir() else "",
+                feedback_dimension=dim,
+                output_after_refine=current_output,
+                elapsed_ms=round_elapsed,
+            )
+        )
+        elapsed = (time.time() - start) * 1000
+        await _record_reflection_metric(
+            depth="light", tokens=counter[0], latency_ms=elapsed, rounds=1
+        )
+        return SelfRefineResult(
+            prompt=prompt,
+            final_output=current_output,
+            config=cfg,
+            iterations_completed=iteration,
+            converged=True,
+            convergence_reason="light_single_pass",
+            trace=trace,
+            execution_time_ms=elapsed,
+            total_llm_calls=counter[0],
+            success=True,
+        )
+
+    # -- legacy / full：多轮迭代 + 收敛判停（existing loop，向后兼容）--------
     try:
         current_output = await generate(
             prompt=prompt,
@@ -378,6 +492,9 @@ async def run_self_refine(
 
         elapsed = (time.time() - start) * 1000
         reason = "max_calls" if counter[0] >= cfg.max_total_llm_calls else "max_iterations"
+        await _record_reflection_metric(
+            depth=mode, tokens=counter[0], latency_ms=elapsed, rounds=iteration
+        )
         return SelfRefineResult(
             prompt=prompt,
             final_output=current_output,
