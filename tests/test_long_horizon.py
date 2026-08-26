@@ -7,7 +7,6 @@
 from __future__ import annotations
 
 import asyncio
-import importlib.util
 import sys
 import time
 import types
@@ -18,112 +17,28 @@ from unittest.mock import AsyncMock, MagicMock, patch
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT))
 
-
-def _ensure_namespace(name: str) -> types.ModuleType:
-    """确保一个真实的 namespace module 注册到 sys.modules（若不存在）。"""
-    if name not in sys.modules:
-        mod = types.ModuleType(name)
-        sys.modules[name] = mod
-    return sys.modules[name]
-
-
-def _load_module(name: str, path: str) -> types.ModuleType:
-    spec = importlib.util.spec_from_file_location(name, path)
-    mod = importlib.util.module_from_spec(spec)
-    sys.modules[name] = mod
-    spec.loader.exec_module(mod)
-    return mod
-
-
-# ---------------------------------------------------------------------------
-# Bootstrap: register namespace packages so importlib chains work
-# ---------------------------------------------------------------------------
-_ensure_namespace("packages")
-_ensure_namespace("packages.contracts")
-_ensure_namespace("packages.agent")
-_ensure_namespace("apps")
-_ensure_namespace("apps.gateway")
-_ensure_namespace("apps.gateway.agent")
-
-# Load real contracts.errors (needed by http_utils)
-for _mod_name in [
-    "packages.observability",
-    "packages.observability.context",
-    "packages.auth",
-    "packages.auth.rbac",
-    "packages.auth.jwt_hs256",
-]:
-    _ensure_namespace(_mod_name)
-
-# Stub observability.context.get_trace_id
-sys.modules["packages.observability.context"].get_trace_id = lambda: "test-trace"  # type: ignore[attr-defined]
-
-# Stub rbac
-sys.modules["packages.auth.rbac"].can_patch_tenant_limits = lambda role: role == "platform_admin"  # type: ignore[attr-defined]
-
-# Stub contracts.errors (avoids Python 3.9 | union syntax in that file)
-_errors_mod = types.ModuleType("packages.contracts.errors")
-
-
-class _ErrorDetail:
-    def __init__(self, **kw):
-        for k, v in kw.items():
-            setattr(self, k, v)
-
-    def model_dump(self):
-        return self.__dict__
-
-
-class _ErrorBody:
-    def __init__(self, error=None):
-        self.error = error
-
-    def model_dump(self):
-        return {"error": self.error.model_dump() if self.error else None}
-
-
-_errors_mod.ErrorDetail = _ErrorDetail  # type: ignore[attr-defined]
-_errors_mod.ErrorBody = _ErrorBody  # type: ignore[attr-defined]
-sys.modules["packages.contracts.errors"] = _errors_mod
-
-_agent_schemas = _load_module(
-    "packages.contracts.agent_schemas",
-    str(REPO_ROOT / "packages" / "contracts" / "agent_schemas.py"),
+# Normal package imports — the real packages must be kept intact (the previous
+# bootstrap registered fake empty namespace modules, breaking the
+# packages.agent → packages.contracts chain under pytest collection).
+from apps.gateway.agent.long_run_routes import router as long_run_router
+from apps.gateway.tenants import TenantRecord
+from packages.agent.long_horizon import (
+    Checkpoint,
+    LongRunTask,
+    StepState,
+    cancel_task,
+    checkpoint_task,
+    create_long_run,
+    get_long_run,
+    get_long_run_store,
+    get_task_status,
+    new_checkpoint_id,
+    new_task_id,
+    reset_long_run_store_for_tests,
+    resume_task,
 )
-_load_module(
-    "packages.contracts.tenant",
-    str(REPO_ROOT / "packages" / "contracts" / "tenant.py"),
-)
-_ensure_namespace("packages.tenant")
-_load_module(
-    "packages.tenant.loader",
-    str(REPO_ROOT / "packages" / "tenant" / "loader.py"),
-)
-
-# Now load long_horizon directly (bypasses packages.agent.__init__)
-_long_horizon = _load_module(
-    "packages.agent.long_horizon",
-    str(REPO_ROOT / "packages" / "agent" / "long_horizon.py"),
-)
-
-# Import symbols from the loaded modules
-AgentPlan = _agent_schemas.AgentPlan
-PlanStep = _agent_schemas.PlanStep
-
-StepState = _long_horizon.StepState
-Checkpoint = _long_horizon.Checkpoint
-LongRunTask = _long_horizon.LongRunTask
-LongRunTaskStore = _long_horizon.LongRunTaskStore
-get_long_run_store = _long_horizon.get_long_run_store
-reset_long_run_store_for_tests = _long_horizon.reset_long_run_store_for_tests
-create_long_run = _long_horizon.create_long_run
-get_long_run = _long_horizon.get_long_run
-checkpoint_task = _long_horizon.checkpoint_task
-resume_task = _long_horizon.resume_task
-cancel_task = _long_horizon.cancel_task
-get_task_status = _long_horizon.get_task_status
-new_task_id = _long_horizon.new_task_id
-new_checkpoint_id = _long_horizon.new_checkpoint_id
+from packages.agent.planner import execute_plan_parallel
+from packages.contracts.agent_schemas import AgentPlan, PlanStep
 
 
 def _run_async(coro):
@@ -469,50 +384,8 @@ class TestExecutePlanParallelLongRun(unittest.TestCase):
     def setUp(self) -> None:
         reset_long_run_store_for_tests()
 
-    def _load_planner(self):
-        """动态加载 planner 模块，绕过 packages.agent.__init__ 链。"""
-        from packages.platform import configure, reset_platform_for_tests
-        from packages.platform.testing import InMemoryPlatformPort
-
-        reset_platform_for_tests()
-        configure(InMemoryPlatformPort())
-
-        for mod_name in [
-            "packages.agent.perf_metrics",
-            "packages.agent.registry",
-            "packages.observability.otel",
-        ]:
-            if mod_name not in sys.modules:
-                sys.modules[mod_name] = MagicMock()
-
-        perf_mod = sys.modules["packages.agent.perf_metrics"]
-        perf_mock = MagicMock()
-        perf_mock.record_parallel_steps = MagicMock()
-        perf_mod.get_agent_perf_metrics = lambda: perf_mock
-
-        # Also stub packages.agent.runner so the lazy import inside the function works
-        if "packages.agent.runner" not in sys.modules:
-            sys.modules["packages.agent.runner"] = MagicMock()
-
-        _load_module(
-            "packages.agent.plan_execution_policy",
-            str(REPO_ROOT / "packages" / "agent" / "plan_execution_policy.py"),
-        )
-        _load_module(
-            "packages.agent.plan_executor",
-            str(REPO_ROOT / "packages" / "agent" / "plan_executor.py"),
-        )
-
-        return _load_module(
-            "packages.agent.planner",
-            str(REPO_ROOT / "packages" / "agent" / "planner.py"),
-        )
-
     def test_skip_completed_steps(self) -> None:
         """已在 long-run store 中标记为 completed 的 step 应被跳过（不重新执行）。"""
-        planner = self._load_planner()
-        execute_plan_parallel = planner.execute_plan_parallel
-
         plan = _plan(_step("s1"), _step("s2", ["s1"]))
 
         # Create task and mark s1 as completed
@@ -535,32 +408,19 @@ class TestExecutePlanParallelLongRun(unittest.TestCase):
                 "status": "completed",
             }
 
-        settings_mock = MagicMock()
-        settings_mock.agent_model = "gpt-4o"
-        settings_mock.default_model = "gpt-4o"
-        settings_mock.plan_execution_mode = "parallel"
-
-        perf_mock = MagicMock()
-        perf_mock.record_parallel_steps = MagicMock()
-        executor_mod = sys.modules["packages.agent.plan_executor"]
-
-        with (
-            patch.object(executor_mod, "get_settings", return_value=settings_mock),
-            patch.object(executor_mod, "get_agent_perf_metrics", return_value=perf_mock),
-        ):
-            result = _run_async(
-                execute_plan_parallel(
-                    plan=plan,
-                    tenant_id="t1",
-                    session_id="sess1",
-                    allowed_tools=("calc",),
-                    allowed_models=("gpt-4o",),
-                    model="gpt-4o",
-                    session_store=None,
-                    run_agent_fn=mock_runner,
-                    long_run_task_id=task.task_id,
-                )
+        result = _run_async(
+            execute_plan_parallel(
+                plan=plan,
+                tenant_id="t1",
+                session_id="sess1",
+                allowed_tools=("calc",),
+                allowed_models=("gpt-4o",),
+                model="gpt-4o",
+                session_store=None,
+                run_agent_fn=mock_runner,
+                long_run_task_id=task.task_id,
             )
+        )
 
         # s1 is completed → only s2 should be called
         self.assertEqual(len(call_log), 1, f"期望只调用 1 次(s2), 实际: {call_log}")
@@ -569,9 +429,6 @@ class TestExecutePlanParallelLongRun(unittest.TestCase):
 
     def test_auto_checkpoint_triggered_after_layer(self) -> None:
         """完成一层后应自动调用 checkpoint_task。"""
-        planner = self._load_planner()
-        execute_plan_parallel = planner.execute_plan_parallel
-
         plan = _plan(_step("s1"))
         task = _run_async(create_long_run(plan, "t1", "sess1"))
 
@@ -584,32 +441,19 @@ class TestExecutePlanParallelLongRun(unittest.TestCase):
                 "status": "completed",
             }
 
-        settings_mock = MagicMock()
-        settings_mock.agent_model = "gpt-4o"
-        settings_mock.default_model = "gpt-4o"
-        settings_mock.plan_execution_mode = "parallel"
-
-        perf_mock = MagicMock()
-        perf_mock.record_parallel_steps = MagicMock()
-        executor_mod = sys.modules["packages.agent.plan_executor"]
-
-        with (
-            patch.object(executor_mod, "get_settings", return_value=settings_mock),
-            patch.object(executor_mod, "get_agent_perf_metrics", return_value=perf_mock),
-        ):
-            _run_async(
-                execute_plan_parallel(
-                    plan=plan,
-                    tenant_id="t1",
-                    session_id="sess1",
-                    allowed_tools=("calc",),
-                    allowed_models=("gpt-4o",),
-                    model="gpt-4o",
-                    session_store=None,
-                    run_agent_fn=mock_runner,
-                    long_run_task_id=task.task_id,
-                )
+        _run_async(
+            execute_plan_parallel(
+                plan=plan,
+                tenant_id="t1",
+                session_id="sess1",
+                allowed_tools=("calc",),
+                allowed_models=("gpt-4o",),
+                model="gpt-4o",
+                session_store=None,
+                run_agent_fn=mock_runner,
+                long_run_task_id=task.task_id,
             )
+        )
 
         # Auto-checkpoint should have been saved
         updated = _run_async(get_long_run(task.task_id))
@@ -618,9 +462,6 @@ class TestExecutePlanParallelLongRun(unittest.TestCase):
 
     def test_no_long_run_task_id_still_works(self) -> None:
         """不传 long_run_task_id 时，execute_plan_parallel 正常执行（向后兼容）。"""
-        planner = self._load_planner()
-        execute_plan_parallel = planner.execute_plan_parallel
-
         plan = _plan(_step("s1"))
 
         async def mock_runner(**kwargs: object) -> dict:
@@ -632,30 +473,18 @@ class TestExecutePlanParallelLongRun(unittest.TestCase):
                 "status": "completed",
             }
 
-        settings_mock = MagicMock()
-        settings_mock.agent_model = "gpt-4o"
-        settings_mock.default_model = "gpt-4o"
-
-        perf_mock = MagicMock()
-        perf_mock.record_parallel_steps = MagicMock()
-        executor_mod = sys.modules["packages.agent.plan_executor"]
-
-        with (
-            patch.object(executor_mod, "get_settings", return_value=settings_mock),
-            patch.object(executor_mod, "get_agent_perf_metrics", return_value=perf_mock),
-        ):
-            result = _run_async(
-                execute_plan_parallel(
-                    plan=plan,
-                    tenant_id="t1",
-                    session_id="sess1",
-                    allowed_tools=(),
-                    allowed_models=("gpt-4o",),
-                    model="gpt-4o",
-                    session_store=None,
-                    run_agent_fn=mock_runner,
-                )
+        result = _run_async(
+            execute_plan_parallel(
+                plan=plan,
+                tenant_id="t1",
+                session_id="sess1",
+                allowed_tools=(),
+                allowed_models=("gpt-4o",),
+                model="gpt-4o",
+                session_store=None,
+                run_agent_fn=mock_runner,
             )
+        )
         self.assertEqual(result["status"], "completed")
 
 
@@ -669,48 +498,14 @@ class TestLongRunRoutes(unittest.TestCase):
         reset_long_run_store_for_tests()
 
     def _make_app(self):
-        """Build a FastAPI app with the long_run router, loading deps manually."""
+        """Build a FastAPI app with the long_run router (real packages, no stubs)."""
         from fastapi import FastAPI
 
-        # Stub settings so resolve_tenant's internal `from apps.gateway.settings import get_settings` works
-        settings_stub = MagicMock()
-        settings_stub.auth_jwt_enabled = False
-        settings_stub.auth_jwt_secret = None
-        settings_mod = types.ModuleType("apps.gateway.settings")
-        settings_mod.get_settings = lambda: settings_stub  # type: ignore[attr-defined]
-        sys.modules["apps.gateway.settings"] = settings_mod
-
-        for mod_name in ["packages.observability.otel"]:
-            if mod_name not in sys.modules:
-                sys.modules[mod_name] = MagicMock()
-
-        # Load tenants first (http_utils depends on it)
-        if "apps.gateway.tenants" not in sys.modules:
-            _load_module(
-                "apps.gateway.tenants",
-                str(REPO_ROOT / "apps" / "gateway" / "tenants.py"),
-            )
-
-        # Load http_utils (needs tenants, contracts.errors, observability)
-        if "apps.gateway.http_utils" not in sys.modules:
-            _load_module(
-                "apps.gateway.http_utils",
-                str(REPO_ROOT / "apps" / "gateway" / "http_utils.py"),
-            )
-
-        # Reload long_run_routes fresh to get the router
-        route_mod = _load_module(
-            "apps.gateway.agent.long_run_routes",
-            str(REPO_ROOT / "apps" / "gateway" / "agent" / "long_run_routes.py"),
-        )
-
         app = FastAPI()
-        app.include_router(route_mod.router)
+        app.include_router(long_run_router)
         return app
 
     def _make_tenants(self) -> dict:
-        from apps.gateway.tenants import TenantRecord
-
         return {
             "tenant1": TenantRecord(
                 tenant_id="tenant1",
@@ -741,12 +536,6 @@ class TestLongRunRoutes(unittest.TestCase):
             },
             "session_id": "sess-test",
         }
-
-    def _get_settings_mock(self):
-        m = MagicMock()
-        m.auth_jwt_enabled = False
-        m.auth_jwt_secret = None
-        return m
 
     def _with_tenants(self, tenants):
         """Context helper: patch load_tenants in the route module."""
@@ -827,6 +616,7 @@ class TestLongRunRoutes(unittest.TestCase):
 
         app = self._make_app()
         tenants = self._make_tenants()
+
         async def _mock_resume(*_args, **_kwargs):
             await get_long_run_store().update_status(task.task_id, "completed")
             return {
