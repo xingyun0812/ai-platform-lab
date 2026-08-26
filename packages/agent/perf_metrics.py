@@ -15,6 +15,13 @@ class AgentPerfMetrics:
         self._parallel_durations: defaultdict[tuple[str, str], list[float]] = defaultdict(list)
         self._self_evolve_experiences: defaultdict[str, int] = defaultdict(int)
         self._self_evolve_strategy_patches: defaultdict[str, int] = defaultdict(int)
+        # Reflection metrics (#256)
+        self._reflection_uses: defaultdict[str, int] = defaultdict(int)  # "reason|depth" -> count
+        self._reflection_tokens: defaultdict[str, int] = defaultdict(
+            int
+        )  # "reason|depth" -> tokens
+        self._reflection_latency_ms: defaultdict[str, float] = defaultdict(float)
+        self._reflection_rounds: defaultdict[str, int] = defaultdict(int)
         # Guardrail metrics
         self._guardrail_triggered: dict = defaultdict(int)  # "layer|reason" -> count
         self._guardrail_stuck: dict = defaultdict(int)  # "reason" -> count
@@ -72,6 +79,26 @@ class AgentPerfMetrics:
         with self._lock:
             self._self_evolve_strategy_patches[tenant] += 1
 
+    def record_reflection_use(
+        self,
+        *,
+        reason: str,
+        depth: str,
+        tokens: int = 0,
+        latency_ms: float = 0.0,
+        rounds: int = 0,
+    ) -> None:
+        """记录一次反思使用 (agent_reflection_uses_total / tokens / latency / rounds)。
+
+        用于 #256 反思成本治理的可观测性。按 reason|depth 聚合。
+        """
+        key = f"{reason}|{depth}"
+        with self._lock:
+            self._reflection_uses[key] += 1
+            self._reflection_tokens[key] += int(tokens)
+            self._reflection_latency_ms[key] += float(latency_ms)
+            self._reflection_rounds[key] += int(rounds)
+
     def record_guardrail_triggered(self, *, layer: int, reason: str) -> None:
         """记录 guardrail 触发次数 (guardrail_triggered_total)。"""
         key = f"{layer}|{reason}"
@@ -100,6 +127,10 @@ class AgentPerfMetrics:
             parallel = {k: list(v) for k, v in self._parallel_durations.items()}
             se_experiences = dict(self._self_evolve_experiences)
             se_patches = dict(self._self_evolve_strategy_patches)
+            refl_uses = dict(self._reflection_uses)
+            refl_tokens = dict(self._reflection_tokens)
+            refl_latency = dict(self._reflection_latency_ms)
+            refl_rounds = dict(self._reflection_rounds)
             gr_triggered = dict(self._guardrail_triggered)
             gr_stuck = dict(self._guardrail_stuck)
 
@@ -137,6 +168,48 @@ class AgentPerfMetrics:
         lines.append("# TYPE agent_self_evolve_strategy_patches_total counter")
         for tenant, count in sorted(se_patches.items()):
             lines.append(f'agent_self_evolve_strategy_patches_total{{tenant="{tenant}"}} {count}')
+
+        lines.append(
+            "# HELP agent_reflection_uses_total Reflection gate decisions by reason and depth"
+        )
+        lines.append("# TYPE agent_reflection_uses_total counter")
+        for key, count in sorted(refl_uses.items()):
+            reason = key.split("|", 1)[0] if "|" in key else key
+            depth = key.split("|", 1)[1] if "|" in key else "unknown"
+            lines.append(
+                f'agent_reflection_uses_total{{reason="{reason}",depth="{depth}"}} {count}'
+            )
+
+        lines.append(
+            "# HELP agent_reflection_tokens_total Reflection LLM tokens by reason and depth"
+        )
+        lines.append("# TYPE agent_reflection_tokens_total counter")
+        for key, count in sorted(refl_tokens.items()):
+            reason = key.split("|", 1)[0] if "|" in key else key
+            depth = key.split("|", 1)[1] if "|" in key else "unknown"
+            lines.append(
+                f'agent_reflection_tokens_total{{reason="{reason}",depth="{depth}"}} {count}'
+            )
+
+        lines.append(
+            "# HELP agent_reflection_latency_ms_total Reflection latency by reason and depth"
+        )
+        lines.append("# TYPE agent_reflection_latency_ms_total counter")
+        for key, value in sorted(refl_latency.items()):
+            reason = key.split("|", 1)[0] if "|" in key else key
+            depth = key.split("|", 1)[1] if "|" in key else "unknown"
+            lines.append(
+                f'agent_reflection_latency_ms_total{{reason="{reason}",depth="{depth}"}} {value:.2f}'
+            )
+
+        lines.append("# HELP agent_reflection_rounds_total Convergence rounds by reason and depth")
+        lines.append("# TYPE agent_reflection_rounds_total counter")
+        for key, count in sorted(refl_rounds.items()):
+            reason = key.split("|", 1)[0] if "|" in key else key
+            depth = key.split("|", 1)[1] if "|" in key else "unknown"
+            lines.append(
+                f'agent_reflection_rounds_total{{reason="{reason}",depth="{depth}"}} {count}'
+            )
 
         lines.append("# HELP guardrail_triggered_total Guardrail trigger count by layer and reason")
         lines.append("# TYPE guardrail_triggered_total counter")

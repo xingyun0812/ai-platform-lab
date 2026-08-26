@@ -67,6 +67,37 @@ class TestSelfRefineConfig:
         cfg = SelfRefineConfig(enabled=False)
         assert not cfg.enabled
 
+    def test_reflection_depth_default_is_legacy(self):
+        """#256 向后兼容：未声明 reflection_depth 时默认 legacy（现状多轮迭代）。"""
+        cfg = SelfRefineConfig()
+        assert cfg.reflection_depth == "legacy"
+
+    def test_reflection_depth_validation(self):
+        for depth in ("full", "light", "off", "legacy"):
+            SelfRefineConfig(reflection_depth=depth)
+        with pytest.raises(ValueError):
+            SelfRefineConfig(reflection_depth="super")
+
+    def test_reflection_cost_fields(self):
+        cfg = SelfRefineConfig(
+            reflection_depth="full",
+            small_model="cheap-model",
+            confidence_gate_enabled=True,
+            confidence_threshold=0.7,
+            max_total_latency_s=30.0,
+        )
+        assert cfg.small_model == "cheap-model"
+        assert cfg.confidence_gate_enabled is True
+        assert cfg.confidence_threshold == 0.7
+        assert cfg.max_total_latency_s == 30.0
+
+    def test_reflection_to_dict_includes_depth(self):
+        cfg = SelfRefineConfig(reflection_depth="light", max_total_latency_s=15.0)
+        d = cfg.to_dict()
+        assert d["reflection_depth"] == "light"
+        assert d["max_total_latency_s"] == 15.0
+        assert "small_model" in d
+
 
 class TestFeedbackRound:
     """W1: FeedbackRound 数据结构。"""
@@ -181,21 +212,24 @@ class TestSelfRefineResult:
     def test_max_iterations_boundary(self):
         cfg = SelfRefineConfig(max_iterations=10)
         r = SelfRefineResult(
-            prompt="p", final_output="o", config=cfg,
-            iterations_completed=10, converged=False,
+            prompt="p",
+            final_output="o",
+            config=cfg,
+            iterations_completed=10,
+            converged=False,
             convergence_reason="max_iterations",
         )
         assert r.iterations_completed == 10
 
     def test_long_prompt_trace(self):
         cfg = SelfRefineConfig()
-        trace = [
-            FeedbackRound(i, f"fb{i}", "correctness", elapsed_ms=50.0)
-            for i in range(1, 18)
-        ]
+        trace = [FeedbackRound(i, f"fb{i}", "correctness", elapsed_ms=50.0) for i in range(1, 18)]
         r = SelfRefineResult(
-            prompt="x" * 10000, final_output="o", config=cfg,
-            iterations_completed=17, trace=trace,
+            prompt="x" * 10000,
+            final_output="o",
+            config=cfg,
+            iterations_completed=17,
+            trace=trace,
             execution_time_ms=1000.0,
         )
         assert len(r.trace) == 17
@@ -205,9 +239,13 @@ class TestSelfRefineResult:
         """hybrid 模式：similarity >= threshold 应跳过 LLM judge（cost saving）。"""
         cfg = SelfRefineConfig(convergence_strategy="hybrid", convergence_threshold=0.85)
         r = SelfRefineResult(
-            prompt="p", final_output="o", config=cfg,
-            converged=True, convergence_reason="similarity",
-            total_llm_calls=5, iterations_completed=1,
+            prompt="p",
+            final_output="o",
+            config=cfg,
+            converged=True,
+            convergence_reason="similarity",
+            total_llm_calls=5,
+            iterations_completed=1,
         )
         assert r.convergence_reason == "similarity"
         assert r.converged
@@ -219,11 +257,21 @@ class TestConvergenceReasons:
     """收敛原因枚举覆盖。"""
 
     def test_all_convergence_reasons(self):
-        reasons = ["llm_judged", "similarity", "max_iterations", "max_calls", "timeout", "error", "no_improvement_needed"]
+        reasons = [
+            "llm_judged",
+            "similarity",
+            "max_iterations",
+            "max_calls",
+            "timeout",
+            "error",
+            "no_improvement_needed",
+        ]
         cfg = SelfRefineConfig()
         for reason in reasons:
             r = SelfRefineResult(
-                prompt="p", final_output="o", config=cfg,
+                prompt="p",
+                final_output="o",
+                config=cfg,
                 converged=reason in ("llm_judged", "similarity", "no_improvement_needed"),
                 convergence_reason=reason,
             )
